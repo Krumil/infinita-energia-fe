@@ -40,6 +40,28 @@ async function handleResponse<T>(res: Response): Promise<T> {
     return res.json();
 }
 
+function sanitizeJson(text: string): string {
+    return text.replace(/:\s*NaN\b/g, ": null").replace(/:\s*Infinity\b/g, ": null").replace(/:\s*-Infinity\b/g, ": null");
+}
+
+async function handleResponseWithSanitization<T>(res: Response): Promise<T> {
+    if (!res.ok) {
+        let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+        try {
+            const errorData = await res.json();
+            if (errorData.error) {
+                errorMessage = errorData.error;
+            }
+        } catch {
+            // Ignore JSON parsing errors
+        }
+        throw new ApiError(res.status, errorMessage);
+    }
+    const text = await res.text();
+    const sanitized = sanitizeJson(text);
+    return JSON.parse(sanitized) as T;
+}
+
 // ========== AGENTS API ==========
 
 /**
@@ -224,7 +246,7 @@ export async function calcolaProvvigioni(data: CalcoloInput[]): Promise<CalcoloR
         },
         body: JSON.stringify(data),
     });
-    return handleResponse<CalcoloResult>(res);
+    return handleResponseWithSanitization<CalcoloResult>(res);
 }
 
 // ========== UTILITY FUNCTIONS ==========

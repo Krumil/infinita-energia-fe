@@ -152,7 +152,7 @@ export default function App() {
                             />
                         </TabsContent>
 
-                        <TabsContent value="calcolo">
+                        <TabsContent value="provvigioni">
                             <CalcoloTab
                                 data={calcolo.data}
                                 result={calcolo.result}
@@ -160,6 +160,7 @@ export default function App() {
                                 unmatchedAgents={calcolo.unmatchedAgents}
                                 onUpload={calcolo.handleUpload}
                                 onCalculate={handleCalculate}
+                                onNavigate={handleTabChange}
                             />
                         </TabsContent>
                     </Tabs>

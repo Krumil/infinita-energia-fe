@@ -20,7 +20,7 @@ const navItems = [
     { id: "dashboard", labelKey: "dashboard", icon: LayoutDashboard },
     { id: "agenti", labelKey: "agenti", icon: Users },
     { id: "ordini", labelKey: "ordini", icon: Receipt },
-    { id: "calcolo", labelKey: "calcolo", icon: Calculator },
+    { id: "provvigioni", labelKey: "provvigioni", icon: Calculator },
 ] as const;
 
 export function AppHeader({
@@ -39,13 +39,9 @@ export function AppHeader({
             <div className="max-w-[1400px] mx-auto px-6 lg:px-8">
                 <div className="flex items-center justify-between h-[72px]">
                     {/* Brand Section */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 cursor-pointer" onClick={() => onTabChange("dashboard")}>
                         <div className="relative flex-shrink-0">
-                            <img
-                                src="/logo.png"
-                                alt="Infinita Energia"
-                                className="h-10 w-10 object-contain"
-                            />
+                            <img src="/logo.png" alt="Infinita Energia" className="h-10 w-10 object-contain" />
                         </div>
                         <div className="hidden sm:block h-8 w-px bg-white/15" />
                         <div className="hidden sm:flex flex-col justify-center">
@@ -72,9 +68,10 @@ export function AppHeader({
                                         relative flex items-center gap-2.5 px-4 py-2.5
                                         font-display text-[13px] tracking-[0.04em] uppercase
                                         rounded-md transition-all duration-200
-                                        ${isActive
-                                            ? "bg-white/[0.12] text-white"
-                                            : "text-white/60 hover:text-white hover:bg-white/[0.06]"
+                                        ${
+                                            isActive
+                                                ? "bg-white/[0.12] text-white"
+                                                : "text-white/60 hover:text-white hover:bg-white/[0.06]"
                                         }
                                     `}
                                 >
@@ -122,13 +119,19 @@ export function AppHeader({
                             </Tooltip>
                             <SheetContent className="border-l border-energia-accent/20 bg-card">
                                 <SheetHeader className="pb-2">
-                                    <SheetTitle className="font-display text-xl tracking-wide">{t("settings")}</SheetTitle>
+                                    <SheetTitle className="font-display text-xl tracking-wide">
+                                        {t("settings")}
+                                    </SheetTitle>
                                     <SheetDescription className="font-body text-muted-foreground">
                                         {t("configurePreferences")}
                                     </SheetDescription>
                                 </SheetHeader>
                                 <Separator className="my-6 bg-border/50" />
-                                <SettingsPanel settings={settings} onChange={onSettingsChange} onSave={onSettingsSave} />
+                                <SettingsPanel
+                                    settings={settings}
+                                    onChange={onSettingsChange}
+                                    onSave={onSettingsSave}
+                                />
                             </SheetContent>
                         </Sheet>
                     </nav>

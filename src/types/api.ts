@@ -50,11 +50,13 @@ export interface ImportLiquidazioniResponse {
 // === COMMISSION CALCULATION TYPES ===
 
 export interface ProvvigioneData {
-    Venditore: string;
-    Regola: string;
-    Quantita: number;
-    Importo: number;
-    provvigione: number;
+    cf_piva: string;
+    cliente: string;
+    comp_al: string;
+    importo_provvigione: number | null;
+    pod_pdr: string;
+    regola: string;
+    venditore: string;
 }
 
 export interface CalcoloVenditoreResult {

@@ -81,7 +81,7 @@ export function DashboardTab({ kpis, lastAction, onNavigate }: DashboardTabProps
                                 <p className="text-sm text-muted-foreground font-body">{t("importOrdersDesc")}</p>
                             </div>
                         </div>
-                        <div className="action-card" onClick={() => onNavigate("calcolo")}>
+                        <div className="action-card" onClick={() => onNavigate("provvigioni")}>
                             <div className="action-card-icon">
                                 <Calculator className="h-5 w-5" />
                             </div>

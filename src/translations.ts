@@ -9,7 +9,7 @@ const en = {
     dashboard: "Dashboard",
     agenti: "Agenti",
     ordini: "Ordini",
-    calcolo: "Calcolo",
+    provvigioni: "Provvigioni",
     settingsTab: "Settings",
 
     // Dashboard
@@ -103,7 +103,7 @@ const en = {
     parsedRecords: "Parsed records",
 
     // Calculation Tab
-    calculateCommissionsTitle: "Calculate Commissions",
+    calculateCommissionsTitle: "Commissions",
     calculateCommissionsDesc: "Upload liquidation data to calculate agent commissions",
     uploadForCalculation: "Upload Liquidation File",
     calculationResults: "Calculation Results",
@@ -118,13 +118,21 @@ const en = {
     summaryBySeller: "Summary by Seller",
     detailsBySeller: "Details",
     calculating: "Calculating commissions...",
-    unmatchedAgentsWarning: "Unmatched Agents Found",
+    unmatchedAgentsWarning: "Agents Not Found",
     unmatchedAgentsDesc:
         "The following sellers in the file do not match any agent in the system. Their commissions cannot be calculated.",
     unmatchedAgentsCount: "unmatched agents",
     recordsAffected: "records affected",
     loadAgentsFirst: "Please load agents first to validate the file",
     allAgentsMatched: "All sellers matched successfully",
+    readyToCalculate: "ready to calculate",
+    newFile: "New file",
+    unmatchedShort: "unmatched",
+    continueWithUnmatched: "Continue with unmatched agents?",
+    recordsWillBeSkipped: "records will be skipped",
+    continueAnyway: "Calculate anyway",
+    viewUnmatchedAgents: "View unmatched agents",
+    goToAgentsTab: "Go to Agents tab",
 
     // File Upload
     clickToUpload: "Click to upload",
@@ -173,6 +181,9 @@ const en = {
     close: "Close",
     download: "Download",
     view: "View",
+    records: "Records",
+    client: "Client",
+    total: "Total",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -188,7 +199,7 @@ const it: TranslationTable = {
     dashboard: "Dashboard",
     agenti: "Agenti",
     ordini: "Ordini",
-    calcolo: "Calcolo",
+    provvigioni: "Provvigioni",
     settingsTab: "Impostazioni",
 
     // Dashboard
@@ -281,7 +292,7 @@ const it: TranslationTable = {
     parsedRecords: "Record elaborati",
 
     // Calculation Tab
-    calculateCommissionsTitle: "Calcola Provvigioni",
+    calculateCommissionsTitle: "Provvigioni",
     calculateCommissionsDesc: "Carica i dati delle liquidazioni per calcolare le provvigioni degli agenti",
     uploadForCalculation: "Carica File Liquidazioni",
     calculationResults: "Risultati Calcolo",
@@ -303,6 +314,14 @@ const it: TranslationTable = {
     recordsAffected: "record interessati",
     loadAgentsFirst: "Carica prima gli agenti per validare il file",
     allAgentsMatched: "Tutti i venditori sono stati abbinati correttamente",
+    readyToCalculate: "pronti per il calcolo",
+    newFile: "Nuovo file",
+    unmatchedShort: "non trovati",
+    continueWithUnmatched: "Continuare con agenti non trovati?",
+    recordsWillBeSkipped: "record verranno saltati",
+    continueAnyway: "Calcola comunque",
+    viewUnmatchedAgents: "Vedi agenti non trovati",
+    goToAgentsTab: "Vai alla scheda Agenti",
 
     // File Upload
     clickToUpload: "Clicca per caricare",
@@ -351,6 +370,9 @@ const it: TranslationTable = {
     close: "Chiudi",
     download: "Scarica",
     view: "Visualizza",
+    records: "Record",
+    client: "Cliente",
+    total: "Totale",
 };
 
 export const translations: Record<Language, TranslationTable> = { en, it };

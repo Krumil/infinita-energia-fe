@@ -1,14 +1,8 @@
 import { useState, useMemo } from "react";
-import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { AgentsTableProps } from "@/types/components";
 import type { Agente } from "@/types/domain";
@@ -184,7 +178,7 @@ export function AgentsTable({ data, onEdit, onDelete }: AgentsTableProps) {
                                     <TooltipContent>{t("sddBonusTooltip")}</TooltipContent>
                                 </Tooltip>
                             </th>
-                            <th className="w-[70px]">{t("actions")}</th>
+                            <th className="w-[96px]">{t("actions")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -230,30 +224,37 @@ export function AgentsTable({ data, onEdit, onDelete }: AgentsTableProps) {
                                         {formatRate(row.bonus_sdd)}
                                     </td>
                                     <td>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-secondary/50">
-                                                    <span className="sr-only">Open menu</span>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem
-                                                    onClick={() => onEdit(row)}
-                                                    className="font-display text-sm"
-                                                >
-                                                    <Pencil className="mr-2 h-4 w-4" />
-                                                    {t("editAgent")}
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    onClick={() => onDelete(row)}
-                                                    className="text-destructive focus:text-destructive font-display text-sm"
-                                                >
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    {t("deleteAgent")}
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0 hover:bg-secondary/50"
+                                                        onClick={() => onEdit(row)}
+                                                        aria-label={t("editAgent")}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>{t("editAgent")}</TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0 hover:bg-secondary/50 text-destructive hover:text-destructive"
+                                                        onClick={() => onDelete(row)}
+                                                        aria-label={t("deleteAgent")}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>{t("deleteAgent")}</TooltipContent>
+                                            </Tooltip>
+                                        </div>
                                     </td>
                                 </tr>
                             ))
