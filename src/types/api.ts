@@ -1,0 +1,105 @@
+// === AGENT API TYPES ===
+
+export interface CreateAgentRequest {
+    nome_cognome: string;
+    agente_padre?: string;
+    gettone_residenziale_standard?: number;
+    gettone_residenziale_bonus?: number;
+    gettone_residenziale_malus?: number;
+    rinnovo_residenziale?: number;
+    gettone_business_standard?: number;
+    gettone_business_bonus?: number;
+    gettone_business_malus?: number;
+    rinnovo_business?: number;
+    bonus_sdd?: number;
+}
+
+export interface AgentCreateResponse {
+    message: string;
+    id: number;
+}
+
+export interface AgentMessageResponse {
+    message: string;
+}
+
+export interface AgentErrorResponse {
+    error: string;
+}
+
+// === EXCEL IMPORT TYPES ===
+
+export interface ImportExcelResponse {
+    message: string;
+    details: {
+        clienti: { nuovi: number; aggiornati: number };
+        prodotti: { nuovi: number; aggiornati: number };
+        dati_tecnici: { nuovi: number; aggiornati: number };
+        ordini: { nuovi: number; aggiornati: number };
+    };
+}
+
+// === LIQUIDATION IMPORT TYPES ===
+
+export interface ImportLiquidazioniResponse {
+    success: boolean;
+    message: string;
+    error?: string;
+}
+
+// === COMMISSION CALCULATION TYPES ===
+
+export interface ProvvigioneData {
+    Venditore: string;
+    Regola: string;
+    Quantita: number;
+    Importo: number;
+    provvigione: number;
+}
+
+export interface CalcoloVenditoreResult {
+    totale_provvigione: number;
+    dati_provvigione: ProvvigioneData[];
+}
+
+export interface CalcoloResult {
+    [venditoreName: string]: CalcoloVenditoreResult;
+}
+
+// Liquidation record for calculation input
+// Uses original column names with spaces/special chars as expected by backend
+export interface CalcoloInput {
+    "Partner Comm.": string;
+    Regola: string;
+    "Tipo Cliente": string;
+    Venditore: string;
+    Consumo: number;
+    Quantità: number;
+    "Importo €": number;
+    [key: string]: string | number | undefined;
+}
+
+// === BULK IMPORT TYPES ===
+
+// CSV Agent row type (for bulk import)
+export interface AgentCsvRow {
+    nome_cognome: string;
+    agente_padre?: string;
+    gettone_residenziale_standard?: string | number;
+    gettone_residenziale_bonus?: string | number;
+    gettone_residenziale_malus?: string | number;
+    rinnovo_residenziale?: string | number;
+    gettone_business_standard?: string | number;
+    gettone_business_bonus?: string | number;
+    gettone_business_malus?: string | number;
+    rinnovo_business?: string | number;
+    bonus_sdd?: string | number;
+    [key: string]: string | number | undefined;
+}
+
+// Bulk agent import result
+export interface BulkAgentImportResult {
+    success: number;
+    failed: number;
+    errors: Array<{ row: number; name: string; error: string }>;
+}
