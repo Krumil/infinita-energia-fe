@@ -23,10 +23,6 @@ export interface AgentMessageResponse {
     message: string;
 }
 
-export interface AgentErrorResponse {
-    error: string;
-}
-
 // === EXCEL IMPORT TYPES ===
 
 export interface ImportExcelResponse {
@@ -104,4 +100,28 @@ export interface BulkAgentImportResult {
     success: number;
     failed: number;
     errors: Array<{ row: number; name: string; error: string }>;
+}
+
+// === PENDING ORDERS TYPES ===
+
+export interface PendingOrder {
+    id_ordine: number;
+    data_firma: string | null;
+    stato_firma: string | null;
+    data_conferma: string | null;
+    data_accettazione: string | null;
+    stato: string | null;
+    agenzia: string | null;
+    agente: string | null;
+    prodotto: string;
+    note: string | null;
+    cod_fisc: string;
+    pod_pdr: string;
+    metodo_pagam: string | null;
+    cliente_nome: string | null;
+}
+
+export interface PendingOrdersResponse {
+    count: number;
+    data: PendingOrder[];
 }

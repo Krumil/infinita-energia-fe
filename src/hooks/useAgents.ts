@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { getAgenti, createAgente, updateAgente, deleteAgente, ApiError } from "@/api";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -16,6 +16,8 @@ export function useAgents() {
     const [saving, setSaving] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deletingAgent, setDeletingAgent] = useState<Agente | null>(null);
+
+    const initialLoadDone = useRef(false);
 
     // Load agents
     const loadAgents = useCallback(async () => {
@@ -38,6 +40,12 @@ export function useAgents() {
             setLoading(false);
         }
     }, [toast, t]);
+
+    useEffect(() => {
+        if (initialLoadDone.current) return;
+        initialLoadDone.current = true;
+        loadAgents();
+    }, [loadAgents]);
 
     // Open create dialog
     const openCreateDialog = useCallback(() => {

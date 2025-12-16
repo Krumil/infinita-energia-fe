@@ -80,7 +80,7 @@ const en = {
 
     // Orders Import Tab
     importOrdersTitle: "Import Orders from Excel",
-    importOrdersDesc: "Upload an Excel file (.xlsx, .xls) to import orders, clients, products, and technical data",
+    importOrdersDesc: "Upload an Excel file (.xlsx, .xls) to import orders",
     ordersImportResult: "Import Result",
     newRecords: "New",
     updatedRecords: "Updated",
@@ -88,6 +88,25 @@ const en = {
     products: "Products",
     technicalData: "Technical Data",
     orders: "Orders",
+
+    // Pending Orders
+    pendingOrders: "Pending Orders",
+    pendingOrdersDesc: "Orders without associated liquidation",
+    loadPendingOrders: "Load Pending Orders",
+    noPendingOrders: "No pending orders found",
+    orderStatus: "Status",
+    signatureDate: "Signature Date",
+    confirmationDate: "Confirmation Date",
+    acceptanceDate: "Acceptance Date",
+    agency: "Agency",
+    agent: "Agent",
+    product: "Product",
+    paymentMethod: "Payment Method",
+    customerName: "Customer",
+    taxId: "Tax ID",
+    podPdr: "POD/PDR",
+    fetchError: "Failed to fetch data",
+    orderId: "Order ID",
 
     // Liquidations Tab
     importLiquidationsTitle: "Import Liquidations",
@@ -270,7 +289,7 @@ const it: TranslationTable = {
 
     // Orders Import Tab
     importOrdersTitle: "Importa Ordini da Excel",
-    importOrdersDesc: "Carica un file Excel (.xlsx, .xls) per importare ordini, clienti, prodotti e dati tecnici",
+    importOrdersDesc: "Carica un file Excel (.xlsx, .xls) per importare gli ordini",
     ordersImportResult: "Risultato Importazione",
     newRecords: "Nuovi",
     updatedRecords: "Aggiornati",
@@ -278,6 +297,25 @@ const it: TranslationTable = {
     products: "Prodotti",
     technicalData: "Dati Tecnici",
     orders: "Ordini",
+
+    // Pending Orders
+    pendingOrders: "Ordini in Attesa",
+    pendingOrdersDesc: "Ordini senza liquidazione associata",
+    loadPendingOrders: "Carica Ordini in Attesa",
+    noPendingOrders: "Nessun ordine in attesa trovato",
+    orderStatus: "Stato",
+    signatureDate: "Data Firma",
+    confirmationDate: "Data Conferma",
+    acceptanceDate: "Data Accettazione",
+    agency: "Agenzia",
+    agent: "Agente",
+    product: "Prodotto",
+    paymentMethod: "Metodo Pagamento",
+    customerName: "Cliente",
+    taxId: "Cod. Fiscale",
+    podPdr: "POD/PDR",
+    fetchError: "Impossibile recuperare i dati",
+    orderId: "ID Ordine",
 
     // Liquidations Tab
     importLiquidationsTitle: "Importa Liquidazioni",

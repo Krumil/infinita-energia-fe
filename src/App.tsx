@@ -10,7 +10,7 @@ import { AppHeader, AppFooter } from "@/components";
 import { DashboardTab, AgentsTab, OrdiniTab, CalcoloTab } from "@/pages";
 
 // Custom hooks
-import { useAppSettings, useAgents, useOrders, useLiquidazioni, useCalcolo } from "@/hooks";
+import { useAppSettings, useAgents, useOrders, useLiquidazioni, useCalcolo, usePendingOrders } from "@/hooks";
 
 // ========== Main App Component ==========
 
@@ -28,6 +28,7 @@ export default function App() {
     const orders = useOrders();
     const liquidazioni = useLiquidazioni();
     const calcolo = useCalcolo(agents.agents);
+    const pendingOrders = usePendingOrders();
 
     // Sync activeTab with URL hash
     useEffect(() => {
@@ -43,12 +44,6 @@ export default function App() {
         return () => window.removeEventListener("hashchange", handleHashChange);
     }, []);
 
-    // Load agents on mount
-    useEffect(() => {
-        agents.loadAgents();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     const handleTabChange = (value: string) => {
         setActiveTab(value);
         window.location.hash = value;
@@ -57,7 +52,10 @@ export default function App() {
     // Wrapper handlers that update lastAction
     const handleOrdersUpload = async (files: File[]) => {
         const action = await orders.handleUpload(files);
-        if (action) setLastAction(action);
+        if (action) {
+            setLastAction(action);
+            await pendingOrders.fetchPendingOrders();
+        }
     };
 
     const handleLiquidazioniImport = async () => {
@@ -149,6 +147,10 @@ export default function App() {
                                 liquidazioniImporting={liquidazioni.importing}
                                 onLiquidazioniUpload={liquidazioni.handleUpload}
                                 onLiquidazioniImport={handleLiquidazioniImport}
+                                pendingOrders={pendingOrders.orders}
+                                pendingOrdersCount={pendingOrders.count}
+                                pendingOrdersLoading={pendingOrders.loading}
+                                onRefreshPendingOrders={pendingOrders.fetchPendingOrders}
                             />
                         </TabsContent>
 

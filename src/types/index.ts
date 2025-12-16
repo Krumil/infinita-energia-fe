@@ -14,6 +14,8 @@ export type {
     CalcoloInput,
     AgentCsvRow,
     BulkAgentImportResult,
+    PendingOrder,
+    PendingOrdersResponse,
 } from "./api";
 
 // Component types

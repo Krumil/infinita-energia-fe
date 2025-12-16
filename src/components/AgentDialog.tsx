@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,13 +14,26 @@ import {
 } from "@/components/ui/dialog";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { AgentDialogProps } from "@/types/components";
+import type { Agente } from "@/types/domain";
 import type { CreateAgentRequest } from "@/types/api";
 
-export function AgentDialog({ open, onOpenChange, agent, agents, onSave, saving }: AgentDialogProps) {
-    const { t } = useTranslation();
-    const isEdit = agent !== null;
-
-    const [formData, setFormData] = useState<CreateAgentRequest>({
+function createInitialFormData(agent: Agente | null): CreateAgentRequest {
+    if (agent) {
+        return {
+            nome_cognome: agent.nome_cognome,
+            agente_padre: agent.agente_padre || undefined,
+            gettone_residenziale_standard: agent.gettone_residenziale_standard ?? undefined,
+            gettone_residenziale_bonus: agent.gettone_residenziale_bonus ?? undefined,
+            gettone_residenziale_malus: agent.gettone_residenziale_malus ?? undefined,
+            rinnovo_residenziale: agent.rinnovo_residenziale ?? undefined,
+            gettone_business_standard: agent.gettone_business_standard ?? undefined,
+            gettone_business_bonus: agent.gettone_business_bonus ?? undefined,
+            gettone_business_malus: agent.gettone_business_malus ?? undefined,
+            rinnovo_business: agent.rinnovo_business ?? undefined,
+            bonus_sdd: agent.bonus_sdd ?? undefined,
+        };
+    }
+    return {
         nome_cognome: "",
         agente_padre: undefined,
         gettone_residenziale_standard: undefined,
@@ -32,43 +45,14 @@ export function AgentDialog({ open, onOpenChange, agent, agents, onSave, saving 
         gettone_business_malus: undefined,
         rinnovo_business: undefined,
         bonus_sdd: undefined,
-    });
+    };
+}
 
-    // Sync form data with agent prop when dialog opens
-    // This is intentional - we need to synchronize with the external "open" and "agent" props
-    useEffect(() => {
-        if (!open) return;
+export function AgentDialog({ open, onOpenChange, agent, agents, onSave, saving }: AgentDialogProps) {
+    const { t } = useTranslation();
+    const isEdit = agent !== null;
 
-        if (agent) {
-            setFormData({
-                nome_cognome: agent.nome_cognome,
-                agente_padre: agent.agente_padre || undefined,
-                gettone_residenziale_standard: agent.gettone_residenziale_standard ?? undefined,
-                gettone_residenziale_bonus: agent.gettone_residenziale_bonus ?? undefined,
-                gettone_residenziale_malus: agent.gettone_residenziale_malus ?? undefined,
-                rinnovo_residenziale: agent.rinnovo_residenziale ?? undefined,
-                gettone_business_standard: agent.gettone_business_standard ?? undefined,
-                gettone_business_bonus: agent.gettone_business_bonus ?? undefined,
-                gettone_business_malus: agent.gettone_business_malus ?? undefined,
-                rinnovo_business: agent.rinnovo_business ?? undefined,
-                bonus_sdd: agent.bonus_sdd ?? undefined,
-            });
-        } else {
-            setFormData({
-                nome_cognome: "",
-                agente_padre: undefined,
-                gettone_residenziale_standard: undefined,
-                gettone_residenziale_bonus: undefined,
-                gettone_residenziale_malus: undefined,
-                rinnovo_residenziale: undefined,
-                gettone_business_standard: undefined,
-                gettone_business_bonus: undefined,
-                gettone_business_malus: undefined,
-                rinnovo_business: undefined,
-                bonus_sdd: undefined,
-            });
-        }
-    }, [open, agent]);
+    const [formData, setFormData] = useState<CreateAgentRequest>(() => createInitialFormData(agent));
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

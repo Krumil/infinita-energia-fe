@@ -86,6 +86,7 @@ export function AgentsTab({
             </div>
 
             <AgentDialog
+                key={editingAgent?.id ?? "new"}
                 open={dialogOpen}
                 onOpenChange={onDialogOpenChange}
                 agent={editingAgent}

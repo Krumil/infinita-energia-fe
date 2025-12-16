@@ -10,6 +10,7 @@ import type {
     CalcoloResult,
     BulkAgentImportResult,
     AgentCsvRow,
+    PendingOrdersResponse,
 } from "./types";
 
 // Backend base URL - Flask runs on port 5000
@@ -209,6 +210,18 @@ export async function uploadExcel(file: File): Promise<ImportExcelResponse> {
         // Do NOT set Content-Type header - browser sets it automatically with boundary
     });
     return handleResponse<ImportExcelResponse>(res);
+}
+
+// ========== PENDING ORDERS API ==========
+
+export async function getPendingOrders(): Promise<PendingOrdersResponse> {
+    const res = await fetch(`${BASE_API}/ordini-non-evasi`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+    return handleResponse<PendingOrdersResponse>(res);
 }
 
 // ========== LIQUIDATIONS API ==========
