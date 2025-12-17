@@ -1,31 +1,27 @@
 import { useState } from "react";
-import { Upload, CheckCircle, AlertCircle, AlertTriangle, Loader2, RefreshCw, Search, X } from "lucide-react";
+import { CheckCircle, AlertCircle, Loader2, RefreshCw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileDropzone, EmptyState } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { ImportExcelResponse, Liquidazione, PendingOrder } from "@/types";
+import type { ImportExcelResponse, PendingOrder } from "@/types";
+
+interface LiquidazioniResult {
+    success: boolean;
+    message: string;
+    count: number;
+}
 
 interface OrdiniTabProps {
     ordersImporting: boolean;
     ordersProgress: number;
     ordersResult: ImportExcelResponse | null;
     onOrdersUpload: (files: File[]) => void;
-    liquidazioniParsed: Liquidazione[];
-    liquidazioniValid: Liquidazione[];
-    liquidazioniInvalid: number;
     liquidazioniImporting: boolean;
+    liquidazioniResult: LiquidazioniResult | null;
     onLiquidazioniUpload: (files: File[]) => void;
-    onLiquidazioniImport: () => void;
     pendingOrders: PendingOrder[];
     pendingOrdersCount: number;
     pendingOrdersLoading: boolean;
@@ -56,12 +52,9 @@ export function OrdiniTab({
     ordersProgress,
     ordersResult,
     onOrdersUpload,
-    liquidazioniParsed,
-    liquidazioniValid,
-    liquidazioniInvalid,
     liquidazioniImporting,
+    liquidazioniResult,
     onLiquidazioniUpload,
-    onLiquidazioniImport,
     pendingOrders,
     pendingOrdersCount,
     pendingOrdersLoading,
@@ -114,7 +107,9 @@ export function OrdiniTab({
                                     </div>
                                     <div>
                                         {t("technicalData")}:{" "}
-                                        <span className="text-foreground">{ordersResult.details.dati_tecnici.nuovi}</span>{" "}
+                                        <span className="text-foreground">
+                                            {ordersResult.details.dati_tecnici.nuovi}
+                                        </span>{" "}
                                         {t("newRecords")}
                                     </div>
                                     <div>
@@ -140,43 +135,26 @@ export function OrdiniTab({
                             onFiles={onLiquidazioniUpload}
                             disabled={liquidazioniImporting}
                         />
-                        {liquidazioniParsed.length > 0 && (
-                            <>
-                                <Alert className="bg-secondary/50 border-border/50">
-                                    <AlertCircle className="h-4 w-4" />
-                                    <AlertTitle className="font-display">{t("liquidationsPreview")}</AlertTitle>
-                                    <AlertDescription className="font-mono text-sm mt-2">
-                                        <p>
-                                            {t("validRecords")}:{" "}
-                                            <span className="text-foreground">{liquidazioniValid.length}</span>
-                                        </p>
-                                        {liquidazioniInvalid > 0 && (
-                                            <p className="text-energia-accent">
-                                                {t("invalidRecords")}: {liquidazioniInvalid}
-                                            </p>
-                                        )}
-                                    </AlertDescription>
-                                </Alert>
-                                <Alert
-                                    variant="destructive"
-                                    className="bg-energia-accent/10 border-energia-accent/30 text-foreground"
-                                >
-                                    <AlertTriangle className="h-4 w-4 text-energia-accent" />
-                                    <AlertDescription className="font-body text-sm">{t("warningDuplicates")}</AlertDescription>
-                                </Alert>
-                                <Button
-                                    onClick={onLiquidazioniImport}
-                                    disabled={liquidazioniImporting || liquidazioniValid.length === 0}
-                                    className="w-full btn-primary"
-                                >
-                                    {liquidazioniImporting ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Upload className="mr-2 h-4 w-4" />
-                                    )}
-                                    {t("proceedWithImport")} ({liquidazioniValid.length})
-                                </Button>
-                            </>
+                        {liquidazioniImporting && (
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-center gap-3">
+                                    <Loader2 className="h-5 w-5 animate-spin text-energia-accent" />
+                                    <p className="font-mono text-sm text-muted-foreground">{t("processing")}...</p>
+                                </div>
+                            </div>
+                        )}
+                        {liquidazioniResult && (
+                            <Alert className="bg-sage/10 border-sage/30">
+                                <CheckCircle className="h-4 w-4 text-sage" />
+                                <AlertTitle className="font-display">{t("liquidationsImportResult")}</AlertTitle>
+                                <AlertDescription className="font-mono text-sm mt-3">
+                                    <div>
+                                        {t("recordsProcessed")}:{" "}
+                                        <span className="text-foreground">{liquidazioniResult.count}</span>
+                                    </div>
+                                    <div className="mt-1 text-muted-foreground">{liquidazioniResult.message}</div>
+                                </AlertDescription>
+                            </Alert>
                         )}
                     </div>
                 </div>
@@ -187,12 +165,17 @@ export function OrdiniTab({
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="font-display text-xl">{t("pendingOrders")}</h2>
+                        <h2 className="font-display text-xl">
+                            {t("pendingOrders")}
+                            {pendingOrdersCount > 0 && (
+                                <span className="ml-2 text-muted-foreground">({pendingOrdersCount})</span>
+                            )}
+                        </h2>
                         <p className="font-body text-muted-foreground mt-1">{t("pendingOrdersDesc")}</p>
                     </div>
                     <Button
                         variant="outline"
-                        size="sm"
+                        size="icon"
                         onClick={onRefreshPendingOrders}
                         disabled={pendingOrdersLoading}
                     >
@@ -201,7 +184,6 @@ export function OrdiniTab({
                         ) : (
                             <RefreshCw className="h-4 w-4" />
                         )}
-                        <span className="ml-2">{t("loadPendingOrders")}</span>
                     </Button>
                 </div>
 
@@ -256,25 +238,23 @@ export function OrdiniTab({
                                     {filteredOrders.length > 0 ? (
                                         filteredOrders.map((order) => (
                                             <TableRow key={order.id_ordine}>
-                                                <TableCell className="font-mono text-xs">
-                                                    {order.id_ordine}
-                                                </TableCell>
+                                                <TableCell className="font-mono text-xs">{order.id_ordine}</TableCell>
                                                 <TableCell className="font-medium">
                                                     {order.cliente_nome || "-"}
                                                 </TableCell>
-                                                <TableCell className="font-mono text-xs">
-                                                    {order.pod_pdr}
-                                                </TableCell>
+                                                <TableCell className="font-mono text-xs">{order.pod_pdr}</TableCell>
                                                 <TableCell>{order.prodotto}</TableCell>
                                                 <TableCell>{order.agente || "-"}</TableCell>
                                                 <TableCell>
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                        order.stato === "Confermato"
-                                                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                                                            : order.stato === "In Lavorazione"
-                                                            ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                                                            : "bg-secondary text-muted-foreground"
-                                                    }`}>
+                                                    <span
+                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                            order.stato === "Confermato"
+                                                                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                                                                : order.stato === "In Lavorazione"
+                                                                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                                                                : "bg-secondary text-muted-foreground"
+                                                        }`}
+                                                    >
                                                         {order.stato || "-"}
                                                     </span>
                                                 </TableCell>
@@ -296,10 +276,7 @@ export function OrdiniTab({
                         </div>
                     </div>
                 ) : (
-                    <EmptyState
-                        message={t("noPendingOrders")}
-                        icon={<AlertCircle className="h-16 w-16" />}
-                    />
+                    <EmptyState message={t("noPendingOrders")} icon={<AlertCircle className="h-16 w-16" />} />
                 )}
             </div>
         </div>

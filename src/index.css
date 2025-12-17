@@ -202,11 +202,7 @@
 
     /* Light mode header - dark blue brand color with subtle gradient */
     :root .ledger-header {
-        background: linear-gradient(
-            180deg,
-            hsl(211 100% 18%) 0%,
-            hsl(211 100% 14%) 100%
-        );
+        background: linear-gradient(180deg, hsl(211 100% 18%) 0%, hsl(211 100% 14%) 100%);
         color: hsl(var(--header-fg));
     }
 
@@ -217,11 +213,7 @@
 
     /* Dark mode header - deeper, more dramatic */
     .dark .ledger-header {
-        background: linear-gradient(
-            180deg,
-            hsl(210 20% 11%) 0%,
-            hsl(210 20% 7%) 100%
-        );
+        background: linear-gradient(180deg, hsl(210 20% 11%) 0%, hsl(210 20% 7%) 100%);
         color: hsl(var(--foreground));
     }
 

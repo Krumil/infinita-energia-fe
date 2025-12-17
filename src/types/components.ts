@@ -60,4 +60,5 @@ export interface AgentsTableProps {
 
 export interface CalcoloResultsProps {
     data: CalcoloResult;
+    compDal?: string;
 }

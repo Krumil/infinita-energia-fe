@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,7 +15,6 @@ import { useAppSettings, useAgents, useOrders, useLiquidazioni, useCalcolo, useP
 // ========== Main App Component ==========
 
 export default function App() {
-
     // Tab navigation state
     const [activeTab, setActiveTab] = useState<string>("dashboard");
 
@@ -34,19 +33,29 @@ export default function App() {
     useEffect(() => {
         const hash = window.location.hash.replace("#", "") || "dashboard";
         setActiveTab(hash);
+        if (hash === "ordini") {
+            pendingOrders.fetchPendingOrders();
+        }
 
         const handleHashChange = () => {
             const newHash = window.location.hash.replace("#", "") || "dashboard";
             setActiveTab(newHash);
+            if (newHash === "ordini") {
+                pendingOrders.fetchPendingOrders();
+            }
         };
 
         window.addEventListener("hashchange", handleHashChange);
         return () => window.removeEventListener("hashchange", handleHashChange);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleTabChange = (value: string) => {
         setActiveTab(value);
         window.location.hash = value;
+        if (value === "ordini") {
+            pendingOrders.fetchPendingOrders();
+        }
     };
 
     // Wrapper handlers that update lastAction
@@ -58,9 +67,12 @@ export default function App() {
         }
     };
 
-    const handleLiquidazioniImport = async () => {
-        const action = await liquidazioni.handleImport();
-        if (action) setLastAction(action);
+    const handleLiquidazioniUpload = async (files: File[]) => {
+        const action = await liquidazioni.handleUpload(files);
+        if (action) {
+            setLastAction(action);
+            await pendingOrders.fetchPendingOrders();
+        }
     };
 
     const handleAgentSave = async (data: Parameters<typeof agents.saveAgent>[0]) => {
@@ -78,20 +90,6 @@ export default function App() {
         if (action) setLastAction(action);
     };
 
-    // Dashboard KPIs
-    const dashboardKPIs = useMemo(() => {
-        const totalAgents = agents.agents.length;
-        const totalCommissions = calcolo.result
-            ? Object.values(calcolo.result).reduce((sum, v) => sum + v.totale_provvigione, 0)
-            : 0;
-        const ordersCount = orders.result
-            ? orders.result.details.ordini.nuovi + orders.result.details.ordini.aggiornati
-            : 0;
-        const liquidationsCount = liquidazioni.importedCount;
-
-        return { totalAgents, totalCommissions, ordersCount, liquidationsCount };
-    }, [agents.agents, calcolo.result, orders.result, liquidazioni.importedCount]);
-
     return (
         <TooltipProvider>
             <div className="min-h-screen flex flex-col">
@@ -108,11 +106,7 @@ export default function App() {
                 <main className="flex-1 max-w-[1400px] mx-auto p-8 w-full">
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-10">
                         <TabsContent value="dashboard">
-                            <DashboardTab
-                                kpis={dashboardKPIs}
-                                lastAction={lastAction}
-                                onNavigate={handleTabChange}
-                            />
+                            <DashboardTab />
                         </TabsContent>
 
                         <TabsContent value="agenti">
@@ -141,12 +135,9 @@ export default function App() {
                                 ordersProgress={orders.progress}
                                 ordersResult={orders.result}
                                 onOrdersUpload={handleOrdersUpload}
-                                liquidazioniParsed={liquidazioni.parsed}
-                                liquidazioniValid={liquidazioni.valid}
-                                liquidazioniInvalid={liquidazioni.invalidCount}
                                 liquidazioniImporting={liquidazioni.importing}
-                                onLiquidazioniUpload={liquidazioni.handleUpload}
-                                onLiquidazioniImport={handleLiquidazioniImport}
+                                liquidazioniResult={liquidazioni.result}
+                                onLiquidazioniUpload={handleLiquidazioniUpload}
                                 pendingOrders={pendingOrders.orders}
                                 pendingOrdersCount={pendingOrders.count}
                                 pendingOrdersLoading={pendingOrders.loading}

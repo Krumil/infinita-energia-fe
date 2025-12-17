@@ -28,6 +28,15 @@ const en = {
     calculateCommissions: "Calculate Commissions",
     recentActivity: "Recent Activity",
     noActivity: "No recent activity",
+    // Dashboard Charts
+    contracts: "Contracts",
+    subscribed: "Subscribed",
+    vsLastYear: "vs last year",
+    previousYear: "Previous Year",
+    currentYear: "Current Year",
+    contractsSubscribed: "Contracts Subscribed",
+    commissionsCollected: "Commissions Collected",
+    comparisonWithPreviousYear: "Comparison with previous year",
 
     // Agents Tab
     agentsList: "Agents List",
@@ -92,7 +101,6 @@ const en = {
     // Pending Orders
     pendingOrders: "Pending Orders",
     pendingOrdersDesc: "Orders without associated liquidation",
-    loadPendingOrders: "Load Pending Orders",
     noPendingOrders: "No pending orders found",
     orderStatus: "Status",
     signatureDate: "Signature Date",
@@ -112,12 +120,7 @@ const en = {
     importLiquidationsTitle: "Import Liquidations",
     importLiquidationsDesc:
         "Upload an Excel file with liquidation data. The file will be parsed client-side and sent to the server.",
-    liquidationsPreview: "Preview",
-    liquidationsPreviewDesc: "Review parsed data before importing",
-    validRecords: "Valid records",
-    invalidRecords: "Invalid records (missing order ID or POD/PDR)",
-    proceedWithImport: "Proceed with Import",
-    warningDuplicates: "Warning: Importing again will create duplicate records",
+    liquidationsImportResult: "Import Result",
     noLiquidationsYet: "No liquidations loaded. Upload an Excel file to begin.",
     parsedRecords: "Parsed records",
 
@@ -203,6 +206,11 @@ const en = {
     records: "Records",
     client: "Client",
     total: "Total",
+
+    // Export/Download
+    downloadZip: "Download ZIP",
+    generatingZip: "Generating ZIP...",
+    period: "Period",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -237,6 +245,15 @@ const it: TranslationTable = {
     calculateCommissions: "Calcola Provvigioni",
     recentActivity: "Attività Recente",
     noActivity: "Nessuna attività recente",
+    // Dashboard Charts
+    contracts: "Contratti",
+    subscribed: "Sottoscritti",
+    vsLastYear: "anno precedente",
+    previousYear: "Anno Precedente",
+    currentYear: "Anno Corrente",
+    contractsSubscribed: "Contratti Sottoscritti",
+    commissionsCollected: "Provvigioni Incassate",
+    comparisonWithPreviousYear: "Confronto con anno precedente",
 
     // Agents Tab
     agentsList: "Lista Agenti",
@@ -299,9 +316,8 @@ const it: TranslationTable = {
     orders: "Ordini",
 
     // Pending Orders
-    pendingOrders: "Ordini in Attesa",
+    pendingOrders: "Ordini Inevasi",
     pendingOrdersDesc: "Ordini senza liquidazione associata",
-    loadPendingOrders: "Carica Ordini in Attesa",
     noPendingOrders: "Nessun ordine in attesa trovato",
     orderStatus: "Stato",
     signatureDate: "Data Firma",
@@ -320,12 +336,7 @@ const it: TranslationTable = {
     // Liquidations Tab
     importLiquidationsTitle: "Importa Liquidazioni",
     importLiquidationsDesc: "Carica un file Excel con i dati delle liquidazioni.",
-    liquidationsPreview: "Anteprima",
-    liquidationsPreviewDesc: "Rivedi i dati elaborati prima dell'importazione",
-    validRecords: "Record validi",
-    invalidRecords: "Record non validi (ID ordine o POD/PDR mancante)",
-    proceedWithImport: "Procedi con l'Importazione",
-    warningDuplicates: "Attenzione: Importare di nuovo creerà record duplicati",
+    liquidationsImportResult: "Risultato Importazione",
     noLiquidationsYet: "Nessuna liquidazione caricata. Carica un file Excel per iniziare.",
     parsedRecords: "Record elaborati",
 
@@ -411,6 +422,11 @@ const it: TranslationTable = {
     records: "Record",
     client: "Cliente",
     total: "Totale",
+
+    // Export/Download
+    downloadZip: "Scarica ZIP",
+    generatingZip: "Generazione ZIP...",
+    period: "Periodo",
 };
 
 export const translations: Record<Language, TranslationTable> = { en, it };

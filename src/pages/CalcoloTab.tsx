@@ -87,20 +87,14 @@ export function CalcoloTab({
                 </div>
             ) : hasData ? (
                 /* Compact Upload Bar */
-                <div className="ledger-card p-4">
+                <div className="ledger-card px-4 py-2">
                     <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4 min-w-0">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <FileSpreadsheet className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                <div className="min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-mono font-semibold">{data.length}</span>
-                                        <span className="text-muted-foreground text-sm">
-                                            {t("records").toLowerCase()} {t("readyToCalculate")}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                        <div className="flex items-center gap-3 min-w-0">
+                            <FileSpreadsheet className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-sm text-muted-foreground">
+                                <span className="font-mono font-semibold">{data.length}</span>{" "}
+                                {t("records").toLowerCase()}
+                            </span>
 
                             {/* Warning Badge with Popover */}
                             {hasUnmatched && (
@@ -180,7 +174,10 @@ export function CalcoloTab({
                                                                 key={idx}
                                                                 className="border-t border-border/50 hover:bg-secondary/30"
                                                             >
-                                                                <td className="py-2 px-3 truncate max-w-[220px]" title={agent.name}>
+                                                                <td
+                                                                    className="py-2 px-3 truncate max-w-[220px]"
+                                                                    title={agent.name}
+                                                                >
                                                                     {agent.name}
                                                                 </td>
                                                                 <td className="text-right py-2 px-3 tabular-nums">
@@ -241,12 +238,10 @@ export function CalcoloTab({
 
             {/* Results Section */}
             {!loading && result && Object.keys(result).length > 0 ? (
-                <CalcoloResults data={result} />
+                <CalcoloResults data={result} compDal={data[0]?.comp_dal} />
             ) : (
                 !loading &&
-                !hasData && (
-                    <EmptyState message={t("noCalculationYet")} icon={<Calculator className="h-16 w-16" />} />
-                )
+                !hasData && <EmptyState message={t("noCalculationYet")} icon={<Calculator className="h-16 w-16" />} />
             )}
 
             {/* Confirmation Dialog for Unmatched Agents */}
@@ -288,9 +283,7 @@ export function CalcoloTab({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmCalculate}>
-                            {t("continueAnyway")}
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={handleConfirmCalculate}>{t("continueAnyway")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

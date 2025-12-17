@@ -42,7 +42,10 @@ async function handleResponse<T>(res: Response): Promise<T> {
 }
 
 function sanitizeJson(text: string): string {
-    return text.replace(/:\s*NaN\b/g, ": null").replace(/:\s*Infinity\b/g, ": null").replace(/:\s*-Infinity\b/g, ": null");
+    return text
+        .replace(/:\s*NaN\b/g, ": null")
+        .replace(/:\s*Infinity\b/g, ": null")
+        .replace(/:\s*-Infinity\b/g, ": null");
 }
 
 async function handleResponseWithSanitization<T>(res: Response): Promise<T> {
@@ -331,88 +334,113 @@ export async function parseExcelFile<T extends Record<string, unknown>>(file: Fi
  * Parse liquidation Excel file with specific column mapping
  * Handles both Italian and normalized column names
  */
+function parseAndFormatDate(dateStr: string | number | undefined): string | undefined {
+    if (dateStr === undefined || dateStr === null || dateStr === "") {
+        return undefined;
+    }
+
+    const str = String(dateStr).trim();
+    if (!str) return undefined;
+
+    // DD/MM/YYYY or D/M/YYYY
+    const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (slashMatch) {
+        const [, day, month, year] = slashMatch;
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+
+    // DD-MM-YYYY or D-M-YYYY
+    const dashMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if (dashMatch) {
+        const [, day, month, year] = dashMatch;
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+
+    // YYYY-MM-DD
+    const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (isoMatch) {
+        const [, year, month, day] = isoMatch;
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+
+    return str;
+}
+
 export async function parseLiquidazioniExcel(file: File): Promise<Liquidazione[]> {
     const rawData = await parseExcelFile<Record<string, string | number>>(file);
 
+    const dateFields = ["comp_dal", "comp_al", "inizio_forn", "fine_forn", "data_firma", "data_prima_accettazione"];
+
     return rawData.map((row) => {
-        // Map columns (handle both original and normalized names)
         const liquidazione: Liquidazione = {};
 
-        // Direct mappings with potential alternative names
+        const rowKeysLower = new Map<string, string>();
+        for (const key of Object.keys(row)) {
+            rowKeysLower.set(key.toLowerCase(), key);
+        }
+
+        const findValue = (alternatives: string[]): string | number | undefined => {
+            for (const alt of alternatives) {
+                if (row[alt] !== undefined && row[alt] !== "") {
+                    return row[alt];
+                }
+                const actualKey = rowKeysLower.get(alt.toLowerCase());
+                if (actualKey && row[actualKey] !== undefined && row[actualKey] !== "") {
+                    return row[actualKey];
+                }
+            }
+            return undefined;
+        };
+
         const mappings: Array<[keyof Liquidazione, string[]]> = [
             ["piano_provvigionale", ["piano_provvigionale", "Piano Provvigionale"]],
             ["regola", ["regola", "Regola"]],
             ["consumo", ["consumo", "Consumo"]],
             ["quantita", ["quantita", "quantità", "Quantità"]],
             ["prezzo", ["prezzo", "Prezzo"]],
-            ["udm", ["udm", "UdM"]],
+            ["udm", ["udm", "Udm", "UdM", "UDM"]],
             ["importo_euro", ["importo_euro", "importo_€", "Importo €", "Importo Euro"]],
             ["comp_dal", ["comp_dal", "Comp. Dal", "Comp. dal"]],
             ["comp_al", ["comp_al", "Comp. Al", "Comp. al"]],
-            ["scaglione_consumo", ["scaglione_consumo", "Scaglione Consumo"]],
-            ["scaglione_anno", ["scaglione_anno", "Scaglione Anno"]],
+            ["scaglione_consumo", ["scaglione_consumo", "Scaglione Consumo", "Scaglione consumo"]],
+            ["scaglione_anno", ["scaglione_anno", "Scaglione Anno", "Scaglione anno"]],
             ["pod_pdr", ["pod_pdr", "podpdr", "POD/PDR", "Pod/Pdr"]],
             ["punto", ["punto", "Punto"]],
-            ["inizio_forn", ["inizio_forn", "Inizio Forn."]],
-            ["fine_forn", ["fine_forn", "Fine Forn."]],
-            ["id_ordine", ["id_ordine", "ID Ordine"]],
-            ["data_firma", ["data_firma", "Data Firma"]],
-            ["data_prima_accettazione", ["data_prima_accettazione", "Data Prima Accettazione"]],
-            ["cod_prodotto", ["cod_prodotto", "Cod. Prodotto"]],
+            ["inizio_forn", ["inizio_forn", "Inizio Forn.", "Inizio forn."]],
+            ["fine_forn", ["fine_forn", "Fine Forn.", "Fine forn."]],
+            ["id_ordine", ["id_ordine", "ID Ordine", "Id Ordine", "Id ordine"]],
+            ["data_firma", ["data_firma", "Data Firma", "Data firma"]],
+            [
+                "data_prima_accettazione",
+                ["data_prima_accettazione", "Data Prima Accettazione", "Data prima accettazione"],
+            ],
+            ["cod_prodotto", ["cod_prodotto", "Cod. Prodotto", "Cod. prodotto"]],
             ["prodotto", ["prodotto", "Prodotto"]],
-            ["tipo_cliente", ["tipo_cliente", "Tipo Cliente"]],
-            ["partner_comm", ["partner_comm", "Partner Comm."]],
+            ["tipo_cliente", ["tipo_cliente", "Tipo Cliente", "Tipo cliente"]],
+            ["partner_comm", ["partner_comm", "Partner Comm.", "Partner comm."]],
             ["venditore", ["venditore", "Venditore"]],
             ["fatture", ["fatture", "Fatture"]],
             ["cliente", ["cliente", "Cliente"]],
             ["cf_piva", ["cf_piva", "cfpiva", "CF/P.IVA", "C.F./P.IVA"]],
-            ["indirizzo_fornitura", ["indirizzo_fornitura", "Indirizzo Fornitura"]],
+            ["indirizzo_fornitura", ["indirizzo_fornitura", "Indirizzo Fornitura", "Indirizzo fornitura"]],
             ["amministratore", ["amministratore", "Amministratore"]],
-            ["metodo_di_pagamento", ["metodo_di_pagamento", "Metodo di Pagamento"]],
+            ["metodo_di_pagamento", ["metodo_di_pagamento", "Metodo di Pagamento", "Metodo di pagamento"]],
         ];
 
         for (const [key, alternatives] of mappings) {
-            for (const alt of alternatives) {
-                if (row[alt] !== undefined && row[alt] !== "") {
-                    const value = row[alt];
-                    // Handle numeric fields
-                    if (
-                        ["consumo", "quantita", "prezzo", "importo_euro", "scaglione_anno", "id_ordine"].includes(key)
-                    ) {
-                        const numValue =
-                            typeof value === "number" ? value : parseFloat(String(value).replace(",", "."));
-                        (liquidazione as Record<string, unknown>)[key] = isNaN(numValue) ? undefined : numValue;
-                    } else {
-                        (liquidazione as Record<string, unknown>)[key] = String(value);
-                    }
-                    break;
+            const value = findValue(alternatives);
+            if (value !== undefined) {
+                if (["consumo", "quantita", "prezzo", "importo_euro", "scaglione_anno", "id_ordine"].includes(key)) {
+                    const numValue = typeof value === "number" ? value : parseFloat(String(value).replace(",", "."));
+                    (liquidazione as Record<string, unknown>)[key] = isNaN(numValue) ? undefined : numValue;
+                } else if (dateFields.includes(key)) {
+                    (liquidazione as Record<string, unknown>)[key] = parseAndFormatDate(value);
+                } else {
+                    (liquidazione as Record<string, unknown>)[key] = String(value);
                 }
             }
         }
 
         return liquidazione;
     });
-}
-
-/**
- * Validate liquidation records before import
- * Returns records with valid id_ordine and pod_pdr
- */
-export function validateLiquidazioni(data: Liquidazione[]): { valid: Liquidazione[]; invalid: number } {
-    const valid: Liquidazione[] = [];
-    let invalid = 0;
-
-    for (const item of data) {
-        // Backend requires valid id_ordine (integer) and pod_pdr
-        const hasIdOrdine = item.id_ordine !== undefined && !isNaN(Number(item.id_ordine));
-        const hasPodPdr = item.pod_pdr !== undefined && item.pod_pdr.trim() !== "";
-
-        if (hasIdOrdine && hasPodPdr) {
-            valid.push(item);
-        } else {
-            invalid++;
-        }
-    }
-
-    return { valid, invalid };
 }

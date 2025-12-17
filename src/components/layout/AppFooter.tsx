@@ -26,7 +26,7 @@ export function AppFooter({ lastAction }: AppFooterProps) {
                         )}
                     </div>
                     <span className="font-mono text-xs text-muted-foreground/50 uppercase tracking-wider">
-                        {t("version")} 2.0.0
+                        {t("version")} O.1.0
                     </span>
                 </div>
             </div>
