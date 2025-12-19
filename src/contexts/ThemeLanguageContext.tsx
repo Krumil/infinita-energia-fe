@@ -1,17 +1,8 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Language } from "../translations";
+import { ThemeLanguageContext } from "./themeLanguageContextDef";
 
 type Theme = "light" | "dark" | "system";
-
-type ThemeLanguageContextType = {
-    theme: Theme;
-    setTheme: (theme: Theme) => void;
-    language: Language;
-    setLanguage: (language: Language) => void;
-    effectiveTheme: "light" | "dark";
-};
-
-const ThemeLanguageContext = createContext<ThemeLanguageContextType | undefined>(undefined);
 
 const THEME_KEY = "app-theme";
 const LANGUAGE_KEY = "app-language";
@@ -97,12 +88,4 @@ export function ThemeLanguageProvider({ children }: { children: React.ReactNode 
             {children}
         </ThemeLanguageContext.Provider>
     );
-}
-
-export function useThemeLanguage() {
-    const context = useContext(ThemeLanguageContext);
-    if (!context) {
-        throw new Error("useThemeLanguage must be used within ThemeLanguageProvider");
-    }
-    return context;
 }

@@ -1,12 +1,19 @@
-import { useState } from "react";
 import { YearFilter, ContractsHistogram, CommissionsChart, DashboardKPISection } from "@/components";
-import { getDashboardData, AVAILABLE_YEARS, type AvailableYear } from "@/data/dashboardMockData";
-import { useTranslation } from "@/hooks/useTranslation";
+import { useDashboard, useTranslation } from "@/hooks";
+import { Loader2 } from "lucide-react";
 
 export function DashboardTab() {
     const { t } = useTranslation();
-    const [selectedYear, setSelectedYear] = useState<AvailableYear>(AVAILABLE_YEARS[0]);
-    const yearData = getDashboardData(selectedYear);
+    const { availableYears, selectedYear, data, loading, changeYear } = useDashboard();
+
+    // Show loading state while fetching initial data
+    if (loading && !data.contrattiTotali) {
+        return (
+            <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8">
@@ -18,18 +25,37 @@ export function DashboardTab() {
                         Panoramica delle performance e metriche principali
                     </p>
                 </div>
-                <YearFilter value={selectedYear} onChange={setSelectedYear} />
+                <YearFilter
+                    availableYears={availableYears}
+                    value={selectedYear ?? new Date().getFullYear()}
+                    onChange={changeYear}
+                    loading={loading}
+                />
             </div>
 
             {/* KPI Cards Section */}
-            <DashboardKPISection yearData={yearData} selectedYear={selectedYear} />
+            <DashboardKPISection
+                contrattiTotali={data.contrattiTotali}
+                provvigioniTotali={data.provvigioniTotali}
+                contrattiMensili={data.contrattiMensili}
+                selectedYear={selectedYear ?? new Date().getFullYear()}
+                loading={loading}
+            />
 
             {/* Charts Section */}
             <div className="space-y-4">
                 <h2 className="text-lg font-display text-foreground">Andamento Annuale</h2>
                 <div className="grid gap-6 lg:grid-cols-2">
-                    <ContractsHistogram data={yearData.monthlyData} selectedYear={selectedYear} />
-                    <CommissionsChart data={yearData.monthlyData} selectedYear={selectedYear} />
+                    <ContractsHistogram
+                        data={data.contrattiMensili}
+                        selectedYear={selectedYear ?? new Date().getFullYear()}
+                        loading={loading}
+                    />
+                    <CommissionsChart
+                        data={data.provvigioniMensili}
+                        selectedYear={selectedYear ?? new Date().getFullYear()}
+                        loading={loading}
+                    />
                 </div>
             </div>
         </div>

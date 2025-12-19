@@ -11,6 +11,10 @@ import type {
     BulkAgentImportResult,
     AgentCsvRow,
     PendingOrdersResponse,
+    DashboardContrattiTotali,
+    DashboardProvvigioniTotali,
+    DashboardContrattiMensili,
+    DashboardProvvigioniMensili,
 } from "./types";
 
 // Backend base URL - Flask runs on port 5000
@@ -443,4 +447,69 @@ export async function parseLiquidazioniExcel(file: File): Promise<Liquidazione[]
 
         return liquidazione;
     });
+}
+
+// ========== DASHBOARD API ==========
+
+/** GET /api/dashboard/anni-disponibili - Get available years */
+export async function getDashboardAnniDisponibili(): Promise<number[]> {
+    const res = await fetch(`${BASE_API}/dashboard/anni-disponibili`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+    return handleResponse<number[]>(res);
+}
+
+/** GET /api/dashboard/contratti-totali - Get total contracts */
+export async function getDashboardContrattiTotali(anno?: number): Promise<DashboardContrattiTotali> {
+    const url = new URL(`${BASE_API}/dashboard/contratti-totali`);
+    if (anno) url.searchParams.set("anno", String(anno));
+    const res = await fetch(url, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+    return handleResponse<DashboardContrattiTotali>(res);
+}
+
+/** GET /api/dashboard/provvigioni-totali - Get total commissions */
+export async function getDashboardProvvigioniTotali(anno?: number): Promise<DashboardProvvigioniTotali> {
+    const url = new URL(`${BASE_API}/dashboard/provvigioni-totali`);
+    if (anno) url.searchParams.set("anno", String(anno));
+    const res = await fetch(url, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+    return handleResponse<DashboardProvvigioniTotali>(res);
+}
+
+/** GET /api/dashboard/contratti-mensili - Get monthly contracts */
+export async function getDashboardContrattiMensili(anno?: number): Promise<DashboardContrattiMensili> {
+    const url = new URL(`${BASE_API}/dashboard/contratti-mensili`);
+    if (anno) url.searchParams.set("anno", String(anno));
+    const res = await fetch(url, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+    return handleResponse<DashboardContrattiMensili>(res);
+}
+
+/** GET /api/dashboard/provvigioni-mensili - Get monthly commissions */
+export async function getDashboardProvvigioniMensili(anno?: number): Promise<DashboardProvvigioniMensili> {
+    const url = new URL(`${BASE_API}/dashboard/provvigioni-mensili`);
+    if (anno) url.searchParams.set("anno", String(anno));
+    const res = await fetch(url, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+    return handleResponse<DashboardProvvigioniMensili>(res);
 }

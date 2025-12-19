@@ -1,22 +1,27 @@
-import { Calendar } from "lucide-react";
+import { Calendar, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { AVAILABLE_YEARS, type AvailableYear } from "@/data/dashboardMockData";
 
 interface YearFilterProps {
-    value: AvailableYear;
-    onChange: (year: AvailableYear) => void;
+    availableYears: number[];
+    value: number;
+    onChange: (year: number) => void;
     variant?: "default" | "card";
+    loading?: boolean;
 }
 
-export function YearFilter({ value, onChange, variant = "default" }: YearFilterProps) {
+export function YearFilter({ availableYears, value, onChange, variant = "default", loading = false }: YearFilterProps) {
     const selectElement = (
-        <Select value={String(value)} onValueChange={(val) => onChange(Number(val) as AvailableYear)}>
+        <Select
+            value={String(value)}
+            onValueChange={(val) => onChange(Number(val))}
+            disabled={loading || availableYears.length === 0}
+        >
             <SelectTrigger className="w-[130px] bg-background">
-                <SelectValue placeholder="Seleziona anno" />
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="Seleziona anno" />}
             </SelectTrigger>
             <SelectContent>
-                {AVAILABLE_YEARS.map((year) => (
+                {availableYears.map((year) => (
                     <SelectItem key={year} value={String(year)}>
                         {year}
                     </SelectItem>

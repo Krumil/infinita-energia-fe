@@ -9,7 +9,6 @@ export { CalcoloResults } from "./CalcoloResults";
 
 // Dashboard components
 export { YearFilter } from "./YearFilter";
-export { ContractsKPICard } from "./ContractsKPICard";
 export { ContractsHistogram } from "./ContractsHistogram";
 export { CommissionsChart } from "./CommissionsChart";
 export { DashboardKPISection } from "./DashboardKPISection";

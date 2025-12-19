@@ -16,6 +16,12 @@ export type {
     BulkAgentImportResult,
     PendingOrder,
     PendingOrdersResponse,
+    DashboardContrattiTotali,
+    DashboardProvvigioniTotali,
+    DashboardMeseContratti,
+    DashboardContrattiMensili,
+    DashboardMeseProvvigioni,
+    DashboardProvvigioniMensili,
 } from "./api";
 
 // Component types

@@ -125,3 +125,45 @@ export interface PendingOrdersResponse {
     count: number;
     data: PendingOrder[];
 }
+
+// === DASHBOARD TYPES ===
+
+export interface DashboardContrattiTotali {
+    anno_riferimento: number;
+    totale_contratti_n: number;
+    totale_contratti_n_1: number;
+    variazione_percentuale: number;
+}
+
+export interface DashboardProvvigioniTotali {
+    anno_riferimento: number;
+    totale_provvigioni_n: number;
+    totale_provvigioni_n_1: number;
+    variazione_percentuale: number;
+    valuta: string;
+}
+
+export interface DashboardMeseContratti {
+    mese_num: number;
+    mese_nome: string;
+    anno_n: number;
+    anno_n_1: number;
+}
+
+export interface DashboardContrattiMensili {
+    anno_riferimento: number;
+    dati: DashboardMeseContratti[];
+}
+
+export interface DashboardMeseProvvigioni {
+    mese_num: number;
+    mese_nome: string;
+    provvigioni_n: number;
+    provvigioni_n_1: number;
+}
+
+export interface DashboardProvvigioniMensili {
+    anno_riferimento: number;
+    unità_misura: string;
+    dati: DashboardMeseProvvigioni[];
+}

@@ -2,8 +2,7 @@ import { CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useTranslation } from "@/hooks/useTranslation";
-import { useThemeLanguage } from "@/contexts/ThemeLanguageContext";
+import { useTranslation, useThemeLanguage } from "@/hooks";
 import type { SettingsPanelProps } from "@/types/components";
 
 export function SettingsPanel({ settings, onChange, onSave }: SettingsPanelProps) {

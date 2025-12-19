@@ -1,4 +1,4 @@
-import { useThemeLanguage } from "../contexts/ThemeLanguageContext";
+import { useThemeLanguage } from "./useThemeLanguage";
 import { getTranslation, type TranslationKey } from "../translations";
 
 export function useTranslation() {
