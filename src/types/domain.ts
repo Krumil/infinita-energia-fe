@@ -47,6 +47,7 @@ export interface Liquidazione {
     amministratore?: string;
     metodo_di_pagamento?: string;
     data_importazione?: string;
+    mese_riferimento?: string; // Format: "YYYY-MM" (e.g., "2024-12")
 }
 
 // Application settings

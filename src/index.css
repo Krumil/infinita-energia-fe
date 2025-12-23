@@ -486,6 +486,22 @@
         color: hsl(var(--energia-accent));
     }
 
+    .dropzone-compact .dropzone {
+        @apply p-4;
+    }
+
+    .dropzone-compact .dropzone-icon {
+        @apply w-8 h-8 mb-2;
+    }
+
+    .dropzone-compact .dropzone p {
+        @apply text-xs;
+    }
+
+    .dropzone-compact .dropzone p:last-child {
+        @apply mt-1 text-[10px];
+    }
+
     /* ═══════════════════════════════════════════════════════════════════════
      BADGES & INDICATORS
      ═══════════════════════════════════════════════════════════════════════ */

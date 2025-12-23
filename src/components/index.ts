@@ -6,6 +6,7 @@ export { SettingsPanel } from "./SettingsPanel";
 export { AgentDialog } from "./AgentDialog";
 export { AgentsTable } from "./AgentsTable";
 export { CalcoloResults } from "./CalcoloResults";
+export { LiquidazioniUploadDialog } from "./LiquidazioniUploadDialog";
 
 // Dashboard components
 export { YearFilter } from "./YearFilter";

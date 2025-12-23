@@ -89,7 +89,7 @@ const en = {
 
     // Orders Import Tab
     importOrdersTitle: "Import Orders from Excel",
-    importOrdersDesc: "Upload an Excel file (.xlsx, .xls) to import orders",
+    importOrdersDesc: "Upload an Excel file to import orders",
     ordersImportResult: "Import Result",
     newRecords: "New",
     updatedRecords: "Updated",
@@ -118,8 +118,7 @@ const en = {
 
     // Liquidations Tab
     importLiquidationsTitle: "Import Liquidations",
-    importLiquidationsDesc:
-        "Upload an Excel file with liquidation data. The file will be parsed client-side and sent to the server.",
+    importLiquidationsDesc: "Upload an Excel file with liquidation data.",
     liquidationsImportResult: "Import Result",
     noLiquidationsYet: "No liquidations loaded. Upload an Excel file to begin.",
     parsedRecords: "Parsed records",
@@ -211,6 +210,16 @@ const en = {
     downloadZip: "Download ZIP",
     generatingZip: "Generating ZIP...",
     period: "Period",
+
+    // Ordini Tab - Collapsible & Dialog
+    importData: "Import Data",
+    importDataDesc: "Import orders and liquidations from Excel files",
+    referenceMonth: "Reference Month",
+    selectPeriodDesc: "Select the reference period for the liquidation data",
+    selectFile: "Select File",
+    change: "Change",
+    import: "Import",
+    uploadLiquidazioni: "Upload Liquidations",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -427,6 +436,16 @@ const it: TranslationTable = {
     downloadZip: "Scarica ZIP",
     generatingZip: "Generazione ZIP...",
     period: "Periodo",
+
+    // Ordini Tab - Collapsible & Dialog
+    importData: "Importa Dati",
+    importDataDesc: "Importa ordini e liquidazioni da file Excel",
+    referenceMonth: "Mese di Riferimento",
+    selectPeriodDesc: "Seleziona il periodo di riferimento per i dati delle liquidazioni",
+    selectFile: "Seleziona File",
+    change: "Cambia",
+    import: "Importa",
+    uploadLiquidazioni: "Carica Liquidazioni",
 };
 
 export const translations: Record<Language, TranslationTable> = { en, it };

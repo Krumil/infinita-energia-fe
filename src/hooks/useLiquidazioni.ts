@@ -17,7 +17,7 @@ export function useLiquidazioni() {
     const [result, setResult] = useState<LiquidazioniResult | null>(null);
 
     const handleUpload = useCallback(
-        async (files: File[]): Promise<string | null> => {
+        async (files: File[], meseRiferimento?: string): Promise<string | null> => {
             const file = files[0];
             if (!file) return null;
 
@@ -38,8 +38,13 @@ export function useLiquidazioni() {
                     return null;
                 }
 
+                // Add mese_riferimento to each item if provided
+                const dataToImport = meseRiferimento
+                    ? parsedData.map((item) => ({ ...item, mese_riferimento: meseRiferimento }))
+                    : parsedData;
+
                 // Import directly without frontend validation
-                const importResult = await importLiquidazioni(parsedData);
+                const importResult = await importLiquidazioni(dataToImport);
 
                 if (importResult.success) {
                     const resultData = {
