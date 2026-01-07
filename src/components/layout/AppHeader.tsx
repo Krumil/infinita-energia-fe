@@ -38,7 +38,7 @@ export function AppHeader({
 
     return (
         <header className="ledger-header sticky top-0 z-50">
-            <div className="max-w-[1400px] mx-auto px-6 lg:px-8">
+            <div className="max-w-[1600px] mx-auto px-6 lg:px-8">
                 <div className="flex items-center justify-between h-[72px]">
                     {/* Brand Section */}
                     <div className="flex items-center gap-4 cursor-pointer" onClick={() => onTabChange("dashboard")}>

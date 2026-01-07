@@ -10,7 +10,7 @@ export function AppFooter({ lastAction }: AppFooterProps) {
 
     return (
         <footer className="border-t border-border/30 py-6">
-            <div className="max-w-[1400px] mx-auto px-8">
+            <div className="max-w-[1600px] mx-auto px-8">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-6">
                         {lastAction && (
