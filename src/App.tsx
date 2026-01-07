@@ -11,17 +11,29 @@ import { DashboardTab, AgentsTab, OrdiniTab, CalcoloTab } from "@/pages";
 
 // Custom hooks
 import { useAppSettings, useAgents, useOrders, useLiquidazioni, useCalcolo, usePendingOrders } from "@/hooks";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ========== Main App Component ==========
 
 export default function App() {
+    const { isAuthenticated } = useAuth();
+
+    // Don't render anything if not authenticated - prevents data loading
+    if (!isAuthenticated) {
+        return null;
+    }
+
+    return <AuthenticatedApp />;
+}
+
+function AuthenticatedApp() {
     // Tab navigation state
     const [activeTab, setActiveTab] = useState<string>("dashboard");
 
     // Last action for footer (shared state across hooks)
     const [lastAction, setLastAction] = useState<string | null>(null);
 
-    // Custom hooks for state management
+    // Custom hooks for state management - only called when authenticated
     const appSettings = useAppSettings();
     const agents = useAgents();
     const orders = useOrders();

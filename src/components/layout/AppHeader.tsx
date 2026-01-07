@@ -1,9 +1,10 @@
-import { Settings as SettingsIcon, LayoutDashboard, Users, Receipt, Calculator } from "lucide-react";
+import { Settings as SettingsIcon, LayoutDashboard, Users, Receipt, Calculator, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SettingsPanel } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAuth } from "@/contexts/AuthContext";
 import type { AppSettings } from "@/types";
 
 interface AppHeaderProps {
@@ -33,6 +34,7 @@ export function AppHeader({
     onTabChange,
 }: AppHeaderProps) {
     const { t } = useTranslation();
+    const { logout, user } = useAuth();
 
     return (
         <header className="ledger-header sticky top-0 z-50">
@@ -134,6 +136,30 @@ export function AppHeader({
                                 />
                             </SheetContent>
                         </Sheet>
+
+                        {/* Logout */}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={logout}
+                                    className="
+                                        flex items-center justify-center
+                                        w-10 h-10 rounded-md
+                                        text-white/60 hover:text-red-400
+                                        hover:bg-white/[0.06]
+                                        transition-all duration-200
+                                    "
+                                    aria-label={t("logout")}
+                                >
+                                    <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" sideOffset={8}>
+                                <p>
+                                    {t("logout")} {user && `(${user})`}
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
                     </nav>
                 </div>
             </div>

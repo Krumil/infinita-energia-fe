@@ -228,6 +228,18 @@ const en = {
     change: "Change",
     import: "Import",
     uploadLiquidazioni: "Upload Liquidations",
+
+    // Login
+    loginTitle: "Login",
+    loginDescription: "Enter your credentials to access the application",
+    username: "Username",
+    password: "Password",
+    usernamePlaceholder: "Enter your username",
+    passwordPlaceholder: "Enter your password",
+    login: "Login",
+    loggingIn: "Logging in...",
+    loginError: "Invalid credentials. Please try again.",
+    logout: "Logout",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -462,6 +474,18 @@ const it: TranslationTable = {
     change: "Cambia",
     import: "Importa",
     uploadLiquidazioni: "Carica Liquidazioni",
+
+    // Login
+    loginTitle: "Accedi",
+    loginDescription: "Inserisci le tue credenziali per accedere all'applicazione",
+    username: "Nome utente",
+    password: "Password",
+    usernamePlaceholder: "Inserisci il tuo nome utente",
+    passwordPlaceholder: "Inserisci la tua password",
+    login: "Accedi",
+    loggingIn: "Accesso in corso...",
+    loginError: "Credenziali non valide. Riprova.",
+    logout: "Esci",
 };
 
 export const translations: Record<Language, TranslationTable> = { en, it };

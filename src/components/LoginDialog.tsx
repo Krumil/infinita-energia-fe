@@ -1,0 +1,77 @@
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "@/hooks/useTranslation";
+import { LogIn } from "lucide-react";
+
+export function LoginDialog() {
+    const { isAuthenticated, login } = useAuth();
+    const { t } = useTranslation();
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        setLoading(true);
+
+        const success = await login(username, password);
+        setLoading(false);
+
+        if (!success) {
+            setError(t("loginError"));
+        }
+    };
+
+    return (
+        <Dialog open={!isAuthenticated}>
+            <DialogContent
+                className="sm:max-w-md [&>button]:hidden"
+                onPointerDownOutside={(e) => e.preventDefault()}
+                onEscapeKeyDown={(e) => e.preventDefault()}
+            >
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <LogIn className="h-5 w-5" />
+                        {t("loginTitle")}
+                    </DialogTitle>
+                    <DialogDescription>{t("loginDescription")}</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="username">{t("username")}</Label>
+                        <Input
+                            id="username"
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            placeholder={t("usernamePlaceholder")}
+                            required
+                            autoFocus
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="password">{t("password")}</Label>
+                        <Input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder={t("passwordPlaceholder")}
+                            required
+                        />
+                    </div>
+                    {error && <p className="text-sm text-destructive">{error}</p>}
+                    <Button type="submit" className="w-full" disabled={loading}>
+                        {loading ? t("loggingIn") : t("login")}
+                    </Button>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}

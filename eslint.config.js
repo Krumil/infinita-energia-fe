@@ -22,6 +22,11 @@ export default tseslint.config(
             "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
             // Allow setState in effect for syncing with props (common pattern for controlled dialogs)
             "react-hooks/set-state-in-effect": "off",
+            // Allow underscore-prefixed unused variables (common pattern for intentionally unused params)
+            "@typescript-eslint/no-unused-vars": [
+                "error",
+                { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+            ],
         },
     }
 );
