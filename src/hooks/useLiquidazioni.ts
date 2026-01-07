@@ -17,7 +17,7 @@ export function useLiquidazioni() {
     const [result, setResult] = useState<LiquidazioniResult | null>(null);
 
     const handleUpload = useCallback(
-        async (files: File[]): Promise<string | null> => {
+        async (files: File[], competenzaPeriod?: string): Promise<string | null> => {
             const file = files[0];
             if (!file) return null;
 
@@ -26,6 +26,30 @@ export function useLiquidazioni() {
 
             try {
                 const parsedData = await parseLiquidazioniExcel(file);
+                console.log("Parsed data count:", parsedData.length);
+                console.log("competenzaPeriod:", competenzaPeriod);
+                console.log("Sample record before override:", JSON.stringify(parsedData[0], null, 2));
+
+                // Override competenza period with user selection
+                if (competenzaPeriod) {
+                    const [year, month] = competenzaPeriod.split("-").map(Number);
+
+                    // Format for backend: MM/YYYY (required by pandas conversion)
+                    const competenzaLiquidazione = `${String(month).padStart(2, "0")}/${year}`;
+
+                    // Format for comp_dal/comp_al: YYYY-MM-DD
+                    const periodDate = `${competenzaPeriod}-01`;
+                    const lastDay = new Date(year, month, 0).getDate();
+                    const periodEndDate = `${competenzaPeriod}-${String(lastDay).padStart(2, "0")}`;
+
+                    for (const record of parsedData) {
+                        // Set competenza_liquidazione in MM/YYYY format for backend
+                        record.competenza_liquidazione = competenzaLiquidazione;
+                        record.comp_dal = periodDate;
+                        record.comp_al = periodEndDate;
+                    }
+                    console.log("Sample record after override:", JSON.stringify(parsedData[0], null, 2));
+                }
 
                 if (parsedData.length === 0) {
                     toast({
@@ -37,7 +61,9 @@ export function useLiquidazioni() {
                     return null;
                 }
 
+                console.log("Sending to API, count:", parsedData.length);
                 const importResult = await importLiquidazioni(parsedData);
+                console.log("API response:", importResult);
 
                 if (importResult.success) {
                     const resultData = {

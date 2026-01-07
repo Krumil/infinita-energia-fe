@@ -67,8 +67,8 @@ export default function App() {
         }
     };
 
-    const handleLiquidazioniUpload = async (files: File[]) => {
-        const action = await liquidazioni.handleUpload(files);
+    const handleLiquidazioniUpload = async (files: File[], competenzaPeriod: string) => {
+        const action = await liquidazioni.handleUpload(files, competenzaPeriod);
         if (action) {
             setLastAction(action);
             await pendingOrders.fetchPendingOrders();
@@ -103,7 +103,7 @@ export default function App() {
                     onTabChange={handleTabChange}
                 />
 
-                <main className="flex-1 max-w-[1400px] mx-auto p-8 w-full">
+                <main className="flex-1 max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 w-full">
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-10">
                         <TabsContent value="dashboard">
                             <DashboardTab />
@@ -126,6 +126,7 @@ export default function App() {
                                 onDelete={agents.openDeleteDialog}
                                 onSave={handleAgentSave}
                                 onConfirmDelete={handleAgentDelete}
+                                onToggleStatistiche={agents.toggleStatistiche}
                             />
                         </TabsContent>
 

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileDropzone } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -35,7 +36,7 @@ interface OrdiniTabProps {
     onOrdersUpload: (files: File[]) => void;
     liquidazioniImporting: boolean;
     liquidazioniResult: LiquidazioniResult | null;
-    onLiquidazioniUpload: (files: File[]) => void;
+    onLiquidazioniUpload: (files: File[], competenzaPeriod: string) => void;
     pendingOrders: PendingOrder[];
     pendingOrdersCount: number;
     pendingOrdersLoading: boolean;
@@ -44,6 +45,29 @@ interface OrdiniTabProps {
 
 type SortField = "cliente_nome" | "id_ordine" | "pod_pdr" | "prodotto" | "agente" | "stato" | "data_firma" | "metodo_pagam";
 type SortDirection = "asc" | "desc";
+
+// Generate period options for the last 24 months
+function generatePeriodOptions(): { value: string; label: string }[] {
+    const options: { value: string; label: string }[] = [];
+    const now = new Date();
+    const monthNames = [
+        "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+        "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+    ];
+
+    for (let i = 0; i < 24; i++) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const value = `${year}-${String(month + 1).padStart(2, "0")}`;
+        const label = `${monthNames[month]} ${year}`;
+        options.push({ value, label });
+    }
+
+    return options;
+}
+
+const PERIOD_OPTIONS = generatePeriodOptions();
 
 function formatDate(isoDate: string | null): string {
     if (!isoDate) return "—";
@@ -188,6 +212,7 @@ export function OrdiniTab({
     const [filterQuery, setFilterQuery] = useState("");
     const [sortField, setSortField] = useState<SortField>("cliente_nome");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+    const [selectedPeriod, setSelectedPeriod] = useState<string>(PERIOD_OPTIONS[0]?.value || "");
 
     // Handle sort
     const handleSort = (field: SortField) => {
@@ -206,8 +231,8 @@ export function OrdiniTab({
     }, [pendingOrders, filterQuery, sortField, sortDirection]);
 
     const handleLiquidazioniFiles = (files: File[]) => {
-        if (files.length > 0) {
-            onLiquidazioniUpload(files);
+        if (files.length > 0 && selectedPeriod) {
+            onLiquidazioniUpload(files, selectedPeriod);
         }
     };
 
@@ -248,15 +273,27 @@ export function OrdiniTab({
                         <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                         <span className="text-sm font-medium">{t("importLiquidationsTitle")}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                        {t("competenzaFromExcelNote")}
-                    </p>
+                    <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">{t("competenzaPeriodLabel")}</label>
+                        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                            <SelectTrigger className="h-8 text-sm">
+                                <SelectValue placeholder={t("selectPeriod")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {PERIOD_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div className="dropzone-compact">
                         <FileDropzone
                             accept=".xlsx,.xls"
                             maxSizeMB={50}
                             onFiles={handleLiquidazioniFiles}
-                            disabled={liquidazioniImporting}
+                            disabled={liquidazioniImporting || !selectedPeriod}
                         />
                     </div>
                     {liquidazioniImporting && (
