@@ -26,9 +26,6 @@ export function useLiquidazioni() {
 
             try {
                 const parsedData = await parseLiquidazioniExcel(file);
-                console.log("Parsed data count:", parsedData.length);
-                console.log("competenzaPeriod:", competenzaPeriod);
-                console.log("Sample record before override:", JSON.stringify(parsedData[0], null, 2));
 
                 // Override competenza period with user selection
                 if (competenzaPeriod) {
@@ -48,7 +45,6 @@ export function useLiquidazioni() {
                         record.comp_dal = periodDate;
                         record.comp_al = periodEndDate;
                     }
-                    console.log("Sample record after override:", JSON.stringify(parsedData[0], null, 2));
                 }
 
                 if (parsedData.length === 0) {
@@ -61,9 +57,7 @@ export function useLiquidazioni() {
                     return null;
                 }
 
-                console.log("Sending to API, count:", parsedData.length);
                 const importResult = await importLiquidazioni(parsedData);
-                console.log("API response:", importResult);
 
                 if (importResult.success) {
                     const resultData = {
