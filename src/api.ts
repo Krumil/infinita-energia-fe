@@ -15,6 +15,7 @@ import type {
     DashboardProvvigioniTotali,
     DashboardContrattiMensili,
     DashboardProvvigioniMensili,
+    DashboardContrattiPerProdotto,
 } from "./types";
 
 // Backend base URL - Flask runs on port 5000
@@ -429,6 +430,10 @@ export async function parseLiquidazioniExcel(file: File): Promise<Liquidazione[]
             ["indirizzo_fornitura", ["indirizzo_fornitura", "Indirizzo Fornitura", "Indirizzo fornitura"]],
             ["amministratore", ["amministratore", "Amministratore"]],
             ["metodo_di_pagamento", ["metodo_di_pagamento", "Metodo di Pagamento", "Metodo di pagamento"]],
+            [
+                "competenza_liquidazione",
+                ["competenza_liquidazione", "Competenza Liquidazione", "Comp. Liquidazione", "COMPETENZA"],
+            ],
         ];
 
         for (const [key, alternatives] of mappings) {
@@ -437,6 +442,23 @@ export async function parseLiquidazioniExcel(file: File): Promise<Liquidazione[]
                 if (["consumo", "quantita", "prezzo", "importo_euro", "scaglione_anno", "id_ordine"].includes(key)) {
                     const numValue = typeof value === "number" ? value : parseFloat(String(value).replace(",", "."));
                     (liquidazione as Record<string, unknown>)[key] = isNaN(numValue) ? undefined : numValue;
+                } else if (key === "competenza_liquidazione") {
+                    // Parse MM/YYYY format to YYYY-MM-DD
+                    const str = String(value).trim();
+                    const mmYYYYMatch = str.match(/^(\d{1,2})\/(\d{4})$/);
+                    if (mmYYYYMatch) {
+                        const [, month, year] = mmYYYYMatch;
+                        (liquidazione as Record<string, unknown>)[key] = `${year}-${month.padStart(2, "0")}-01`;
+                    } else {
+                        // Try YYYY-MM or YYYY-MM-DD format
+                        const isoMatch = str.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/);
+                        if (isoMatch) {
+                            const [, year, month, day] = isoMatch;
+                            (liquidazione as Record<string, unknown>)[key] = `${year}-${month.padStart(2, "0")}-${(day || "01").padStart(2, "0")}`;
+                        } else {
+                            (liquidazione as Record<string, unknown>)[key] = str;
+                        }
+                    }
                 } else if (dateFields.includes(key)) {
                     (liquidazione as Record<string, unknown>)[key] = parseAndFormatDate(value);
                 } else {
@@ -462,10 +484,22 @@ export async function getDashboardAnniDisponibili(): Promise<number[]> {
     return handleResponse<number[]>(res);
 }
 
+/** GET /api/dashboard/agenti-filtro - Get agents available for filtering */
+export async function getDashboardAgentiFiltro(): Promise<string[]> {
+    const res = await fetch(`${BASE_API}/dashboard/agenti-filtro`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+    return handleResponse<string[]>(res);
+}
+
 /** GET /api/dashboard/contratti-totali - Get total contracts */
-export async function getDashboardContrattiTotali(anno?: number): Promise<DashboardContrattiTotali> {
+export async function getDashboardContrattiTotali(anno?: number, agente?: string): Promise<DashboardContrattiTotali> {
     const url = new URL(`${BASE_API}/dashboard/contratti-totali`);
     if (anno) url.searchParams.set("anno", String(anno));
+    if (agente) url.searchParams.set("agente", agente);
     const res = await fetch(url, {
         method: "GET",
         headers: {
@@ -476,9 +510,10 @@ export async function getDashboardContrattiTotali(anno?: number): Promise<Dashbo
 }
 
 /** GET /api/dashboard/provvigioni-totali - Get total commissions */
-export async function getDashboardProvvigioniTotali(anno?: number): Promise<DashboardProvvigioniTotali> {
+export async function getDashboardProvvigioniTotali(anno?: number, agente?: string): Promise<DashboardProvvigioniTotali> {
     const url = new URL(`${BASE_API}/dashboard/provvigioni-totali`);
     if (anno) url.searchParams.set("anno", String(anno));
+    if (agente) url.searchParams.set("agente", agente);
     const res = await fetch(url, {
         method: "GET",
         headers: {
@@ -489,9 +524,10 @@ export async function getDashboardProvvigioniTotali(anno?: number): Promise<Dash
 }
 
 /** GET /api/dashboard/contratti-mensili - Get monthly contracts */
-export async function getDashboardContrattiMensili(anno?: number): Promise<DashboardContrattiMensili> {
+export async function getDashboardContrattiMensili(anno?: number, agente?: string): Promise<DashboardContrattiMensili> {
     const url = new URL(`${BASE_API}/dashboard/contratti-mensili`);
     if (anno) url.searchParams.set("anno", String(anno));
+    if (agente) url.searchParams.set("agente", agente);
     const res = await fetch(url, {
         method: "GET",
         headers: {
@@ -502,9 +538,10 @@ export async function getDashboardContrattiMensili(anno?: number): Promise<Dashb
 }
 
 /** GET /api/dashboard/provvigioni-mensili - Get monthly commissions */
-export async function getDashboardProvvigioniMensili(anno?: number): Promise<DashboardProvvigioniMensili> {
+export async function getDashboardProvvigioniMensili(anno?: number, agente?: string): Promise<DashboardProvvigioniMensili> {
     const url = new URL(`${BASE_API}/dashboard/provvigioni-mensili`);
     if (anno) url.searchParams.set("anno", String(anno));
+    if (agente) url.searchParams.set("agente", agente);
     const res = await fetch(url, {
         method: "GET",
         headers: {
@@ -512,4 +549,21 @@ export async function getDashboardProvvigioniMensili(anno?: number): Promise<Das
         },
     });
     return handleResponse<DashboardProvvigioniMensili>(res);
+}
+
+/** GET /api/dashboard/contratti-per-prodotto - Get contracts by product type */
+export async function getDashboardContrattiPerProdotto(
+    anno?: number,
+    agente?: string
+): Promise<DashboardContrattiPerProdotto> {
+    const url = new URL(`${BASE_API}/dashboard/contratti-per-prodotto`);
+    if (anno) url.searchParams.set("anno", String(anno));
+    if (agente) url.searchParams.set("agente", agente);
+    const res = await fetch(url, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+    return handleResponse<DashboardContrattiPerProdotto>(res);
 }

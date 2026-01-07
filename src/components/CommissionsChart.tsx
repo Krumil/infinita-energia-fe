@@ -22,8 +22,6 @@ function formatCurrency(amount: number, currency: string = "EUR"): string {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
 }
 
-const SHORT_MONTHS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
-
 export function CommissionsChart({ data, loading = false }: CommissionsChartProps) {
     const { t } = useTranslation();
 
@@ -39,11 +37,12 @@ export function CommissionsChart({ data, loading = false }: CommissionsChartProp
     } satisfies ChartConfig;
 
     // Transform API data to chart format
-    const chartData = data?.dati.map((item) => ({
-        month: SHORT_MONTHS[item.mese_num - 1] ?? item.mese_nome.substring(0, 3),
-        commissions: item.provvigioni_n,
-        previousYearCommissions: item.provvigioni_n_1,
-    })) ?? [];
+    const chartData =
+        data?.dati?.map((item) => ({
+            month: item.mese?.substring(0, 3) ?? "",
+            commissions: item.anno_corrente ?? 0,
+            previousYearCommissions: item.anno_precedente ?? 0,
+        })) ?? [];
 
     return (
         <Card className="animate-fade-up" style={{ animationDelay: "200ms" }}>

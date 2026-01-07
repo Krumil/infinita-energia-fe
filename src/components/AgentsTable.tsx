@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -178,6 +178,14 @@ export function AgentsTable({ data, onEdit, onDelete }: AgentsTableProps) {
                                     <TooltipContent>{t("sddBonusTooltip")}</TooltipContent>
                                 </Tooltip>
                             </th>
+                            <th className="text-center">
+                                <Tooltip>
+                                    <TooltipTrigger className="w-full text-center">
+                                        {t("statistics")}
+                                    </TooltipTrigger>
+                                    <TooltipContent>{t("statisticsTooltip")}</TooltipContent>
+                                </Tooltip>
+                            </th>
                             <th className="w-[96px]">{t("actions")}</th>
                         </tr>
                     </thead>
@@ -185,7 +193,7 @@ export function AgentsTable({ data, onEdit, onDelete }: AgentsTableProps) {
                         {paginated.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={12}
+                                    colSpan={13}
                                     className="text-center py-12 font-display italic text-muted-foreground"
                                 >
                                     {t("noDataFound")}
@@ -222,6 +230,13 @@ export function AgentsTable({ data, onEdit, onDelete }: AgentsTableProps) {
                                     </td>
                                     <td data-numeric className="text-right">
                                         {formatRate(row.bonus_sdd)}
+                                    </td>
+                                    <td className="text-center">
+                                        {row.statistiche ? (
+                                            <CheckCircle2 className="h-4 w-4 text-energia-success mx-auto" />
+                                        ) : (
+                                            <span className="text-muted-foreground">—</span>
+                                        )}
                                     </td>
                                     <td>
                                         <div className="flex items-center justify-end gap-1">

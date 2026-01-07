@@ -37,6 +37,7 @@ const en = {
     contractsSubscribed: "Contracts Subscribed",
     commissionsCollected: "Commissions Collected",
     comparisonWithPreviousYear: "Comparison with previous year",
+    contractsByProduct: "Contracts by Product",
 
     // Agents Tab
     agentsList: "Agents List",
@@ -56,6 +57,8 @@ const en = {
     businessMalus: "Bus. Malus",
     businessRenewal: "Bus. Renewal",
     sddBonus: "SDD Bonus",
+    statistics: "Stats",
+    includeInStatistics: "Include in Statistics",
     // Tooltip descriptions for table headers
     agentNameTooltip: "Full name of the sales agent",
     parentAgentTooltip: "The supervising agent who receives overrides",
@@ -68,6 +71,7 @@ const en = {
     businessMalusTooltip: "Reduced commission rate for business contracts with issues",
     businessRenewalTooltip: "Commission rate for business contract renewals",
     sddBonusTooltip: "Additional bonus for contracts with direct debit (SDD) payment",
+    statisticsTooltip: "Include this agent in dashboard statistics and filters",
     importingAgents: "Importing agents...",
     importComplete: "Import completed",
     agentsImported: "agents imported successfully",
@@ -119,6 +123,7 @@ const en = {
     // Liquidations Tab
     importLiquidationsTitle: "Import Liquidations",
     importLiquidationsDesc: "Upload an Excel file with liquidation data.",
+    competenzaFromExcelNote: "The competency period is read from the Excel file",
     liquidationsImportResult: "Import Result",
     noLiquidationsYet: "No liquidations loaded. Upload an Excel file to begin.",
     parsedRecords: "Parsed records",
@@ -263,6 +268,7 @@ const it: TranslationTable = {
     contractsSubscribed: "Contratti Sottoscritti",
     commissionsCollected: "Provvigioni Incassate",
     comparisonWithPreviousYear: "Confronto con anno precedente",
+    contractsByProduct: "Contratti per Prodotto",
 
     // Agents Tab
     agentsList: "Lista Agenti",
@@ -282,6 +288,8 @@ const it: TranslationTable = {
     businessMalus: "Bus. Malus",
     businessRenewal: "Rinn. Bus.",
     sddBonus: "Bonus SDD",
+    statistics: "Stat.",
+    includeInStatistics: "Includi nelle Statistiche",
     // Tooltip descriptions for table headers
     agentNameTooltip: "Nome completo dell'agente di vendita",
     parentAgentTooltip: "L'agente supervisore che riceve le provvigioni di override",
@@ -294,6 +302,7 @@ const it: TranslationTable = {
     businessMalusTooltip: "Tariffa provvigionale ridotta per contratti business con problemi",
     businessRenewalTooltip: "Tariffa provvigionale per rinnovi di contratti business",
     sddBonusTooltip: "Bonus aggiuntivo per contratti con pagamento tramite addebito diretto (SDD)",
+    statisticsTooltip: "Includi questo agente nelle statistiche e filtri della dashboard",
     importingAgents: "Importazione agenti...",
     importComplete: "Importazione completata",
     agentsImported: "agenti importati con successo",
@@ -345,6 +354,7 @@ const it: TranslationTable = {
     // Liquidations Tab
     importLiquidationsTitle: "Importa Liquidazioni",
     importLiquidationsDesc: "Carica un file Excel con i dati delle liquidazioni.",
+    competenzaFromExcelNote: "Il periodo di competenza viene letto dal file Excel",
     liquidationsImportResult: "Risultato Importazione",
     noLiquidationsYet: "Nessuna liquidazione caricata. Carica un file Excel per iniziare.",
     parsedRecords: "Record elaborati",

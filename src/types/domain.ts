@@ -3,6 +3,7 @@ export interface Agente {
     id: number;
     nome_cognome: string;
     agente_padre: string | null;
+    statistiche: boolean | null;
     gettone_residenziale_standard: number | null;
     gettone_residenziale_bonus: number | null;
     gettone_residenziale_malus: number | null;
@@ -47,7 +48,7 @@ export interface Liquidazione {
     amministratore?: string;
     metodo_di_pagamento?: string;
     data_importazione?: string;
-    mese_riferimento?: string; // Format: "YYYY-MM" (e.g., "2024-12")
+    competenza_liquidazione?: string; // Format: "YYYY-MM-DD" from Excel (MM/YYYY)
 }
 
 // Application settings

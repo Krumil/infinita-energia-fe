@@ -3,6 +3,7 @@ import { Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Dialog,
@@ -22,6 +23,7 @@ function createInitialFormData(agent: Agente | null): CreateAgentRequest {
         return {
             nome_cognome: agent.nome_cognome,
             agente_padre: agent.agente_padre || undefined,
+            statistiche: agent.statistiche ?? undefined,
             gettone_residenziale_standard: agent.gettone_residenziale_standard ?? undefined,
             gettone_residenziale_bonus: agent.gettone_residenziale_bonus ?? undefined,
             gettone_residenziale_malus: agent.gettone_residenziale_malus ?? undefined,
@@ -36,6 +38,7 @@ function createInitialFormData(agent: Agente | null): CreateAgentRequest {
     return {
         nome_cognome: "",
         agente_padre: undefined,
+        statistiche: undefined,
         gettone_residenziale_standard: undefined,
         gettone_residenziale_bonus: undefined,
         gettone_residenziale_malus: undefined,
@@ -117,6 +120,23 @@ export function AgentDialog({ open, onOpenChange, agent, agents, onSave, saving 
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+
+                    {/* Statistics Option */}
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
+                            id="statistiche"
+                            checked={formData.statistiche ?? false}
+                            onCheckedChange={(checked) =>
+                                setFormData((prev) => ({ ...prev, statistiche: checked === true }))
+                            }
+                        />
+                        <Label
+                            htmlFor="statistiche"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                            {t("includeInStatistics")}
+                        </Label>
                     </div>
 
                     {/* Residential Rates */}

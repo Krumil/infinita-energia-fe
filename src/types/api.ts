@@ -3,6 +3,7 @@
 export interface CreateAgentRequest {
     nome_cognome: string;
     agente_padre?: string;
+    statistiche?: boolean;
     gettone_residenziale_standard?: number;
     gettone_residenziale_bonus?: number;
     gettone_residenziale_malus?: number;
@@ -129,41 +130,49 @@ export interface PendingOrdersResponse {
 // === DASHBOARD TYPES ===
 
 export interface DashboardContrattiTotali {
-    anno_riferimento: number;
-    totale_contratti_n: number;
-    totale_contratti_n_1: number;
+    anno_corrente: number;
+    contratti_anno_corrente: number;
+    contratti_anno_precedente: number;
     variazione_percentuale: number;
 }
 
 export interface DashboardProvvigioniTotali {
-    anno_riferimento: number;
-    totale_provvigioni_n: number;
-    totale_provvigioni_n_1: number;
+    anno_corrente: number;
+    totale_anno_corrente: number;
+    totale_anno_precedente: number;
     variazione_percentuale: number;
-    valuta: string;
 }
 
 export interface DashboardMeseContratti {
-    mese_num: number;
-    mese_nome: string;
-    anno_n: number;
-    anno_n_1: number;
+    mese: string;
+    anno_corrente: number;
+    anno_precedente: number;
 }
 
 export interface DashboardContrattiMensili {
-    anno_riferimento: number;
+    anno_corrente: number;
     dati: DashboardMeseContratti[];
 }
 
 export interface DashboardMeseProvvigioni {
-    mese_num: number;
-    mese_nome: string;
-    provvigioni_n: number;
-    provvigioni_n_1: number;
+    mese: string;
+    anno_corrente: number;
+    anno_precedente: number;
 }
 
 export interface DashboardProvvigioniMensili {
-    anno_riferimento: number;
-    unità_misura: string;
+    anno_corrente: number;
     dati: DashboardMeseProvvigioni[];
+}
+
+// Contracts by product type
+export interface DashboardProdottoContratti {
+    prodotto: string;
+    count_n: number;
+    count_n_prev: number;
+}
+
+export interface DashboardContrattiPerProdotto {
+    anno_corrente: number;
+    dati: DashboardProdottoContratti[];
 }

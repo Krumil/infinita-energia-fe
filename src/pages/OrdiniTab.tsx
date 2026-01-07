@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileDropzone } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -36,27 +35,12 @@ interface OrdiniTabProps {
     onOrdersUpload: (files: File[]) => void;
     liquidazioniImporting: boolean;
     liquidazioniResult: LiquidazioniResult | null;
-    onLiquidazioniUpload: (files: File[], meseRiferimento: string) => void;
+    onLiquidazioniUpload: (files: File[]) => void;
     pendingOrders: PendingOrder[];
     pendingOrdersCount: number;
     pendingOrdersLoading: boolean;
     onRefreshPendingOrders: () => void;
 }
-
-const MONTHS = [
-    { value: "01", label: "Gennaio" },
-    { value: "02", label: "Febbraio" },
-    { value: "03", label: "Marzo" },
-    { value: "04", label: "Aprile" },
-    { value: "05", label: "Maggio" },
-    { value: "06", label: "Giugno" },
-    { value: "07", label: "Luglio" },
-    { value: "08", label: "Agosto" },
-    { value: "09", label: "Settembre" },
-    { value: "10", label: "Ottobre" },
-    { value: "11", label: "Novembre" },
-    { value: "12", label: "Dicembre" },
-];
 
 type SortField = "cliente_nome" | "id_ordine" | "pod_pdr" | "prodotto" | "agente" | "stato" | "data_firma" | "metodo_pagam";
 type SortDirection = "asc" | "desc";
@@ -158,13 +142,6 @@ function getStatusBadge(status: string | null) {
     );
 }
 
-function getDefaultPeriod() {
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const year = String(now.getFullYear());
-    return { month, year };
-}
-
 interface SortableHeaderProps {
     label: string;
     field: SortField;
@@ -212,15 +189,6 @@ export function OrdiniTab({
     const [sortField, setSortField] = useState<SortField>("cliente_nome");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-    // Liquidazioni period selection
-    const defaultPeriod = useMemo(() => getDefaultPeriod(), []);
-    const [selectedMonth, setSelectedMonth] = useState(defaultPeriod.month);
-    const [selectedYear, setSelectedYear] = useState(defaultPeriod.year);
-
-    // Year options
-    const currentYear = new Date().getFullYear();
-    const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
-
     // Handle sort
     const handleSort = (field: SortField) => {
         if (field === sortField) {
@@ -237,11 +205,9 @@ export function OrdiniTab({
         return sortOrders(filtered, sortField, sortDirection);
     }, [pendingOrders, filterQuery, sortField, sortDirection]);
 
-    // Handle liquidazioni upload
     const handleLiquidazioniFiles = (files: File[]) => {
         if (files.length > 0) {
-            const meseRiferimento = `${selectedYear}-${selectedMonth}`;
-            onLiquidazioniUpload(files, meseRiferimento);
+            onLiquidazioniUpload(files);
         }
     };
 
@@ -282,28 +248,9 @@ export function OrdiniTab({
                         <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                         <span className="text-sm font-medium">{t("importLiquidationsTitle")}</span>
                     </div>
-                    <div className="flex gap-2">
-                        <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={liquidazioniImporting}>
-                            <SelectTrigger className="flex-1 h-8 text-xs">
-                                <SelectValue placeholder="Mese" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {MONTHS.map((m) => (
-                                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={selectedYear} onValueChange={setSelectedYear} disabled={liquidazioniImporting}>
-                            <SelectTrigger className="w-20 h-8 text-xs">
-                                <SelectValue placeholder="Anno" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {yearOptions.map((y) => (
-                                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        {t("competenzaFromExcelNote")}
+                    </p>
                     <div className="dropzone-compact">
                         <FileDropzone
                             accept=".xlsx,.xls"

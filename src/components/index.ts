@@ -10,8 +10,10 @@ export { LiquidazioniUploadDialog } from "./LiquidazioniUploadDialog";
 
 // Dashboard components
 export { YearFilter } from "./YearFilter";
+export { AgentFilter } from "./AgentFilter";
 export { ContractsHistogram } from "./ContractsHistogram";
 export { CommissionsChart } from "./CommissionsChart";
+export { ProductsChart } from "./ProductsChart";
 export { DashboardKPISection } from "./DashboardKPISection";
 
 // Layout components

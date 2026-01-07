@@ -67,8 +67,8 @@ export default function App() {
         }
     };
 
-    const handleLiquidazioniUpload = async (files: File[], meseRiferimento: string) => {
-        const action = await liquidazioni.handleUpload(files, meseRiferimento);
+    const handleLiquidazioniUpload = async (files: File[]) => {
+        const action = await liquidazioni.handleUpload(files);
         if (action) {
             setLastAction(action);
             await pendingOrders.fetchPendingOrders();

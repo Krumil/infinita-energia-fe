@@ -1,10 +1,18 @@
-import { YearFilter, ContractsHistogram, CommissionsChart, DashboardKPISection } from "@/components";
+import {
+    YearFilter,
+    AgentFilter,
+    ContractsHistogram,
+    CommissionsChart,
+    ProductsChart,
+    DashboardKPISection,
+} from "@/components";
 import { useDashboard, useTranslation } from "@/hooks";
 import { Loader2 } from "lucide-react";
 
 export function DashboardTab() {
     const { t } = useTranslation();
-    const { availableYears, selectedYear, data, loading, changeYear } = useDashboard();
+    const { availableYears, availableAgents, selectedYear, selectedAgent, data, loading, changeYear, changeAgent } =
+        useDashboard();
 
     // Show loading state while fetching initial data
     if (loading && !data.contrattiTotali) {
@@ -17,7 +25,7 @@ export function DashboardTab() {
 
     return (
         <div className="space-y-8">
-            {/* Dashboard Header with Welcome & Year Filter */}
+            {/* Dashboard Header with Welcome & Filters */}
             <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-display text-foreground">{t("dashboard")}</h1>
@@ -25,12 +33,20 @@ export function DashboardTab() {
                         Panoramica delle performance e metriche principali
                     </p>
                 </div>
-                <YearFilter
-                    availableYears={availableYears}
-                    value={selectedYear ?? new Date().getFullYear()}
-                    onChange={changeYear}
-                    loading={loading}
-                />
+                <div className="flex flex-wrap items-center gap-4">
+                    <AgentFilter
+                        availableAgents={availableAgents}
+                        value={selectedAgent}
+                        onChange={changeAgent}
+                        loading={loading}
+                    />
+                    <YearFilter
+                        availableYears={availableYears}
+                        value={selectedYear ?? new Date().getFullYear()}
+                        onChange={changeYear}
+                        loading={loading}
+                    />
+                </div>
             </div>
 
             {/* KPI Cards Section */}
@@ -57,6 +73,16 @@ export function DashboardTab() {
                         loading={loading}
                     />
                 </div>
+            </div>
+
+            {/* Products Chart Section */}
+            <div className="space-y-4">
+                <h2 className="text-lg font-display text-foreground">{t("contractsByProduct")}</h2>
+                <ProductsChart
+                    data={data.contrattiPerProdotto}
+                    selectedYear={selectedYear ?? new Date().getFullYear()}
+                    loading={loading}
+                />
             </div>
         </div>
     );

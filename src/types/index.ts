@@ -22,6 +22,8 @@ export type {
     DashboardContrattiMensili,
     DashboardMeseProvvigioni,
     DashboardProvvigioniMensili,
+    DashboardProdottoContratti,
+    DashboardContrattiPerProdotto,
 } from "./api";
 
 // Component types

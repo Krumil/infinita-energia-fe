@@ -81,19 +81,19 @@ export function DashboardKPISection({
 
     // Calculate average commission per contract
     const avgCommissionPerContract =
-        contrattiTotali && provvigioniTotali && contrattiTotali.totale_contratti_n > 0
-            ? provvigioniTotali.totale_provvigioni_n / contrattiTotali.totale_contratti_n
+        contrattiTotali && provvigioniTotali && contrattiTotali.contratti_anno_corrente > 0
+            ? provvigioniTotali.totale_anno_corrente / contrattiTotali.contratti_anno_corrente
             : 0;
     const prevAvgCommission =
-        contrattiTotali && provvigioniTotali && contrattiTotali.totale_contratti_n_1 > 0
-            ? provvigioniTotali.totale_provvigioni_n_1 / contrattiTotali.totale_contratti_n_1
+        contrattiTotali && provvigioniTotali && contrattiTotali.contratti_anno_precedente > 0
+            ? provvigioniTotali.totale_anno_precedente / contrattiTotali.contratti_anno_precedente
             : 0;
     const avgCommissionChange =
         prevAvgCommission > 0 ? ((avgCommissionPerContract - prevAvgCommission) / prevAvgCommission) * 100 : 0;
 
     // Find best performing month from monthly contracts data
     const bestMonth = contrattiMensili?.dati.reduce(
-        (best, current) => (current.anno_n > best.anno_n ? current : best),
+        (best, current) => (current.anno_corrente > best.anno_corrente ? current : best),
         contrattiMensili.dati[0]
     );
 
@@ -101,16 +101,16 @@ export function DashboardKPISection({
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <KPICard
                 title={`${t("contracts")} ${selectedYear}`}
-                value={contrattiTotali?.totale_contratti_n ?? 0}
-                subtitle={`${t("vsLastYear")}: ${contrattiTotali?.totale_contratti_n_1 ?? 0}`}
+                value={contrattiTotali?.contratti_anno_corrente ?? 0}
+                subtitle={`${t("vsLastYear")}: ${contrattiTotali?.contratti_anno_precedente ?? 0}`}
                 change={contrattiTotali?.variazione_percentuale}
                 delay={0}
                 loading={loading && !contrattiTotali}
             />
             <KPICard
                 title={t("commissionsCollected")}
-                value={formatCurrency(provvigioniTotali?.totale_provvigioni_n ?? 0)}
-                subtitle={`${t("vsLastYear")}: ${formatCurrency(provvigioniTotali?.totale_provvigioni_n_1 ?? 0)}`}
+                value={formatCurrency(provvigioniTotali?.totale_anno_corrente ?? 0)}
+                subtitle={`${t("vsLastYear")}: ${formatCurrency(provvigioniTotali?.totale_anno_precedente ?? 0)}`}
                 change={provvigioniTotali?.variazione_percentuale}
                 delay={50}
                 loading={loading && !provvigioniTotali}
@@ -125,8 +125,8 @@ export function DashboardKPISection({
             />
             <KPICard
                 title="Miglior Mese"
-                value={bestMonth?.mese_nome ?? "-"}
-                subtitle={bestMonth ? `${bestMonth.anno_n} contratti` : undefined}
+                value={bestMonth?.mese ?? "-"}
+                subtitle={bestMonth ? `${bestMonth.anno_corrente} contratti` : undefined}
                 delay={150}
                 loading={loading && !contrattiMensili}
             />

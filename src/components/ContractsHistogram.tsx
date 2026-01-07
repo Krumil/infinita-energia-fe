@@ -18,16 +18,15 @@ const chartConfig = {
     },
 } satisfies ChartConfig;
 
-const SHORT_MONTHS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
-
 export function ContractsHistogram({ data, selectedYear, loading = false }: ContractsHistogramProps) {
     const { t } = useTranslation();
 
     // Transform API data to chart format
-    const chartData = data?.dati.map((item) => ({
-        month: SHORT_MONTHS[item.mese_num - 1] ?? item.mese_nome.substring(0, 3),
-        contracts: item.anno_n,
-    })) ?? [];
+    const chartData =
+        data?.dati?.map((item) => ({
+            month: item.mese?.substring(0, 3) ?? "",
+            contracts: item.anno_corrente ?? 0,
+        })) ?? [];
 
     return (
         <Card className="animate-fade-up" style={{ animationDelay: "100ms" }}>
