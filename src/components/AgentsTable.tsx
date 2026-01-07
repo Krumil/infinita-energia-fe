@@ -1,7 +1,9 @@
-import { useState, useMemo } from "react";
-import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, Pencil, Trash2, CheckCircle2 } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, Pencil, Trash2, Check, X as XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { AgentsTableProps } from "@/types/components";
@@ -11,13 +13,34 @@ function formatCurrency(amount: number, currency: string = "EUR"): string {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
 }
 
-export function AgentsTable({ data, onEdit, onDelete }: AgentsTableProps) {
+export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: AgentsTableProps) {
     const { t } = useTranslation();
     const [sortKey, setSortKey] = useState<keyof Agente>("nome_cognome");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
     const [filter, setFilter] = useState("");
     const [page, setPage] = useState(0);
     const pageSize = 20;
+
+    // Popover state for statistiche toggle feedback
+    const [popoverState, setPopoverState] = useState<{ agentId: number; added: boolean } | null>(null);
+
+    // Auto-dismiss popover after 1.5 seconds
+    useEffect(() => {
+        if (popoverState) {
+            const timer = setTimeout(() => {
+                setPopoverState(null);
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [popoverState]);
+
+    const handleToggleStatistiche = useCallback(
+        (agent: Agente, checked: boolean) => {
+            setPopoverState({ agentId: agent.id, added: checked });
+            onToggleStatistiche(agent, checked);
+        },
+        [onToggleStatistiche]
+    );
 
     const filtered = useMemo(() => {
         if (!filter) return data;
@@ -82,8 +105,8 @@ export function AgentsTable({ data, onEdit, onDelete }: AgentsTableProps) {
                     </Button>
                 )}
             </div>
-            <div className="border border-border/50 overflow-x-auto">
-                <table className="ledger-table">
+            <div className="border border-border/50 overflow-x-auto rounded-sm shadow-sm">
+                <table className="ledger-table min-w-[1400px] lg:min-w-full">
                     <thead>
                         <tr>
                             <th
@@ -232,11 +255,41 @@ export function AgentsTable({ data, onEdit, onDelete }: AgentsTableProps) {
                                         {formatRate(row.bonus_sdd)}
                                     </td>
                                     <td className="text-center">
-                                        {row.statistiche ? (
-                                            <CheckCircle2 className="h-4 w-4 text-energia-success mx-auto" />
-                                        ) : (
-                                            <span className="text-muted-foreground">—</span>
-                                        )}
+                                        <div className="flex items-center justify-center">
+                                            <Popover open={popoverState?.agentId === row.id}>
+                                                <PopoverTrigger asChild>
+                                                    <div>
+                                                        <Checkbox
+                                                            checked={row.statistiche ?? false}
+                                                            onCheckedChange={(checked) => {
+                                                                handleToggleStatistiche(row, checked === true);
+                                                            }}
+                                                            aria-label={`${t("statistics")} ${row.nome_cognome}`}
+                                                            className="data-[state=checked]:bg-energia-success data-[state=checked]:border-energia-success cursor-pointer"
+                                                        />
+                                                    </div>
+                                                </PopoverTrigger>
+                                                <PopoverContent
+                                                    side="top"
+                                                    className="w-auto px-3 py-2 text-sm font-medium"
+                                                    sideOffset={8}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        {popoverState?.added ? (
+                                                            <>
+                                                                <Check className="h-4 w-4 text-energia-success" />
+                                                                <span>{t("addedToStats")}</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <XIcon className="h-4 w-4 text-muted-foreground" />
+                                                                <span>{t("removedFromStats")}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
                                     </td>
                                     <td>
                                         <div className="flex items-center justify-end gap-1">

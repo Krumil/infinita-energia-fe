@@ -137,6 +137,32 @@ export function useAgents() {
         }
     }, [deletingAgent, loadAgents, toast, t]);
 
+    // Toggle statistiche with optimistic update
+    const toggleStatistiche = useCallback(
+        async (agent: Agente, value: boolean): Promise<void> => {
+            // Optimistic update
+            setAgents((prev) =>
+                prev.map((a) => (a.id === agent.id ? { ...a, statistiche: value } : a))
+            );
+
+            try {
+                await updateAgente(agent.id, { statistiche: value });
+            } catch (error) {
+                // Rollback on error
+                setAgents((prev) =>
+                    prev.map((a) => (a.id === agent.id ? { ...a, statistiche: agent.statistiche } : a))
+                );
+                const errorMsg = error instanceof ApiError ? error.message : t("error");
+                toast({
+                    title: t("error"),
+                    description: errorMsg,
+                    variant: "destructive",
+                });
+            }
+        },
+        [toast, t]
+    );
+
     return {
         // State
         agents,
@@ -155,5 +181,6 @@ export function useAgents() {
         openDeleteDialog,
         saveAgent,
         confirmDelete,
+        toggleStatistiche,
     };
 }

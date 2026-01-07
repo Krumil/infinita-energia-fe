@@ -33,6 +33,7 @@ interface AgentsTabProps {
     onDelete: (agent: Agente) => void;
     onSave: (data: CreateAgentRequest) => Promise<void>;
     onConfirmDelete: () => void;
+    onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
 }
 
 export function AgentsTab({
@@ -51,6 +52,7 @@ export function AgentsTab({
     onDelete,
     onSave,
     onConfirmDelete,
+    onToggleStatistiche,
 }: AgentsTabProps) {
     const { t } = useTranslation();
 
@@ -81,7 +83,12 @@ export function AgentsTab({
                 ) : agents.length === 0 ? (
                     <EmptyState message={t("noAgentsYet")} icon={<Users className="h-16 w-16" />} />
                 ) : (
-                    <AgentsTable data={agents} onEdit={onEdit} onDelete={onDelete} />
+                    <AgentsTable
+                        data={agents}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onToggleStatistiche={onToggleStatistiche}
+                    />
                 )}
             </div>
 

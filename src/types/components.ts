@@ -54,6 +54,7 @@ export interface AgentsTableProps {
     data: Agente[];
     onEdit: (agent: Agente) => void;
     onDelete: (agent: Agente) => void;
+    onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
 }
 
 // === CALCOLO RESULTS ===
