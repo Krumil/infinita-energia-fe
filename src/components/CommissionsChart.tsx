@@ -39,9 +39,9 @@ export function CommissionsChart({ data, loading = false }: CommissionsChartProp
     // Transform API data to chart format
     const chartData =
         data?.dati?.map((item) => ({
-            month: item.mese?.substring(0, 3) ?? "",
-            commissions: item.anno_corrente ?? 0,
-            previousYearCommissions: item.anno_precedente ?? 0,
+            month: item.mese_nome?.substring(0, 3) ?? "",
+            commissions: item.provvigioni_n ?? 0,
+            previousYearCommissions: item.provvigioni_n_1 ?? 0,
         })) ?? [];
 
     return (

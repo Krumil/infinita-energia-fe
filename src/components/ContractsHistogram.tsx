@@ -24,8 +24,8 @@ export function ContractsHistogram({ data, selectedYear, loading = false }: Cont
     // Transform API data to chart format
     const chartData =
         data?.dati?.map((item) => ({
-            month: item.mese?.substring(0, 3) ?? "",
-            contracts: item.anno_corrente ?? 0,
+            month: item.mese_nome?.substring(0, 3) ?? "",
+            contracts: item.anno_n ?? 0,
         })) ?? [];
 
     return (

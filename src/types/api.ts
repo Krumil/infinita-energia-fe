@@ -130,49 +130,53 @@ export interface PendingOrdersResponse {
 // === DASHBOARD TYPES ===
 
 export interface DashboardContrattiTotali {
-    anno_corrente: number;
-    contratti_anno_corrente: number;
-    contratti_anno_precedente: number;
+    anno_riferimento: number;
+    totale_contratti_n: number;
+    totale_contratti_n_1: number;
     variazione_percentuale: number;
 }
 
 export interface DashboardProvvigioniTotali {
-    anno_corrente: number;
-    totale_anno_corrente: number;
-    totale_anno_precedente: number;
+    anno_riferimento: number;
+    totale_provvigioni_n: number;
+    totale_provvigioni_n_1: number;
     variazione_percentuale: number;
+    valuta: string;
 }
 
 export interface DashboardMeseContratti {
-    mese: string;
-    anno_corrente: number;
-    anno_precedente: number;
+    mese_nome: string;
+    mese_num: number;
+    anno_n: number;
+    anno_n_1: number;
 }
 
 export interface DashboardContrattiMensili {
-    anno_corrente: number;
+    anno_riferimento: number;
     dati: DashboardMeseContratti[];
 }
 
 export interface DashboardMeseProvvigioni {
-    mese: string;
-    anno_corrente: number;
-    anno_precedente: number;
+    mese_nome: string;
+    mese_num: number;
+    provvigioni_n: number;
+    provvigioni_n_1: number;
 }
 
 export interface DashboardProvvigioniMensili {
-    anno_corrente: number;
+    anno_riferimento: number;
+    unità_misura: string;
     dati: DashboardMeseProvvigioni[];
 }
 
 // Contracts by product type
 export interface DashboardProdottoContratti {
     prodotto: string;
-    count_n: number;
-    count_n_prev: number;
+    anno_n: number;
+    anno_n_1: number;
 }
 
 export interface DashboardContrattiPerProdotto {
-    anno_corrente: number;
+    anno_riferimento: number;
     dati: DashboardProdottoContratti[];
 }

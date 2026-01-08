@@ -43,7 +43,15 @@ interface OrdiniTabProps {
     onRefreshPendingOrders: () => void;
 }
 
-type SortField = "cliente_nome" | "id_ordine" | "pod_pdr" | "prodotto" | "agente" | "stato" | "data_firma" | "metodo_pagam";
+type SortField =
+    | "cliente_nome"
+    | "id_ordine"
+    | "pod_pdr"
+    | "prodotto"
+    | "agente"
+    | "stato"
+    | "data_firma"
+    | "metodo_pagam";
 type SortDirection = "asc" | "desc";
 
 // Generate period options for the last 24 months
@@ -51,8 +59,18 @@ function generatePeriodOptions(): { value: string; label: string }[] {
     const options: { value: string; label: string }[] = [];
     const now = new Date();
     const monthNames = [
-        "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-        "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+        "Gennaio",
+        "Febbraio",
+        "Marzo",
+        "Aprile",
+        "Maggio",
+        "Giugno",
+        "Luglio",
+        "Agosto",
+        "Settembre",
+        "Ottobre",
+        "Novembre",
+        "Dicembre",
     ];
 
     for (let i = 0; i < 24; i++) {
@@ -159,7 +177,9 @@ function getStatusBadge(status: string | null) {
         icon: <AlertTriangle className="h-3 w-3" />,
     };
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+        <span
+            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
+        >
             {config.icon}
             {status || "—"}
         </span>
@@ -255,7 +275,10 @@ export function OrdiniTab({
                     {ordersImporting && (
                         <div className="flex items-center gap-2">
                             <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
-                                <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${ordersProgress}%` }} />
+                                <div
+                                    className="h-full bg-blue-600 transition-all duration-300"
+                                    style={{ width: `${ordersProgress}%` }}
+                                />
                             </div>
                             <span className="text-xs font-mono text-muted-foreground">{ordersProgress}%</span>
                         </div>
@@ -263,31 +286,38 @@ export function OrdiniTab({
                     {ordersResult && (
                         <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
                             <CheckCircle className="h-3 w-3" />
-                            <span>+{ordersResult.details.ordini.nuovi} {t("orders").toLowerCase()}</span>
+                            <span>
+                                +{ordersResult.details.ordini.nuovi} {t("orders").toLowerCase()}
+                            </span>
                         </div>
                     )}
                 </div>
 
                 <div className="ledger-card p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                        <span className="text-sm font-medium">{t("importLiquidationsTitle")}</span>
+                    <div className="flex items-center gap-2 w-full justify-between">
+                        <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-sm font-medium">{t("importLiquidationsTitle")}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <label className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                                {t("competenzaPeriodLabel")}
+                            </label>
+                            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                                <SelectTrigger className="h-8 text-sm">
+                                    <SelectValue placeholder={t("selectPeriod")} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PERIOD_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">{t("competenzaPeriodLabel")}</label>
-                        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                            <SelectTrigger className="h-8 text-sm">
-                                <SelectValue placeholder={t("selectPeriod")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {PERIOD_OPTIONS.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+
                     <div className="dropzone-compact">
                         <FileDropzone
                             accept=".xlsx,.xls"
@@ -305,7 +335,9 @@ export function OrdiniTab({
                     {liquidazioniResult && (
                         <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
                             <CheckCircle className="h-3 w-3" />
-                            <span>{liquidazioniResult.count} {t("recordsProcessed").toLowerCase()}</span>
+                            <span>
+                                {liquidazioniResult.count} {t("recordsProcessed").toLowerCase()}
+                            </span>
                         </div>
                     )}
                 </div>
@@ -453,15 +485,11 @@ export function OrdiniTab({
                                     {processedOrders.length > 0 ? (
                                         processedOrders.map((order) => (
                                             <TableRow key={order.id_ordine} className="hover:bg-secondary/30">
-                                                <TableCell className="font-mono text-xs">
-                                                    #{order.id_ordine}
-                                                </TableCell>
+                                                <TableCell className="font-mono text-xs">#{order.id_ordine}</TableCell>
                                                 <TableCell className="font-medium">
                                                     {order.cliente_nome || "—"}
                                                 </TableCell>
-                                                <TableCell className="font-mono text-xs">
-                                                    {order.pod_pdr}
-                                                </TableCell>
+                                                <TableCell className="font-mono text-xs">{order.pod_pdr}</TableCell>
                                                 <TableCell>{order.prodotto}</TableCell>
                                                 <TableCell className="text-muted-foreground">
                                                     {order.agente || "—"}

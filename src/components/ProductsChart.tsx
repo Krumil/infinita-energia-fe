@@ -36,8 +36,8 @@ export function ProductsChart({ data, selectedYear, loading = false }: ProductsC
     const chartData =
         data?.dati?.map((item) => ({
             prodotto: item.prodotto ?? "",
-            currentYear: item.count_n ?? 0,
-            previousYear: item.count_n_prev ?? 0,
+            currentYear: item.anno_n ?? 0,
+            previousYear: item.anno_n_1 ?? 0,
         })) ?? [];
 
     return (
