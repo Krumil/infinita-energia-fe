@@ -1,38 +1,49 @@
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, Line, ComposedChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    ChartLegend,
+    ChartLegendContent,
+    type ChartConfig,
+} from "@/components/ui/chart";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Loader2 } from "lucide-react";
 import type { DashboardContrattiMensili } from "@/types";
 
 interface ContractsHistogramProps {
     data: DashboardContrattiMensili | null;
-    selectedYear: number;
     loading?: boolean;
 }
 
-const chartConfig = {
-    contracts: {
-        label: "Contratti",
-        color: "hsl(var(--energia-primary))",
-    },
-} satisfies ChartConfig;
-
-export function ContractsHistogram({ data, selectedYear, loading = false }: ContractsHistogramProps) {
+export function ContractsHistogram({ data, loading = false }: ContractsHistogramProps) {
     const { t } = useTranslation();
+
+    const chartConfig = {
+        contracts: {
+            label: t("currentYear"),
+            color: "hsl(var(--energia-primary))",
+        },
+        previousYearContracts: {
+            label: t("previousYear"),
+            color: "hsl(var(--energia-accent))",
+        },
+    } satisfies ChartConfig;
 
     // Transform API data to chart format
     const chartData =
         data?.dati?.map((item) => ({
             month: item.mese_nome?.substring(0, 3) ?? "",
             contracts: item.anno_n ?? 0,
+            previousYearContracts: item.anno_n_1 ?? 0,
         })) ?? [];
 
     return (
         <Card className="animate-fade-up" style={{ animationDelay: "100ms" }}>
             <CardHeader>
                 <CardTitle className="font-display">{t("contractsSubscribed")}</CardTitle>
-                <CardDescription>{selectedYear}</CardDescription>
+                <CardDescription>{t("comparisonWithPreviousYear")}</CardDescription>
             </CardHeader>
             <CardContent className="pb-4">
                 {loading && !data ? (
@@ -41,16 +52,30 @@ export function ContractsHistogram({ data, selectedYear, loading = false }: Cont
                     </div>
                 ) : (
                     <ChartContainer config={chartConfig} className="h-[220px] w-full">
-                        <BarChart accessibilityLayer data={chartData}>
+                        <ComposedChart accessibilityLayer data={chartData}>
                             <CartesianGrid vertical={false} strokeDasharray="3 3" />
                             <XAxis dataKey="month" tickLine={false} tickMargin={10} axisLine={false} />
                             <YAxis tickLine={false} axisLine={false} tickMargin={10} allowDecimals={false} />
                             <ChartTooltip
                                 cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
-                                content={<ChartTooltipContent hideLabel />}
+                                content={<ChartTooltipContent />}
                             />
-                            <Bar dataKey="contracts" fill="var(--color-contracts)" radius={[4, 4, 0, 0]} />
-                        </BarChart>
+                            <ChartLegend content={<ChartLegendContent />} />
+                            <Bar
+                                dataKey="contracts"
+                                fill="var(--color-contracts)"
+                                radius={[4, 4, 0, 0]}
+                                barSize={30}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="previousYearContracts"
+                                stroke="var(--color-previousYearContracts)"
+                                strokeWidth={2}
+                                dot={{ fill: "var(--color-previousYearContracts)", strokeWidth: 0, r: 4 }}
+                                activeDot={{ r: 6, strokeWidth: 0 }}
+                            />
+                        </ComposedChart>
                     </ChartContainer>
                 )}
             </CardContent>

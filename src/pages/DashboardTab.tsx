@@ -53,7 +53,6 @@ export function DashboardTab() {
             <DashboardKPISection
                 contrattiTotali={data.contrattiTotali}
                 provvigioniTotali={data.provvigioniTotali}
-                contrattiMensili={data.contrattiMensili}
                 selectedYear={selectedYear ?? new Date().getFullYear()}
                 loading={loading}
             />
@@ -64,7 +63,6 @@ export function DashboardTab() {
                 <div className="grid gap-6 lg:grid-cols-2">
                     <ContractsHistogram
                         data={data.contrattiMensili}
-                        selectedYear={selectedYear ?? new Date().getFullYear()}
                         loading={loading}
                     />
                     <CommissionsChart
