@@ -38,6 +38,8 @@ const en = {
     commissionsCollected: "Commissions Collected",
     comparisonWithPreviousYear: "Comparison with previous year",
     contractsByProduct: "Contracts by Product",
+    showingDataFor: "Showing data for",
+    variation: "Variation",
 
     // Agents Tab
     agentsList: "Agents List",
@@ -284,6 +286,8 @@ const it: TranslationTable = {
     commissionsCollected: "Provvigioni Incassate",
     comparisonWithPreviousYear: "Confronto con anno precedente",
     contractsByProduct: "Contratti per Prodotto",
+    showingDataFor: "Dati per",
+    variation: "Variazione",
 
     // Agents Tab
     agentsList: "Lista Agenti",
