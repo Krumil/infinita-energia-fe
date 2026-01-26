@@ -222,8 +222,15 @@ export async function uploadExcel(file: File): Promise<ImportExcelResponse> {
 
 // ========== PENDING ORDERS API ==========
 
-export async function getPendingOrders(): Promise<PendingOrdersResponse> {
-    const res = await fetch(`${BASE_API}/ordini-non-evasi`, {
+export async function getPendingOrders(
+    startDate?: string,
+    endDate?: string
+): Promise<PendingOrdersResponse> {
+    const url = new URL(`${BASE_API}/ordini-non-evasi`);
+    if (startDate) url.searchParams.set("start_date", startDate);
+    if (endDate) url.searchParams.set("end_date", endDate);
+
+    const res = await fetch(url.toString(), {
         method: "GET",
         headers: {
             "Content-Type": "application/json",

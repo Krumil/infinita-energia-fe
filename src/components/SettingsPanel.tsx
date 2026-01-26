@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTranslation, useThemeLanguage } from "@/hooks";
 import type { SettingsPanelProps } from "@/types/components";
 
-export function SettingsPanel({ settings, onChange, onSave }: SettingsPanelProps) {
+export function SettingsPanel({ onSave }: SettingsPanelProps) {
     const { t } = useTranslation();
     const { theme, setTheme, language, setLanguage } = useThemeLanguage();
 
@@ -46,25 +46,6 @@ export function SettingsPanel({ settings, onChange, onSave }: SettingsPanelProps
                                 <span>English</span>
                             </span>
                         </SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-
-            <div className="space-y-3">
-                <Label htmlFor="dateFormat" className="editorial-caps text-muted-foreground">
-                    {t("dateFormat")}
-                </Label>
-                <Select
-                    value={settings.dateFormat}
-                    onValueChange={(value) => onChange({ ...settings, dateFormat: value })}
-                >
-                    <SelectTrigger id="dateFormat" className="font-mono">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                        <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                        <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

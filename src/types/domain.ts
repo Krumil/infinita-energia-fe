@@ -51,7 +51,5 @@ export interface Liquidazione {
     competenza_liquidazione?: string; // Format: "YYYY-MM-DD" from Excel (MM/YYYY)
 }
 
-// Application settings
-export interface AppSettings {
-    dateFormat: string;
-}
+// Application settings - extensible for future preferences
+export type AppSettings = Record<string, unknown>;

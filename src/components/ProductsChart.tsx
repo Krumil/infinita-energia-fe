@@ -32,13 +32,15 @@ function getProductColorLight(index: number): string {
 export function ProductsChart({ data, selectedYear, loading = false }: ProductsChartProps) {
     const { t } = useTranslation();
 
-    // Transform API data to chart format
+    // Transform API data to chart format, sorted by current year count descending
     const chartData =
-        data?.dati?.map((item) => ({
-            prodotto: item.prodotto ?? "",
-            currentYear: item.anno_n ?? 0,
-            previousYear: item.anno_n_1 ?? 0,
-        })) ?? [];
+        data?.dati
+            ?.map((item) => ({
+                prodotto: item.prodotto ?? "",
+                currentYear: item.anno_n ?? 0,
+                previousYear: item.anno_n_1 ?? 0,
+            }))
+            .sort((a, b) => b.currentYear - a.currentYear) ?? [];
 
     // Calculate dynamic width based on number of products
     const barWidth = 24;

@@ -5,9 +5,6 @@ import {
     RefreshCw,
     Search,
     X,
-    Clock,
-    CheckCircle2,
-    AlertTriangle,
     Package,
     FileSpreadsheet,
     Calendar,
@@ -40,7 +37,11 @@ interface OrdiniTabProps {
     pendingOrders: PendingOrder[];
     pendingOrdersCount: number;
     pendingOrdersLoading: boolean;
-    onRefreshPendingOrders: () => void;
+    onRefreshPendingOrders: (startDate?: string, endDate?: string) => void;
+    startDate: string;
+    endDate: string;
+    onStartDateChange: (date: string) => void;
+    onEndDateChange: (date: string) => void;
 }
 
 type SortField =
@@ -159,28 +160,48 @@ function sortOrders(orders: PendingOrder[], field: SortField, direction: SortDir
 }
 
 function getStatusBadge(status: string | null) {
-    const configs: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
+    const configs: Record<string, { bg: string; text: string }> = {
+        Accettato: {
+            bg: "bg-emerald-100 dark:bg-emerald-900/40",
+            text: "text-emerald-700 dark:text-emerald-400",
+        },
         Confermato: {
             bg: "bg-emerald-100 dark:bg-emerald-900/40",
             text: "text-emerald-700 dark:text-emerald-400",
-            icon: <CheckCircle2 className="h-3 w-3" />,
         },
-        "In Lavorazione": {
+        Trasferito: {
+            bg: "bg-blue-100 dark:bg-blue-900/40",
+            text: "text-blue-700 dark:text-blue-400",
+        },
+        "In verifica": {
             bg: "bg-amber-100 dark:bg-amber-900/40",
             text: "text-amber-700 dark:text-amber-400",
-            icon: <Clock className="h-3 w-3" />,
+        },
+        Sospeso: {
+            bg: "bg-orange-100 dark:bg-orange-900/40",
+            text: "text-orange-700 dark:text-orange-400",
+        },
+        Ko: {
+            bg: "bg-red-100 dark:bg-red-900/40",
+            text: "text-red-700 dark:text-red-400",
+        },
+        KO: {
+            bg: "bg-red-100 dark:bg-red-900/40",
+            text: "text-red-700 dark:text-red-400",
+        },
+        Annullato: {
+            bg: "bg-red-100 dark:bg-red-900/40",
+            text: "text-red-700 dark:text-red-400",
         },
     };
     const config = configs[status || ""] || {
         bg: "bg-slate-100 dark:bg-slate-800",
         text: "text-slate-600 dark:text-slate-400",
-        icon: <AlertTriangle className="h-3 w-3" />,
     };
     return (
         <span
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
         >
-            {config.icon}
             {status || "—"}
         </span>
     );
@@ -227,12 +248,20 @@ export function OrdiniTab({
     pendingOrdersCount,
     pendingOrdersLoading,
     onRefreshPendingOrders,
+    startDate,
+    endDate,
+    onStartDateChange,
+    onEndDateChange,
 }: OrdiniTabProps) {
     const { t } = useTranslation();
     const [filterQuery, setFilterQuery] = useState("");
     const [sortField, setSortField] = useState<SortField>("cliente_nome");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
     const [selectedPeriod, setSelectedPeriod] = useState<string>(PERIOD_OPTIONS[0]?.value || "");
+
+    const handleRefreshWithDates = () => {
+        onRefreshPendingOrders(startDate || undefined, endDate || undefined);
+    };
 
     // Handle sort
     const handleSort = (field: SortField) => {
@@ -357,6 +386,28 @@ export function OrdiniTab({
                         </h2>
                     </div>
                     <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground whitespace-nowrap">
+                                {t("startDate")}
+                            </label>
+                            <Input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => onStartDateChange(e.target.value)}
+                                className="h-9 w-36"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground whitespace-nowrap">
+                                {t("endDate")}
+                            </label>
+                            <Input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => onEndDateChange(e.target.value)}
+                                className="h-9 w-36"
+                            />
+                        </div>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                             <Input
@@ -377,7 +428,7 @@ export function OrdiniTab({
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={onRefreshPendingOrders}
+                            onClick={handleRefreshWithDates}
                             disabled={pendingOrdersLoading}
                         >
                             {pendingOrdersLoading ? (

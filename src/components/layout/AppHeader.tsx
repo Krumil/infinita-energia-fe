@@ -5,11 +5,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { SettingsPanel } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAuth } from "@/contexts/AuthContext";
-import type { AppSettings } from "@/types";
 
 interface AppHeaderProps {
-    settings: AppSettings;
-    onSettingsChange: (settings: AppSettings) => void;
     onSettingsSave: () => void;
     settingsOpen: boolean;
     onSettingsOpenChange: (open: boolean) => void;
@@ -25,8 +22,6 @@ const navItems = [
 ] as const;
 
 export function AppHeader({
-    settings,
-    onSettingsChange,
     onSettingsSave,
     settingsOpen,
     onSettingsOpenChange,
@@ -129,11 +124,7 @@ export function AppHeader({
                                     </SheetDescription>
                                 </SheetHeader>
                                 <Separator className="my-6 bg-border/50" />
-                                <SettingsPanel
-                                    settings={settings}
-                                    onChange={onSettingsChange}
-                                    onSave={onSettingsSave}
-                                />
+                                <SettingsPanel onSave={onSettingsSave} />
                             </SheetContent>
                         </Sheet>
 

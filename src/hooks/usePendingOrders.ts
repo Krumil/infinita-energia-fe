@@ -12,13 +12,15 @@ export function usePendingOrders() {
     const [count, setCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [startDate, setStartDate] = useState<string>("");
+    const [endDate, setEndDate] = useState<string>("");
 
-    const fetchPendingOrders = useCallback(async () => {
+    const fetchPendingOrders = useCallback(async (start?: string, end?: string) => {
         setLoading(true);
         setError(null);
 
         try {
-            const response = await getPendingOrders();
+            const response = await getPendingOrders(start || undefined, end || undefined);
             setOrders(response.data);
             setCount(response.count);
         } catch (err) {
@@ -45,6 +47,10 @@ export function usePendingOrders() {
         count,
         loading,
         error,
+        startDate,
+        setStartDate,
+        endDate,
+        setEndDate,
         fetchPendingOrders,
         clearOrders,
     };

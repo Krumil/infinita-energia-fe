@@ -106,8 +106,6 @@ function AuthenticatedApp() {
         <TooltipProvider>
             <div className="min-h-screen flex flex-col">
                 <AppHeader
-                    settings={appSettings.settings}
-                    onSettingsChange={appSettings.setSettings}
                     onSettingsSave={appSettings.saveSettings}
                     settingsOpen={appSettings.sheetOpen}
                     onSettingsOpenChange={appSettings.setSheetOpen}
@@ -155,6 +153,10 @@ function AuthenticatedApp() {
                                 pendingOrdersCount={pendingOrders.count}
                                 pendingOrdersLoading={pendingOrders.loading}
                                 onRefreshPendingOrders={pendingOrders.fetchPendingOrders}
+                                startDate={pendingOrders.startDate}
+                                endDate={pendingOrders.endDate}
+                                onStartDateChange={pendingOrders.setStartDate}
+                                onEndDateChange={pendingOrders.setEndDate}
                             />
                         </TabsContent>
 

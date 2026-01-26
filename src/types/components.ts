@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Agente, AppSettings } from "./domain";
+import type { Agente } from "./domain";
 import type { CreateAgentRequest, CalcoloResult } from "./api";
 
 // === FILE DROPZONE ===
@@ -32,8 +32,6 @@ export interface EmptyStateProps {
 // === SETTINGS PANEL ===
 
 export interface SettingsPanelProps {
-    settings: AppSettings;
-    onChange: (settings: AppSettings) => void;
     onSave: () => void;
 }
 

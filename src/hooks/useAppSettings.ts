@@ -5,9 +5,7 @@ import type { AppSettings } from "@/types";
 
 const SETTINGS_KEY = "app-settings";
 
-const defaultSettings: AppSettings = {
-    dateFormat: "DD/MM/YYYY",
-};
+const defaultSettings: AppSettings = {};
 
 function loadSettingsFromStorage(): AppSettings {
     try {
