@@ -15,26 +15,29 @@ export function usePendingOrders() {
     const [startDate, setStartDate] = useState<string>("");
     const [endDate, setEndDate] = useState<string>("");
 
-    const fetchPendingOrders = useCallback(async (start?: string, end?: string) => {
-        setLoading(true);
-        setError(null);
+    const fetchPendingOrders = useCallback(
+        async (start?: string, end?: string) => {
+            setLoading(true);
+            setError(null);
 
-        try {
-            const response = await getPendingOrders(start || undefined, end || undefined);
-            setOrders(response.data);
-            setCount(response.count);
-        } catch (err) {
-            const errorMsg = err instanceof ApiError ? err.message : t("fetchError");
-            setError(errorMsg);
-            toast({
-                title: t("error"),
-                description: errorMsg,
-                variant: "destructive",
-            });
-        } finally {
-            setLoading(false);
-        }
-    }, [toast, t]);
+            try {
+                const response = await getPendingOrders(start || undefined, end || undefined);
+                setOrders(response.data);
+                setCount(response.count);
+            } catch (err) {
+                const errorMsg = err instanceof ApiError ? err.message : t("fetchError");
+                setError(errorMsg);
+                toast({
+                    title: t("error"),
+                    description: errorMsg,
+                    variant: "destructive",
+                });
+            } finally {
+                setLoading(false);
+            }
+        },
+        [toast, t],
+    );
 
     const clearOrders = useCallback(() => {
         setOrders([]);

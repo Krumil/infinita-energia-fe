@@ -61,12 +61,7 @@ export function ContractsHistogram({ data, loading = false }: ContractsHistogram
                                 content={<ChartTooltipContent />}
                             />
                             <ChartLegend content={<ChartLegendContent />} />
-                            <Bar
-                                dataKey="contracts"
-                                fill="var(--color-contracts)"
-                                radius={[4, 4, 0, 0]}
-                                barSize={30}
-                            />
+                            <Bar dataKey="contracts" fill="var(--color-contracts)" radius={[4, 4, 0, 0]} barSize={30} />
                             <Line
                                 type="monotone"
                                 dataKey="previousYearContracts"

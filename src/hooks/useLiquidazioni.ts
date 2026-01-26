@@ -92,7 +92,7 @@ export function useLiquidazioni() {
                 setImporting(false);
             }
         },
-        [toast, t]
+        [toast, t],
     );
 
     return {

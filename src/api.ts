@@ -23,7 +23,10 @@ const BASE_API = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 
 // Error class for API errors
 export class ApiError extends Error {
-    constructor(public status: number, message: string) {
+    constructor(
+        public status: number,
+        message: string,
+    ) {
         super(message);
         this.name = "ApiError";
     }
@@ -222,10 +225,7 @@ export async function uploadExcel(file: File): Promise<ImportExcelResponse> {
 
 // ========== PENDING ORDERS API ==========
 
-export async function getPendingOrders(
-    startDate?: string,
-    endDate?: string
-): Promise<PendingOrdersResponse> {
+export async function getPendingOrders(startDate?: string, endDate?: string): Promise<PendingOrdersResponse> {
     const url = new URL(`${BASE_API}/ordini-non-evasi`);
     if (startDate) url.searchParams.set("start_date", startDate);
     if (endDate) url.searchParams.set("end_date", endDate);
@@ -461,7 +461,8 @@ export async function parseLiquidazioniExcel(file: File): Promise<Liquidazione[]
                         const isoMatch = str.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/);
                         if (isoMatch) {
                             const [, year, month, day] = isoMatch;
-                            (liquidazione as Record<string, unknown>)[key] = `${year}-${month.padStart(2, "0")}-${(day || "01").padStart(2, "0")}`;
+                            (liquidazione as Record<string, unknown>)[key] =
+                                `${year}-${month.padStart(2, "0")}-${(day || "01").padStart(2, "0")}`;
                         } else {
                             (liquidazione as Record<string, unknown>)[key] = str;
                         }
@@ -517,7 +518,10 @@ export async function getDashboardContrattiTotali(anno?: number, agente?: string
 }
 
 /** GET /api/dashboard/provvigioni-totali - Get total commissions */
-export async function getDashboardProvvigioniTotali(anno?: number, agente?: string): Promise<DashboardProvvigioniTotali> {
+export async function getDashboardProvvigioniTotali(
+    anno?: number,
+    agente?: string,
+): Promise<DashboardProvvigioniTotali> {
     const url = new URL(`${BASE_API}/dashboard/provvigioni-totali`);
     if (anno) url.searchParams.set("anno", String(anno));
     if (agente) url.searchParams.set("agente", agente);
@@ -545,7 +549,10 @@ export async function getDashboardContrattiMensili(anno?: number, agente?: strin
 }
 
 /** GET /api/dashboard/provvigioni-mensili - Get monthly commissions */
-export async function getDashboardProvvigioniMensili(anno?: number, agente?: string): Promise<DashboardProvvigioniMensili> {
+export async function getDashboardProvvigioniMensili(
+    anno?: number,
+    agente?: string,
+): Promise<DashboardProvvigioniMensili> {
     const url = new URL(`${BASE_API}/dashboard/provvigioni-mensili`);
     if (anno) url.searchParams.set("anno", String(anno));
     if (agente) url.searchParams.set("agente", agente);
@@ -561,7 +568,7 @@ export async function getDashboardProvvigioniMensili(anno?: number, agente?: str
 /** GET /api/dashboard/contratti-per-prodotto - Get contracts by product type */
 export async function getDashboardContrattiPerProdotto(
     anno?: number,
-    agente?: string
+    agente?: string,
 ): Promise<DashboardContrattiPerProdotto> {
     const url = new URL(`${BASE_API}/dashboard/contratti-per-prodotto`);
     if (anno) url.searchParams.set("anno", String(anno));

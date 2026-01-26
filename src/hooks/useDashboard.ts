@@ -64,10 +64,7 @@ export function useDashboard() {
 
         async function fetchInitialData() {
             try {
-                const [years, agents] = await Promise.all([
-                    getDashboardAnniDisponibili(),
-                    getDashboardAgentiFiltro(),
-                ]);
+                const [years, agents] = await Promise.all([getDashboardAnniDisponibili(), getDashboardAgentiFiltro()]);
                 if (!isMounted) return;
                 setAvailableYears(years);
                 setAvailableAgents(agents);

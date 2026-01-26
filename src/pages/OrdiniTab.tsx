@@ -107,7 +107,7 @@ function filterOrders(orders: PendingOrder[], query: string): PendingOrder[] {
             order.agente?.toLowerCase().includes(lowerQuery) ||
             order.prodotto.toLowerCase().includes(lowerQuery) ||
             order.cod_fisc.toLowerCase().includes(lowerQuery) ||
-            String(order.id_ordine).includes(lowerQuery)
+            String(order.id_ordine).includes(lowerQuery),
     );
 }
 
@@ -387,9 +387,7 @@ export function OrdiniTab({
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap">
-                                {t("startDate")}
-                            </label>
+                            <label className="text-xs text-muted-foreground whitespace-nowrap">{t("startDate")}</label>
                             <Input
                                 type="date"
                                 value={startDate}
@@ -398,9 +396,7 @@ export function OrdiniTab({
                             />
                         </div>
                         <div className="flex items-center gap-2">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap">
-                                {t("endDate")}
-                            </label>
+                            <label className="text-xs text-muted-foreground whitespace-nowrap">{t("endDate")}</label>
                             <Input
                                 type="date"
                                 value={endDate}

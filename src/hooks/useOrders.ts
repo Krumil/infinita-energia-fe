@@ -49,7 +49,7 @@ export function useOrders() {
                 setTimeout(() => setProgress(0), 1000);
             }
         },
-        [toast, t]
+        [toast, t],
     );
 
     return {

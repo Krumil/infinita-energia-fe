@@ -39,7 +39,7 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
             setPopoverState({ agentId: agent.id, added: checked });
             onToggleStatistiche(agent, checked);
         },
-        [onToggleStatistiche]
+        [onToggleStatistiche],
     );
 
     const filtered = useMemo(() => {
@@ -48,7 +48,7 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
         return data.filter(
             (item) =>
                 item.nome_cognome.toLowerCase().includes(lowerFilter) ||
-                item.agente_padre?.toLowerCase().includes(lowerFilter)
+                item.agente_padre?.toLowerCase().includes(lowerFilter),
         );
     }, [data, filter]);
 
@@ -203,9 +203,7 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
                             </th>
                             <th className="text-center">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-center">
-                                        {t("statistics")}
-                                    </TooltipTrigger>
+                                    <TooltipTrigger className="w-full text-center">{t("statistics")}</TooltipTrigger>
                                     <TooltipContent>{t("statisticsTooltip")}</TooltipContent>
                                 </Tooltip>
                             </th>
@@ -254,7 +252,7 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
                                     <td data-numeric className="text-right">
                                         {formatRate(row.bonus_sdd)}
                                     </td>
-                                    <td className="text-center">
+                                    <td className="text-center align-middle">
                                         <div className="flex items-center justify-center">
                                             <Popover open={popoverState?.agentId === row.id}>
                                                 <PopoverTrigger asChild>
@@ -265,7 +263,7 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
                                                                 handleToggleStatistiche(row, checked === true);
                                                             }}
                                                             aria-label={`${t("statistics")} ${row.nome_cognome}`}
-                                                            className="data-[state=checked]:bg-energia-success data-[state=checked]:border-energia-success cursor-pointer"
+                                                            className="data-[state=checked]:bg-energia-accent data-[state=checked]:border-energia-accent data-[state=checked]:text-white cursor-pointer"
                                                         />
                                                     </div>
                                                 </PopoverTrigger>
@@ -277,7 +275,7 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
                                                     <div className="flex items-center gap-2">
                                                         {popoverState?.added ? (
                                                             <>
-                                                                <Check className="h-4 w-4 text-energia-success" />
+                                                                <Check className="h-4 w-4 text-energia-accent" />
                                                                 <span>{t("addedToStats")}</span>
                                                             </>
                                                         ) : (

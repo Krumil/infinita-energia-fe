@@ -109,7 +109,7 @@ export function useAgents() {
                 setSaving(false);
             }
         },
-        [editingAgent, loadAgents, toast, t]
+        [editingAgent, loadAgents, toast, t],
     );
 
     // Delete agent
@@ -141,16 +141,14 @@ export function useAgents() {
     const toggleStatistiche = useCallback(
         async (agent: Agente, value: boolean): Promise<void> => {
             // Optimistic update
-            setAgents((prev) =>
-                prev.map((a) => (a.id === agent.id ? { ...a, statistiche: value } : a))
-            );
+            setAgents((prev) => prev.map((a) => (a.id === agent.id ? { ...a, statistiche: value } : a)));
 
             try {
                 await updateAgente(agent.id, { statistiche: value });
             } catch (error) {
                 // Rollback on error
                 setAgents((prev) =>
-                    prev.map((a) => (a.id === agent.id ? { ...a, statistiche: agent.statistiche } : a))
+                    prev.map((a) => (a.id === agent.id ? { ...a, statistiche: agent.statistiche } : a)),
                 );
                 const errorMsg = error instanceof ApiError ? error.message : t("error");
                 toast({
@@ -160,7 +158,7 @@ export function useAgents() {
                 });
             }
         },
-        [toast, t]
+        [toast, t],
     );
 
     return {

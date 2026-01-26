@@ -98,7 +98,7 @@ function sanitizeFilename(name: string): string {
 export async function createSellerExcel(
     sellerName: string,
     data: ProvvigioneData[],
-    totalCommission: number
+    totalCommission: number,
 ): Promise<Uint8Array> {
     const XLSX = await import("xlsx");
 
@@ -167,7 +167,7 @@ export async function generateCommissionsZip(result: CalcoloResult, periodFolder
         const excelBuffer = await createSellerExcel(
             sellerName,
             sellerData.dati_provvigione,
-            sellerData.totale_provvigione
+            sellerData.totale_provvigione,
         );
 
         const safeFilename = sanitizeFilename(sellerName);

@@ -1,10 +1,7 @@
 import { TrendingUp, TrendingDown, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/useTranslation";
-import type {
-    DashboardContrattiTotali,
-    DashboardProvvigioniTotali,
-} from "@/types";
+import type { DashboardContrattiTotali, DashboardProvvigioniTotali } from "@/types";
 
 interface DashboardKPISectionProps {
     contrattiTotali: DashboardContrattiTotali | null;
@@ -53,7 +50,11 @@ function KPICard({ title, value, subtitle, change, delay = 0, loading = false }:
                                             : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                                     }`}
                                 >
-                                    {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                    {isPositive ? (
+                                        <TrendingUp className="h-3 w-3" />
+                                    ) : (
+                                        <TrendingDown className="h-3 w-3" />
+                                    )}
                                     <span>
                                         {isPositive ? "+" : ""}
                                         {change.toFixed(1)}%

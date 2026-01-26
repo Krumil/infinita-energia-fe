@@ -78,7 +78,7 @@ export function useCalcolo(agents: Agente[]) {
                 });
             }
         },
-        [toast, t, agents]
+        [toast, t, agents],
     );
 
     const calculate = useCallback(async (): Promise<string | null> => {

@@ -12,11 +12,11 @@ interface ProductsChartProps {
 
 // Color palette for products
 const PRODUCT_COLORS = [
-    "#003f5c",  // Dark blue
-    "#58508d",  // Purple
-    "#bc5090",  // Pink/Magenta
-    "#ff6361",  // Coral/Red
-    "#ffa600",  // Orange/Yellow
+    "#003f5c", // Dark blue
+    "#58508d", // Purple
+    "#bc5090", // Pink/Magenta
+    "#ff6361", // Coral/Red
+    "#ffa600", // Orange/Yellow
 ];
 
 function getProductColor(index: number): string {
@@ -47,10 +47,7 @@ export function ProductsChart({ data, selectedYear, loading = false }: ProductsC
     const barGap = 4;
     const groupGap = 16;
     const minWidth = 400;
-    const calculatedWidth = Math.max(
-        minWidth,
-        chartData.length * (barWidth * 2 + barGap + groupGap) + 80
-    );
+    const calculatedWidth = Math.max(minWidth, chartData.length * (barWidth * 2 + barGap + groupGap) + 80);
 
     return (
         <Card className="animate-fade-up" style={{ animationDelay: "300ms" }}>
@@ -112,7 +109,9 @@ export function ProductsChart({ data, selectedYear, loading = false }: ProductsC
                                                         <span className="font-medium">{current?.value ?? 0}</span>
                                                     </div>
                                                     <div className="flex justify-between gap-4">
-                                                        <span className="text-muted-foreground">{selectedYear - 1}:</span>
+                                                        <span className="text-muted-foreground">
+                                                            {selectedYear - 1}:
+                                                        </span>
                                                         <span className="font-medium">{previous?.value ?? 0}</span>
                                                     </div>
                                                 </div>
@@ -120,12 +119,22 @@ export function ProductsChart({ data, selectedYear, loading = false }: ProductsC
                                         );
                                     }}
                                 />
-                                <Bar dataKey="currentYear" radius={[4, 4, 0, 0]} maxBarSize={barWidth} name={String(selectedYear)}>
+                                <Bar
+                                    dataKey="currentYear"
+                                    radius={[4, 4, 0, 0]}
+                                    maxBarSize={barWidth}
+                                    name={String(selectedYear)}
+                                >
                                     {chartData.map((_, index) => (
                                         <Cell key={`current-${index}`} fill={getProductColor(index)} />
                                     ))}
                                 </Bar>
-                                <Bar dataKey="previousYear" radius={[4, 4, 0, 0]} maxBarSize={barWidth} name={String(selectedYear - 1)}>
+                                <Bar
+                                    dataKey="previousYear"
+                                    radius={[4, 4, 0, 0]}
+                                    maxBarSize={barWidth}
+                                    name={String(selectedYear - 1)}
+                                >
                                     {chartData.map((_, index) => (
                                         <Cell key={`previous-${index}`} fill={getProductColorLight(index)} />
                                     ))}
@@ -135,11 +144,15 @@ export function ProductsChart({ data, selectedYear, loading = false }: ProductsC
                         <div className="flex justify-center gap-6 mt-2 text-sm">
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: "#003f5c" }} />
-                                <span className="text-muted-foreground">{selectedYear} ({t("currentYear")})</span>
+                                <span className="text-muted-foreground">
+                                    {selectedYear} ({t("currentYear")})
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: "#003f5c66" }} />
-                                <span className="text-muted-foreground">{selectedYear - 1} ({t("previousYear")})</span>
+                                <span className="text-muted-foreground">
+                                    {selectedYear - 1} ({t("previousYear")})
+                                </span>
                             </div>
                         </div>
                     </div>

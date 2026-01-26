@@ -23,7 +23,7 @@ function filterItems(items: ProvvigioneData[], query: string): ProvvigioneData[]
         (item) =>
             item.cliente.toLowerCase().includes(lowerQuery) ||
             item.pod_pdr.toLowerCase().includes(lowerQuery) ||
-            item.regola.toLowerCase().includes(lowerQuery)
+            item.regola.toLowerCase().includes(lowerQuery),
     );
 }
 
@@ -54,9 +54,8 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
     const handleDownloadZip = async () => {
         setIsGeneratingZip(true);
         try {
-            const { extractPeriodFromCompDal, generateCommissionsZip, downloadBlob } = await import(
-                "@/lib/exportUtils"
-            );
+            const { extractPeriodFromCompDal, generateCommissionsZip, downloadBlob } =
+                await import("@/lib/exportUtils");
             const periodFolder = extractPeriodFromCompDal(compDal);
             const blob = await generateCommissionsZip(data, periodFolder);
             downloadBlob(blob, `provvigioni-${periodFolder}.zip`);
@@ -196,7 +195,7 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
                                                                                     </TableCell>
                                                                                     <TableCell className="text-right font-mono font-semibold">
                                                                                         {formatCurrency(
-                                                                                            item.importo_provvigione
+                                                                                            item.importo_provvigione,
                                                                                         )}
                                                                                     </TableCell>
                                                                                 </TableRow>
@@ -221,10 +220,10 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
                                                                     filteredItems.length !==
                                                                         sellerData.dati_provvigione.length
                                                                         ? `${t("showing")} ${filteredItems.length} ${t(
-                                                                              "of"
+                                                                              "of",
                                                                           )} ${sellerData.dati_provvigione.length}`
                                                                         : `${sellerData.dati_provvigione.length} ${t(
-                                                                              "records"
+                                                                              "records",
                                                                           ).toLowerCase()}`}
                                                                 </span>
                                                                 {filteredItems.length > 0 && (
@@ -235,8 +234,8 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
                                                                                 (sum, item) =>
                                                                                     sum +
                                                                                     (item.importo_provvigione || 0),
-                                                                                0
-                                                                            )
+                                                                                0,
+                                                                            ),
                                                                         )}
                                                                     </span>
                                                                 )}

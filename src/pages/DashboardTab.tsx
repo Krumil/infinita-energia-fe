@@ -61,10 +61,7 @@ export function DashboardTab() {
             <div className="space-y-4">
                 <h2 className="text-lg font-display text-foreground">Andamento Annuale</h2>
                 <div className="grid gap-6 lg:grid-cols-2">
-                    <ContractsHistogram
-                        data={data.contrattiMensili}
-                        loading={loading}
-                    />
+                    <ContractsHistogram data={data.contrattiMensili} loading={loading} />
                     <CommissionsChart
                         data={data.provvigioniMensili}
                         selectedYear={selectedYear ?? new Date().getFullYear()}

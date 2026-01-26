@@ -22,11 +22,7 @@ export function AgentFilter({ availableAgents, value, onChange, loading = false 
                 disabled={loading || availableAgents.length === 0}
             >
                 <SelectTrigger className="w-[160px] bg-background">
-                    {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                        <SelectValue placeholder={t("total")} />
-                    )}
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder={t("total")} />}
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="__totale__">{t("total")}</SelectItem>
