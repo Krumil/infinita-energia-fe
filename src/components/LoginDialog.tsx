@@ -8,24 +8,24 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { LogIn } from "lucide-react";
 
 export function LoginDialog() {
-    const { isAuthenticated, login } = useAuth();
+    const { isAuthenticated, isLoading, error, login, clearError } = useAuth();
     const { t } = useTranslation();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError("");
-        setLoading(true);
+        await login(username, password);
+    };
 
-        const success = await login(username, password);
-        setLoading(false);
+    const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setUsername(e.target.value);
+        if (error) clearError();
+    };
 
-        if (!success) {
-            setError(t("loginError"));
-        }
+    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPassword(e.target.value);
+        if (error) clearError();
     };
 
     return (
@@ -49,7 +49,7 @@ export function LoginDialog() {
                             id="username"
                             type="text"
                             value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            onChange={handleUsernameChange}
                             placeholder={t("usernamePlaceholder")}
                             required
                             autoFocus
@@ -61,14 +61,14 @@ export function LoginDialog() {
                             id="password"
                             type="password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={handlePasswordChange}
                             placeholder={t("passwordPlaceholder")}
                             required
                         />
                     </div>
                     {error && <p className="text-sm text-destructive">{error}</p>}
-                    <Button type="submit" className="w-full" disabled={loading}>
-                        {loading ? t("loggingIn") : t("login")}
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? t("loggingIn") : t("login")}
                     </Button>
                 </form>
             </DialogContent>

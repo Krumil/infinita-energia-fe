@@ -1,10 +1,14 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { apiLogin, apiLogout, checkAuthStatus, setUnauthorizedCallback, ApiError } from "../api";
 
 interface AuthContextType {
     isAuthenticated: boolean;
     user: string | null;
+    isLoading: boolean;
+    error: string | null;
     login: (username: string, password: string) => Promise<boolean>;
-    logout: () => void;
+    logout: () => Promise<void>;
+    clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -13,38 +17,77 @@ const AUTH_STORAGE_KEY = "auth_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<string | null>(null);
-    const [isInitialized, setIsInitialized] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (storedUser) {
-            setUser(storedUser);
-        }
-        setIsInitialized(true);
+    const handleUnauthorized = useCallback(() => {
+        setUser(null);
+        localStorage.removeItem(AUTH_STORAGE_KEY);
     }, []);
 
-    const login = async (username: string, _password: string): Promise<boolean> => {
-        // Mock implementation - accepts any non-empty credentials
-        if (username.trim()) {
+    useEffect(() => {
+        setUnauthorizedCallback(handleUnauthorized);
+        return () => setUnauthorizedCallback(null);
+    }, [handleUnauthorized]);
+
+    useEffect(() => {
+        async function verifySession() {
+            const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+            if (storedUser) {
+                const isValid = await checkAuthStatus();
+                if (isValid) {
+                    setUser(storedUser);
+                } else {
+                    localStorage.removeItem(AUTH_STORAGE_KEY);
+                }
+            }
+            setIsLoading(false);
+        }
+        verifySession();
+    }, []);
+
+    const login = async (username: string, password: string): Promise<boolean> => {
+        setError(null);
+        setIsLoading(true);
+        try {
+            await apiLogin({ username, password });
             setUser(username);
             localStorage.setItem(AUTH_STORAGE_KEY, username);
             return true;
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setError(err.message);
+            } else {
+                setError("Errore di connessione al server");
+            }
+            return false;
+        } finally {
+            setIsLoading(false);
         }
-        return false;
     };
 
-    const logout = () => {
+    const logout = async (): Promise<void> => {
+        try {
+            await apiLogout();
+        } catch {
+            // Logout locally even if API call fails
+        }
         setUser(null);
         localStorage.removeItem(AUTH_STORAGE_KEY);
     };
 
-    // Don't render children until we've checked localStorage
-    if (!isInitialized) {
+    const clearError = () => setError(null);
+
+    if (isLoading && !user) {
         return null;
     }
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated: !!user, user, login, logout }}>{children}</AuthContext.Provider>
+        <AuthContext.Provider
+            value={{ isAuthenticated: !!user, user, isLoading, error, login, logout, clearError }}
+        >
+            {children}
+        </AuthContext.Provider>
     );
 }
 

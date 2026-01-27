@@ -21,6 +21,70 @@ import type {
 // Backend base URL - Flask runs on port 5000
 const BASE_API = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 
+// ========== AUTH FETCH WRAPPER ==========
+
+// 401 callback - set by AuthContext for automatic logout on session expiry
+type UnauthorizedCallback = () => void;
+let onUnauthorized: UnauthorizedCallback | null = null;
+
+export function setUnauthorizedCallback(callback: UnauthorizedCallback | null): void {
+    onUnauthorized = callback;
+}
+
+// Wrapper that adds credentials to all requests
+async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const response = await fetch(input, {
+        ...init,
+        credentials: "include",
+    });
+
+    if (response.status === 401 && onUnauthorized) {
+        onUnauthorized();
+    }
+
+    return response;
+}
+
+// ========== AUTHENTICATION API ==========
+
+export interface LoginRequest {
+    username: string;
+    password: string;
+}
+
+export interface AuthResponse {
+    message: string;
+}
+
+export async function apiLogin(data: LoginRequest): Promise<AuthResponse> {
+    const res = await fetch(`${BASE_API}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+    });
+    return handleResponse<AuthResponse>(res);
+}
+
+export async function apiLogout(): Promise<AuthResponse> {
+    const res = await fetch(`${BASE_API}/logout`, {
+        method: "POST",
+        credentials: "include",
+    });
+    return handleResponse<AuthResponse>(res);
+}
+
+export async function checkAuthStatus(): Promise<boolean> {
+    try {
+        const res = await fetch(`${BASE_API}/db-status`, {
+            credentials: "include",
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
 // Error class for API errors
 export class ApiError extends Error {
     constructor(
@@ -81,7 +145,7 @@ async function handleResponseWithSanitization<T>(res: Response): Promise<T> {
  * Returns all sales agents with their commission configurations
  */
 export async function getAgenti(): Promise<Agente[]> {
-    const res = await fetch(`${BASE_API}/agenti`, {
+    const res = await authFetch(`${BASE_API}/agenti`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -97,7 +161,7 @@ export async function getAgenti(): Promise<Agente[]> {
  * @throws ApiError with status 409 if agent name already exists
  */
 export async function createAgente(data: CreateAgentRequest): Promise<AgentCreateResponse> {
-    const res = await fetch(`${BASE_API}/agenti`, {
+    const res = await authFetch(`${BASE_API}/agenti`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -113,7 +177,7 @@ export async function createAgente(data: CreateAgentRequest): Promise<AgentCreat
  * @throws ApiError with status 404 if agent not found
  */
 export async function updateAgente(id: number, data: Partial<Agente>): Promise<AgentMessageResponse> {
-    const res = await fetch(`${BASE_API}/agenti/${id}`, {
+    const res = await authFetch(`${BASE_API}/agenti/${id}`, {
         method: "PUT",
         headers: {
             "Content-Type": "application/json",
@@ -129,7 +193,7 @@ export async function updateAgente(id: number, data: Partial<Agente>): Promise<A
  * @throws ApiError with status 404 if agent not found
  */
 export async function deleteAgente(id: number): Promise<AgentMessageResponse> {
-    const res = await fetch(`${BASE_API}/agenti/${id}`, {
+    const res = await authFetch(`${BASE_API}/agenti/${id}`, {
         method: "DELETE",
         headers: {
             "Content-Type": "application/json",
@@ -215,7 +279,7 @@ export async function uploadExcel(file: File): Promise<ImportExcelResponse> {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch(`${BASE_API}/upload-excel`, {
+    const res = await authFetch(`${BASE_API}/upload-excel`, {
         method: "POST",
         body: formData,
         // Do NOT set Content-Type header - browser sets it automatically with boundary
@@ -230,7 +294,7 @@ export async function getPendingOrders(startDate?: string, endDate?: string): Pr
     if (startDate) url.searchParams.set("start_date", startDate);
     if (endDate) url.searchParams.set("end_date", endDate);
 
-    const res = await fetch(url.toString(), {
+    const res = await authFetch(url.toString(), {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -248,7 +312,7 @@ export async function getPendingOrders(startDate?: string, endDate?: string): Pr
  * @throws ApiError with status 400/500 on error
  */
 export async function importLiquidazioni(data: Liquidazione[]): Promise<ImportLiquidazioniResponse> {
-    const res = await fetch(`${BASE_API}/importa-liquidazioni`, {
+    const res = await authFetch(`${BASE_API}/importa-liquidazioni`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -267,7 +331,7 @@ export async function importLiquidazioni(data: Liquidazione[]): Promise<ImportLi
  * Only processes records where Partner Comm. = "INFINITA ENERGIA INSIEME SRL"
  */
 export async function calcolaProvvigioni(data: CalcoloInput[]): Promise<CalcoloResult> {
-    const res = await fetch(`${BASE_API}/calcolo`, {
+    const res = await authFetch(`${BASE_API}/calcolo`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -483,7 +547,7 @@ export async function parseLiquidazioniExcel(file: File): Promise<Liquidazione[]
 
 /** GET /api/dashboard/anni-disponibili - Get available years */
 export async function getDashboardAnniDisponibili(): Promise<number[]> {
-    const res = await fetch(`${BASE_API}/dashboard/anni-disponibili`, {
+    const res = await authFetch(`${BASE_API}/dashboard/anni-disponibili`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -494,7 +558,7 @@ export async function getDashboardAnniDisponibili(): Promise<number[]> {
 
 /** GET /api/dashboard/agenti-filtro - Get agents available for filtering */
 export async function getDashboardAgentiFiltro(): Promise<string[]> {
-    const res = await fetch(`${BASE_API}/dashboard/agenti-filtro`, {
+    const res = await authFetch(`${BASE_API}/dashboard/agenti-filtro`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -508,7 +572,7 @@ export async function getDashboardContrattiTotali(anno?: number, agente?: string
     const url = new URL(`${BASE_API}/dashboard/contratti-totali`);
     if (anno) url.searchParams.set("anno", String(anno));
     if (agente) url.searchParams.set("agente", agente);
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -525,7 +589,7 @@ export async function getDashboardProvvigioniTotali(
     const url = new URL(`${BASE_API}/dashboard/provvigioni-totali`);
     if (anno) url.searchParams.set("anno", String(anno));
     if (agente) url.searchParams.set("agente", agente);
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -539,7 +603,7 @@ export async function getDashboardContrattiMensili(anno?: number, agente?: strin
     const url = new URL(`${BASE_API}/dashboard/contratti-mensili`);
     if (anno) url.searchParams.set("anno", String(anno));
     if (agente) url.searchParams.set("agente", agente);
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -556,7 +620,7 @@ export async function getDashboardProvvigioniMensili(
     const url = new URL(`${BASE_API}/dashboard/provvigioni-mensili`);
     if (anno) url.searchParams.set("anno", String(anno));
     if (agente) url.searchParams.set("agente", agente);
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -573,7 +637,7 @@ export async function getDashboardContrattiPerProdotto(
     const url = new URL(`${BASE_API}/dashboard/contratti-per-prodotto`);
     if (anno) url.searchParams.set("anno", String(anno));
     if (agente) url.searchParams.set("agente", agente);
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
