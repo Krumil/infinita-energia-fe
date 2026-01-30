@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, Pencil, Trash2, Check, X as XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,52 @@ function formatCurrency(amount: number, currency: string = "EUR"): string {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
 }
 
+interface ColumnDef {
+    key: string;
+    defaultWidth: number;
+    minWidth: number;
+}
+
+interface ResizeHandleProps {
+    index: number;
+    onMouseDown: (e: React.MouseEvent, index: number) => void;
+    onDoubleClick: (index: number) => void;
+}
+
+function ResizeHandle({ index, onMouseDown, onDoubleClick }: ResizeHandleProps) {
+    return (
+        <div
+            className="absolute right-0 top-0 h-full w-1 cursor-col-resize group hover:bg-energia-accent/50 z-10"
+            onMouseDown={(e) => onMouseDown(e, index)}
+            onDoubleClick={(e) => {
+                e.stopPropagation();
+                onDoubleClick(index);
+            }}
+            onClick={(e) => e.stopPropagation()}
+        >
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-border/50 group-hover:bg-energia-accent rounded-full" />
+        </div>
+    );
+}
+
+const COLUMNS: ColumnDef[] = [
+    { key: "nome_cognome", defaultWidth: 140, minWidth: 100 },
+    { key: "agente_padre", defaultWidth: 160, minWidth: 100 },
+    { key: "gettone_residenziale_standard", defaultWidth: 100, minWidth: 80 },
+    { key: "gettone_residenziale_bonus", defaultWidth: 100, minWidth: 80 },
+    { key: "gettone_residenziale_malus", defaultWidth: 100, minWidth: 80 },
+    { key: "rinnovo_residenziale", defaultWidth: 100, minWidth: 80 },
+    { key: "gettone_business_standard", defaultWidth: 100, minWidth: 80 },
+    { key: "gettone_business_bonus", defaultWidth: 100, minWidth: 80 },
+    { key: "gettone_business_malus", defaultWidth: 100, minWidth: 80 },
+    { key: "rinnovo_business", defaultWidth: 100, minWidth: 80 },
+    { key: "bonus_sdd", defaultWidth: 100, minWidth: 80 },
+    { key: "statistiche", defaultWidth: 80, minWidth: 60 },
+    { key: "actions", defaultWidth: 96, minWidth: 96 },
+];
+
+const COLUMN_WIDTHS_KEY = "agents-table-column-widths";
+
 export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: AgentsTableProps) {
     const { t } = useTranslation();
     const [sortKey, setSortKey] = useState<keyof Agente>("nome_cognome");
@@ -20,6 +66,25 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
     const [filter, setFilter] = useState("");
     const [page, setPage] = useState(0);
     const pageSize = 20;
+
+    // Column resize state
+    const [columnWidths, setColumnWidths] = useState<number[]>(() => {
+        if (typeof window === "undefined") return COLUMNS.map((col) => col.defaultWidth);
+        const saved = localStorage.getItem(COLUMN_WIDTHS_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length === COLUMNS.length) {
+                    return parsed;
+                }
+            } catch {
+                // Invalid JSON, use defaults
+            }
+        }
+        return COLUMNS.map((col) => col.defaultWidth);
+    });
+    const resizingRef = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
+    const justResizedRef = useRef(false);
 
     // Popover state for statistiche toggle feedback
     const [popoverState, setPopoverState] = useState<{ agentId: number; added: boolean } | null>(null);
@@ -33,6 +98,65 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
             return () => clearTimeout(timer);
         }
     }, [popoverState]);
+
+    // Column resize handlers
+    const handleMouseDown = useCallback((e: React.MouseEvent, index: number) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizingRef.current = {
+            index,
+            startX: e.clientX,
+            startWidth: columnWidths[index],
+        };
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+    }, [columnWidths]);
+
+    const handleResetColumnWidth = useCallback((index: number) => {
+        setColumnWidths((prev) => {
+            const next = [...prev];
+            next[index] = COLUMNS[index].defaultWidth;
+            return next;
+        });
+    }, []);
+
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!resizingRef.current) return;
+            const { index, startX, startWidth } = resizingRef.current;
+            const diff = e.clientX - startX;
+            const newWidth = Math.max(COLUMNS[index].minWidth, startWidth + diff);
+            setColumnWidths((prev) => {
+                const next = [...prev];
+                next[index] = newWidth;
+                return next;
+            });
+        };
+
+        const handleMouseUp = () => {
+            if (resizingRef.current) {
+                justResizedRef.current = true;
+                setTimeout(() => {
+                    justResizedRef.current = false;
+                }, 0);
+            }
+            resizingRef.current = null;
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+        };
+
+        document.addEventListener("mousemove", handleMouseMove);
+        document.addEventListener("mouseup", handleMouseUp);
+        return () => {
+            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("mouseup", handleMouseUp);
+        };
+    }, []);
+
+    // Persist column widths to localStorage
+    useEffect(() => {
+        localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(columnWidths));
+    }, [columnWidths]);
 
     const handleToggleStatistiche = useCallback(
         (agent: Agente, checked: boolean) => {
@@ -71,6 +195,7 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
     const totalPages = Math.ceil(sorted.length / pageSize);
 
     const handleSort = (key: keyof Agente) => {
+        if (justResizedRef.current) return;
         if (sortKey === key) {
             setSortDir(sortDir === "asc" ? "desc" : "asc");
         } else {
@@ -106,108 +231,119 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
                 )}
             </div>
             <div className="border border-border/50 overflow-x-auto rounded-sm shadow-sm">
-                <table className="ledger-table min-w-[1400px] lg:min-w-full">
+                <table className="ledger-table w-full">
+                    <colgroup>
+                        {columnWidths.map((width, i) => (
+                            <col key={i} style={{ width }} />
+                        ))}
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th
-                                className="cursor-pointer hover:text-foreground"
-                                onClick={() => handleSort("nome_cognome")}
-                            >
+                            <th className="relative cursor-pointer hover:text-foreground" onClick={() => handleSort("nome_cognome")}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-2">
-                                            {t("agentName")} <ArrowUpDown className="h-3 w-3" />
+                                        <div className="flex items-center gap-2 pr-2">
+                                            {t("agentName")} <ArrowUpDown className="h-3 w-3 shrink-0" />
                                         </div>
                                     </TooltipTrigger>
                                     <TooltipContent>{t("agentNameTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={0} />
                             </th>
-                            <th
-                                className="cursor-pointer hover:text-foreground"
-                                onClick={() => handleSort("agente_padre")}
-                            >
+                            <th className="relative cursor-pointer hover:text-foreground" onClick={() => handleSort("agente_padre")}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-2">
-                                            {t("parentAgent")} <ArrowUpDown className="h-3 w-3" />
+                                        <div className="flex items-center gap-2 pr-2">
+                                            {t("parentAgent")} <ArrowUpDown className="h-3 w-3 shrink-0" />
                                         </div>
                                     </TooltipTrigger>
                                     <TooltipContent>{t("parentAgentTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={1} />
                             </th>
-                            <th className="text-right">
+                            <th className="relative text-right">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-right">
+                                    <TooltipTrigger className="w-full text-right pr-2">
                                         {t("residentialStandard")}
                                     </TooltipTrigger>
                                     <TooltipContent>{t("residentialStandardTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={2} />
                             </th>
-                            <th className="text-right">
+                            <th className="relative text-right">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-right">
+                                    <TooltipTrigger className="w-full text-right pr-2">
                                         {t("residentialBonus")}
                                     </TooltipTrigger>
                                     <TooltipContent>{t("residentialBonusTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={3} />
                             </th>
-                            <th className="text-right">
+                            <th className="relative text-right">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-right">
+                                    <TooltipTrigger className="w-full text-right pr-2">
                                         {t("residentialMalus")}
                                     </TooltipTrigger>
                                     <TooltipContent>{t("residentialMalusTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={4} />
                             </th>
-                            <th className="text-right">
+                            <th className="relative text-right">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-right">
+                                    <TooltipTrigger className="w-full text-right pr-2">
                                         {t("residentialRenewal")}
                                     </TooltipTrigger>
                                     <TooltipContent>{t("residentialRenewalTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={5} />
                             </th>
-                            <th className="text-right">
+                            <th className="relative text-right">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-right">
+                                    <TooltipTrigger className="w-full text-right pr-2">
                                         {t("businessStandard")}
                                     </TooltipTrigger>
                                     <TooltipContent>{t("businessStandardTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={6} />
                             </th>
-                            <th className="text-right">
+                            <th className="relative text-right">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-right">{t("businessBonus")}</TooltipTrigger>
+                                    <TooltipTrigger className="w-full text-right pr-2">{t("businessBonus")}</TooltipTrigger>
                                     <TooltipContent>{t("businessBonusTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={7} />
                             </th>
-                            <th className="text-right">
+                            <th className="relative text-right">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-right">{t("businessMalus")}</TooltipTrigger>
+                                    <TooltipTrigger className="w-full text-right pr-2">{t("businessMalus")}</TooltipTrigger>
                                     <TooltipContent>{t("businessMalusTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={8} />
                             </th>
-                            <th className="text-right">
+                            <th className="relative text-right">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-right">
+                                    <TooltipTrigger className="w-full text-right pr-2">
                                         {t("businessRenewal")}
                                     </TooltipTrigger>
                                     <TooltipContent>{t("businessRenewalTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={9} />
                             </th>
-                            <th className="text-right">
+                            <th className="relative text-right">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-right">{t("sddBonus")}</TooltipTrigger>
+                                    <TooltipTrigger className="w-full text-right pr-2">{t("sddBonus")}</TooltipTrigger>
                                     <TooltipContent>{t("sddBonusTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={10} />
                             </th>
-                            <th className="text-center">
+                            <th className="relative text-center">
                                 <Tooltip>
                                     <TooltipTrigger className="w-full text-center">{t("statistics")}</TooltipTrigger>
                                     <TooltipContent>{t("statisticsTooltip")}</TooltipContent>
                                 </Tooltip>
+                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={11} />
                             </th>
-                            <th className="w-[96px]">{t("actions")}</th>
+                            <th>{t("actions")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -223,8 +359,26 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
                         ) : (
                             paginated.map((row) => (
                                 <tr key={row.id}>
-                                    <td className="font-body font-medium">{row.nome_cognome}</td>
-                                    <td className="text-muted-foreground">{row.agente_padre || "—"}</td>
+                                    <td className="font-body font-medium overflow-hidden">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="block line-clamp-2 leading-snug">{row.nome_cognome}</span>
+                                            </TooltipTrigger>
+                                            <TooltipContent>{row.nome_cognome}</TooltipContent>
+                                        </Tooltip>
+                                    </td>
+                                    <td className="text-muted-foreground overflow-hidden">
+                                        {row.agente_padre ? (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span className="block line-clamp-2 leading-snug">{row.agente_padre}</span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>{row.agente_padre}</TooltipContent>
+                                            </Tooltip>
+                                        ) : (
+                                            "—"
+                                        )}
+                                    </td>
                                     <td data-numeric className="text-right">
                                         {formatRate(row.gettone_residenziale_standard)}
                                     </td>
