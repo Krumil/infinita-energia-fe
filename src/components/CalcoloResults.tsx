@@ -4,13 +4,9 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import { formatCurrency } from "@/lib/utils";
 import type { CalcoloResultsProps } from "@/types/components";
 import type { ProvvigioneData } from "@/types";
-
-function formatCurrency(amount: number | null, currency: string = "EUR"): string {
-    if (amount === null || amount === undefined) return "€ 0,00";
-    return new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
-}
 
 function sortByCliente(items: ProvvigioneData[]): ProvvigioneData[] {
     return [...items].sort((a, b) => a.cliente.localeCompare(b.cliente, "it"));
@@ -75,7 +71,7 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
                 </span>
                 <div className="kpi-value text-5xl mt-3">{formatCurrency(grandTotal)}</div>
                 <p className="font-body text-muted-foreground mt-3 text-sm italic">
-                    {sellers.length} {t("seller").toLowerCase()}(i)
+                    {sellers.length} {t("beneficiary").toLowerCase()}(i)
                 </p>
                 <div className="mt-4">
                     <Button
@@ -99,7 +95,7 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
 
             <div className="space-y-4">
                 <h3 className="font-display text-xl">
-                    {t("summaryBySeller")}
+                    {t("summaryByBeneficiary")}
                     {periodDisplay && <span className="text-muted-foreground font-normal"> — {periodDisplay}</span>}
                 </h3>
                 <div className="ledger-card overflow-hidden">
@@ -107,7 +103,7 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-12"></TableHead>
-                                <TableHead>{t("seller")}</TableHead>
+                                <TableHead>{t("beneficiary")}</TableHead>
                                 <TableHead className="text-right">{t("records")}</TableHead>
                                 <TableHead className="text-right">{t("totalCommission")}</TableHead>
                             </TableRow>
@@ -170,7 +166,7 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
                                                                     <TableHeader className="sticky top-0 bg-secondary/80 backdrop-blur-sm">
                                                                         <TableRow>
                                                                             <TableHead>{t("client")}</TableHead>
-                                                                            <TableHead>POD/PDR</TableHead>
+                                                                            <TableHead>{t("podPdr")}</TableHead>
                                                                             <TableHead>{t("rule")}</TableHead>
                                                                             <TableHead className="text-right">
                                                                                 {t("commission")}

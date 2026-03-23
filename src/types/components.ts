@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Agente } from "./domain";
+import type { Agente, Regola, ConfigurazioneRegola } from "./domain";
 import type { CreateAgentRequest, CalcoloResult } from "./api";
 
 // === FILE DROPZONE ===
@@ -42,8 +42,12 @@ export interface AgentDialogProps {
     onOpenChange: (open: boolean) => void;
     agent: Agente | null;
     agents: Agente[];
-    onSave: (data: CreateAgentRequest) => Promise<void>;
+    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; tasso_id: number; valore: number }>) => Promise<void>;
     saving: boolean;
+    onDelete?: () => void;
+    deleting?: boolean;
+    configurazione: ConfigurazioneRegola[];
+    configLoading: boolean;
 }
 
 // === AGENTS TABLE ===
@@ -51,8 +55,16 @@ export interface AgentDialogProps {
 export interface AgentsTableProps {
     data: Agente[];
     onEdit: (agent: Agente) => void;
-    onDelete: (agent: Agente) => void;
-    onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
+}
+
+// === REGOLE TABLE ===
+
+export interface RegoleTableProps {
+    regole: Regola[];
+    onToggleUtilizzato: (regola: Regola, value: boolean) => Promise<void>;
+    onUpdateDefault: (regola: Regola, value: number) => Promise<void>;
+    onUpdateTipoUtenza: (regola: Regola, value: "residenziale" | "business" | null) => Promise<void>;
+    onUpdateTipoServizio: (regola: Regola, value: "gas" | "luce" | null) => Promise<void>;
 }
 
 // === CALCOLO RESULTS ===

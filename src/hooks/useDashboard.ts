@@ -7,8 +7,8 @@ import {
     getDashboardContrattiMensili,
     getDashboardProvvigioniMensili,
     getDashboardContrattiPerProdotto,
-    ApiError,
-} from "@/api";
+} from "@/api/dashboard";
+import { ApiError } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type {

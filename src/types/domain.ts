@@ -1,18 +1,43 @@
+// === RULES ===
+export interface Regola {
+    id: number;
+    descrizione: string;
+    utilizzato: boolean;
+    valore_default: number;
+    tipo_utenza: "residenziale" | "business" | null;
+    tipo_servizio: "gas" | "luce" | null;
+}
+
+// === SCAGLIONI ===
+export interface Scaglione {
+    id: number;
+    descrizione: string;
+    tipo_utenza: "residenziale" | "business" | null;
+    tipo_servizio: "gas" | "luce" | null;
+}
+
 // === AGENTS ===
 export interface Agente {
     id: number;
     nome_cognome: string;
     agente_padre: string | null;
-    statistiche: boolean | null;
-    gettone_residenziale_standard: number | null;
-    gettone_residenziale_bonus: number | null;
-    gettone_residenziale_malus: number | null;
-    rinnovo_residenziale: number | null;
-    gettone_business_standard: number | null;
-    gettone_business_bonus: number | null;
-    gettone_business_malus: number | null;
-    rinnovo_business: number | null;
-    bonus_sdd: number | null;
+    mail: string | null;
+}
+
+// === AGENT RULE CONFIGURATION ===
+export interface ConfigurazioneRegola {
+    regola_id: number;
+    regola_nome: string;
+    tasso_id: number;
+    tasso_nome: string;
+    valore: number;
+    is_custom: boolean;
+}
+
+export interface ConfigurazioneResponse {
+    agente_id: number;
+    nome_agente: string;
+    configurazione: ConfigurazioneRegola[];
 }
 
 // === LIQUIDATIONS ===
@@ -51,5 +76,4 @@ export interface Liquidazione {
     competenza_liquidazione?: string; // Format: "YYYY-MM-DD" from Excel (MM/YYYY)
 }
 
-// Application settings - extensible for future preferences
 export type AppSettings = Record<string, unknown>;

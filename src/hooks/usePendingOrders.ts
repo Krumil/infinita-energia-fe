@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
-import { getPendingOrders, ApiError } from "@/api";
+import { useState, useCallback, useRef } from "react";
+import { getPendingOrders } from "@/api/orders";
+import { ApiError } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { PendingOrder } from "@/types";
@@ -12,8 +13,20 @@ export function usePendingOrders() {
     const [count, setCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [startDate, setStartDate] = useState<string>("");
-    const [endDate, setEndDate] = useState<string>("");
+    const [startDate, setStartDateState] = useState<string>("");
+    const [endDate, setEndDateState] = useState<string>("");
+    const startDateRef = useRef("");
+    const endDateRef = useRef("");
+
+    const setStartDate = useCallback((date: string) => {
+        startDateRef.current = date;
+        setStartDateState(date);
+    }, []);
+
+    const setEndDate = useCallback((date: string) => {
+        endDateRef.current = date;
+        setEndDateState(date);
+    }, []);
 
     const fetchPendingOrders = useCallback(
         async (start?: string, end?: string) => {
@@ -21,7 +34,9 @@ export function usePendingOrders() {
             setError(null);
 
             try {
-                const response = await getPendingOrders(start || undefined, end || undefined);
+                const effectiveStart = start ?? (startDateRef.current || undefined);
+                const effectiveEnd = end ?? (endDateRef.current || undefined);
+                const response = await getPendingOrders(effectiveStart, effectiveEnd);
                 setOrders(response.data);
                 setCount(response.count);
             } catch (err) {

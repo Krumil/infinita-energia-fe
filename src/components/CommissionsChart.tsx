@@ -9,6 +9,7 @@ import {
     type ChartConfig,
 } from "@/components/ui/chart";
 import { useTranslation } from "@/hooks/useTranslation";
+import { formatCurrency } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import type { DashboardProvvigioniMensili } from "@/types";
 
@@ -16,10 +17,6 @@ interface CommissionsChartProps {
     data: DashboardProvvigioniMensili | null;
     selectedYear: number;
     loading?: boolean;
-}
-
-function formatCurrency(amount: number, currency: string = "EUR"): string {
-    return new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
 }
 
 export function CommissionsChart({ data, loading = false }: CommissionsChartProps) {

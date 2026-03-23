@@ -1,6 +1,8 @@
 // Custom hooks
 export { useAppSettings } from "./useAppSettings";
 export { useAgents } from "./useAgents";
+export { useRegole } from "./useRegole";
+export { useScaglioni } from "./useScaglioni";
 export { useOrders } from "./useOrders";
 export { useLiquidazioni } from "./useLiquidazioni";
 export { useCalcolo } from "./useCalcolo";

@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { uploadExcel, ApiError } from "@/api";
+import { uploadExcel } from "@/api/orders";
+import { ApiError } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { ImportExcelResponse } from "@/types";

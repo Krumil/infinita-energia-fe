@@ -1,6 +1,7 @@
 import { TrendingUp, TrendingDown, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/useTranslation";
+import { formatCurrency } from "@/lib/utils";
 import type { DashboardContrattiTotali, DashboardProvvigioniTotali } from "@/types";
 
 interface DashboardKPISectionProps {
@@ -17,10 +18,6 @@ interface KPICardProps {
     change?: number;
     delay?: number;
     loading?: boolean;
-}
-
-function formatCurrency(amount: number, currency: string = "EUR"): string {
-    return new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
 }
 
 function KPICard({ title, value, subtitle, change, delay = 0, loading = false }: KPICardProps) {

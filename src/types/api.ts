@@ -1,27 +1,58 @@
+import type { Regola } from "./domain";
+
 // === AGENT API TYPES ===
 
 export interface CreateAgentRequest {
     nome_cognome: string;
     agente_padre?: string;
-    statistiche?: boolean;
-    gettone_residenziale_standard?: number;
-    gettone_residenziale_bonus?: number;
-    gettone_residenziale_malus?: number;
-    rinnovo_residenziale?: number;
-    gettone_business_standard?: number;
-    gettone_business_bonus?: number;
-    gettone_business_malus?: number;
-    rinnovo_business?: number;
-    bonus_sdd?: number;
+    mail?: string;
 }
 
 export interface AgentCreateResponse {
     message: string;
-    id: number;
+    agente_id: number;
 }
 
 export interface AgentMessageResponse {
     message: string;
+}
+
+// === RULES API TYPES ===
+
+export interface UpdateRegolaRequest {
+    utilizzato?: boolean;
+    valore_default?: number;
+    tipo_utenza?: "residenziale" | "business" | null;
+    tipo_servizio?: "gas" | "luce" | null;
+}
+
+export interface UpdateRegolaResponse {
+    success: boolean;
+    message: string;
+    regola: Regola;
+}
+
+export interface ImportRegoleResponse {
+    success: boolean;
+    message: string;
+}
+
+// === SCAGLIONI API TYPES ===
+
+export interface UpdateScaglioneRequest {
+    tipo_utenza?: "residenziale" | "business" | null;
+    tipo_servizio?: "gas" | "luce" | null;
+}
+
+export interface ImportScaglioniResponse {
+    success: boolean;
+    message: string;
+}
+
+// === AGENT CONFIGURATION API TYPES ===
+
+export interface SaveConfigurazioneRequest {
+    valori: Array<{ regola_id: number; tasso_id: number; valore: number }>;
 }
 
 // === EXCEL IMPORT TYPES ===
@@ -65,42 +96,16 @@ export interface CalcoloResult {
     [venditoreName: string]: CalcoloVenditoreResult;
 }
 
-// Liquidation record for calculation input
-// Uses original column names with spaces/special chars as expected by backend
 export interface CalcoloInput {
-    "Partner Comm.": string;
-    Regola: string;
-    "Tipo Cliente": string;
-    Venditore: string;
-    Consumo: number;
-    Quantità: number;
-    "Importo €": number;
+    venditore: string;
+    regola: string;
+    scaglione_consumo: string;
+    importo_euro: number;
+    pod_pdr: string;
+    cliente: string;
+    cf_piva: string;
+    comp_al: string;
     [key: string]: string | number | undefined;
-}
-
-// === BULK IMPORT TYPES ===
-
-// CSV Agent row type (for bulk import)
-export interface AgentCsvRow {
-    nome_cognome: string;
-    agente_padre?: string;
-    gettone_residenziale_standard?: string | number;
-    gettone_residenziale_bonus?: string | number;
-    gettone_residenziale_malus?: string | number;
-    rinnovo_residenziale?: string | number;
-    gettone_business_standard?: string | number;
-    gettone_business_bonus?: string | number;
-    gettone_business_malus?: string | number;
-    rinnovo_business?: string | number;
-    bonus_sdd?: string | number;
-    [key: string]: string | number | undefined;
-}
-
-// Bulk agent import result
-export interface BulkAgentImportResult {
-    success: number;
-    failed: number;
-    errors: Array<{ row: number; name: string; error: string }>;
 }
 
 // === PENDING ORDERS TYPES ===
@@ -165,7 +170,7 @@ export interface DashboardMeseProvvigioni {
 
 export interface DashboardProvvigioniMensili {
     anno_riferimento: number;
-    unità_misura: string;
+    unita_misura: string;
     dati: DashboardMeseProvvigioni[];
 }
 

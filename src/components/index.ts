@@ -5,6 +5,9 @@ export { EmptyState } from "./EmptyState";
 export { SettingsPanel } from "./SettingsPanel";
 export { AgentDialog } from "./AgentDialog";
 export { AgentsTable } from "./AgentsTable";
+export { RuleValuesEditor } from "./RuleValuesEditor";
+export { RegoleTable } from "./RegoleTable";
+export { ScagloniTable } from "./ScagloniTable";
 export { CalcoloResults } from "./CalcoloResults";
 export { LiquidazioniUploadDialog } from "./LiquidazioniUploadDialog";
 

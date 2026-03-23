@@ -1,19 +1,23 @@
 // Domain types
-export type { Agente, Liquidazione, AppSettings } from "./domain";
+export type { Agente, Regola, Scaglione, Liquidazione, AppSettings, ConfigurazioneRegola, ConfigurazioneResponse } from "./domain";
 
 // API types
 export type {
     CreateAgentRequest,
     AgentCreateResponse,
     AgentMessageResponse,
+    UpdateRegolaRequest,
+    UpdateRegolaResponse,
+    ImportRegoleResponse,
+    UpdateScaglioneRequest,
+    ImportScaglioniResponse,
+    SaveConfigurazioneRequest,
     ImportExcelResponse,
     ImportLiquidazioniResponse,
     ProvvigioneData,
     CalcoloVenditoreResult,
     CalcoloResult,
     CalcoloInput,
-    AgentCsvRow,
-    BulkAgentImportResult,
     PendingOrder,
     PendingOrdersResponse,
     DashboardContrattiTotali,
@@ -34,5 +38,6 @@ export type {
     SettingsPanelProps,
     AgentDialogProps,
     AgentsTableProps,
+    RegoleTableProps,
     CalcoloResultsProps,
 } from "./components";

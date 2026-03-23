@@ -5,26 +5,35 @@
 @layer base {
     :root {
         /* Light Mode - Infinita Energia Brand Colors */
-        --background: 210 20% 98%;
+        --background: 205 24% 95%;
         --foreground: 210 25% 25%;
-        --card: 0 0% 100%;
+        --card: 205 22% 97%;
         --card-foreground: 210 25% 25%;
-        --popover: 0 0% 100%;
+        --popover: 205 22% 97%;
         --popover-foreground: 210 25% 25%;
         --primary: 197 66% 50%;
         --primary-foreground: 0 0% 100%;
-        --secondary: 210 15% 93%;
+        --secondary: 205 18% 90%;
         --secondary-foreground: 210 25% 25%;
-        --muted: 210 12% 94%;
+        --muted: 205 16% 92%;
         --muted-foreground: 210 10% 45%;
         --accent: 130 52% 45%;
         --accent-foreground: 0 0% 100%;
         --destructive: 0 65% 48%;
         --destructive-foreground: 0 0% 100%;
-        --border: 210 15% 85%;
-        --input: 210 12% 90%;
+        --border: 205 14% 82%;
+        --input: 205 14% 88%;
         --ring: 197 66% 50%;
         --radius: 0.375rem;
+        --page-wash: 197 55% 88%;
+        --page-shadow: 210 20% 91%;
+        --surface-tint: 205 20% 95%;
+        --metric-value: 210 6% 35%;
+        --ledger-card-shadow: 0 1px 3px hsl(211 30% 50% / 0.08);
+        --ledger-card-hover-shadow:
+            0 4px 12px hsl(211 30% 50% / 0.12),
+            0 1px 3px hsl(211 30% 50% / 0.08);
+        --dialog-shadow: 0 25px 50px -12px hsl(211 50% 30% / 0.25);
 
         /* Custom color tokens for light mode - Infinita Energia Brand */
         --energia-primary: 197 66% 50%;
@@ -38,9 +47,12 @@
         --sage: 130 52% 45%;
         --sage-light: 130 50% 55%;
 
-        /* Header specific - dark blue brand color */
-        --header-bg: 211 100% 16%;
+        /* Header specific */
+        --header-gradient-start: 211 100% 18%;
+        --header-gradient-end: 211 100% 14%;
+        --header-surface: 0 0% 100%;
         --header-fg: 0 0% 100%;
+        --header-danger: 0 88% 67%;
     }
 
     .dark {
@@ -76,6 +88,18 @@
         --energia-text: 210 5% 65%;
         --sage: 130 50% 50%;
         --sage-light: 130 48% 60%;
+        --surface-tint: 210 12% 11%;
+        --metric-value: 210 5% 90%;
+        --ledger-card-shadow: 0 0 0 hsl(0 0% 0% / 0);
+        --ledger-card-hover-shadow:
+            0 4px 20px hsl(0 0% 0% / 0.3),
+            inset 0 1px 0 0 hsl(40 30% 92% / 0.03);
+        --dialog-shadow: 0 25px 50px -12px hsl(0 0% 0% / 0.5);
+        --header-gradient-start: 210 20% 11%;
+        --header-gradient-end: 210 20% 7%;
+        --header-surface: var(--secondary);
+        --header-fg: 210 5% 90%;
+        --header-danger: 0 82% 68%;
     }
 
     * {
@@ -97,6 +121,13 @@
         line-height: 1.65;
         letter-spacing: 0.01em;
         font-weight: 400;
+    }
+
+    .light body {
+        background-color: hsl(var(--background));
+        background-image:
+            radial-gradient(circle at top left, hsl(var(--page-wash) / 0.42) 0%, transparent 34%),
+            linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--page-shadow)) 100%);
     }
 
     /* Subtle paper grain texture overlay - lighter in light mode */
@@ -200,51 +231,64 @@
     .ledger-header {
         @apply relative;
         border-bottom: none;
-    }
-
-    /* Light mode header - dark blue brand color with subtle gradient */
-    :root .ledger-header {
-        background: linear-gradient(180deg, hsl(211 100% 18%) 0%, hsl(211 100% 14%) 100%);
+        background: linear-gradient(180deg, hsl(var(--header-gradient-start)) 0%, hsl(var(--header-gradient-end)) 100%);
         color: hsl(var(--header-fg));
     }
 
-    :root .ledger-header h1,
-    :root .ledger-header p {
+    .header-brand-title {
         color: hsl(var(--header-fg));
     }
 
-    /* Dark mode header - deeper, more dramatic */
-    .dark .ledger-header {
-        background: linear-gradient(180deg, hsl(210 20% 11%) 0%, hsl(210 20% 7%) 100%);
-        color: hsl(var(--foreground));
+    .header-brand-subtitle {
+        color: hsl(var(--header-fg) / 0.5);
     }
 
-    /* Header navigation button base */
-    .header-nav-btn {
-        @apply relative flex items-center gap-2 px-4 py-2.5;
-        @apply font-display text-sm tracking-wide uppercase;
-        @apply transition-all duration-300 ease-out;
+    .header-brand-divider {
+        background: hsl(var(--header-fg) / 0.15);
     }
 
-    /* Header buttons - visible on dark header in light mode */
-    .header-btn {
-        @apply rounded-md transition-all duration-300;
-        color: hsl(var(--header-fg) / 0.7);
+    .header-section-divider {
+        background: hsl(var(--header-fg) / 0.1);
+    }
+
+    .header-nav-item {
+        @apply relative flex items-center gap-2.5 px-4 py-2.5 rounded-md;
+        @apply font-display text-[13px] uppercase tracking-[0.04em];
+        @apply transition-all duration-200;
+        color: hsl(var(--header-fg) / 0.6);
         background: transparent;
     }
 
-    .header-btn:hover {
+    .header-nav-item:hover,
+    .header-nav-item.is-active {
         color: hsl(var(--header-fg));
-        background: hsl(0 0% 100% / 0.08);
     }
 
-    .dark .header-btn {
-        color: hsl(var(--foreground) / 0.7);
+    .header-nav-item:hover {
+        background: hsl(var(--header-surface) / 0.06);
     }
 
-    .dark .header-btn:hover {
-        color: hsl(var(--foreground));
-        background: hsl(var(--secondary) / 0.4);
+    .header-nav-item.is-active {
+        background: hsl(var(--header-surface) / 0.12);
+    }
+
+    .header-utility-btn {
+        @apply flex items-center justify-center w-10 h-10 rounded-md;
+        @apply transition-all duration-200;
+        color: hsl(var(--header-fg) / 0.6);
+    }
+
+    .header-utility-btn:hover {
+        color: hsl(var(--header-fg));
+        background: hsl(var(--header-surface) / 0.06);
+    }
+
+    .header-utility-btn-danger:hover {
+        color: hsl(var(--header-danger));
+    }
+
+    .header-tab-indicator {
+        background: hsl(var(--energia-accent));
     }
 
     /* Tab Navigation - Editorial Style */
@@ -283,11 +327,7 @@
     .ledger-card {
         @apply relative bg-card border border-border/60 rounded-sm;
         @apply transition-all duration-300;
-    }
-
-    /* Light mode cards - subtle shadow */
-    :root .ledger-card {
-        box-shadow: 0 1px 3px hsl(211 30% 50% / 0.08);
+        box-shadow: var(--ledger-card-shadow);
     }
 
     .ledger-card::before {
@@ -307,34 +347,14 @@
 
     .ledger-card:hover {
         @apply border-border;
-    }
-
-    :root .ledger-card:hover {
-        box-shadow:
-            0 4px 12px hsl(211 30% 50% / 0.12),
-            0 1px 3px hsl(211 30% 50% / 0.08);
-    }
-
-    .dark .ledger-card:hover {
-        box-shadow:
-            0 4px 20px hsl(0 0% 0% / 0.3),
-            inset 0 1px 0 0 hsl(40 30% 92% / 0.03);
+        box-shadow: var(--ledger-card-hover-shadow);
     }
 
     /* KPI Cards - Mode-aware styling */
     .kpi-card {
         @apply relative overflow-hidden rounded-sm;
         border: 1px solid hsl(var(--energia-accent) / 0.2);
-    }
-
-    /* Light mode KPI cards */
-    :root .kpi-card {
-        background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(210 5% 97%) 100%);
-    }
-
-    /* Dark mode KPI cards */
-    .dark .kpi-card {
-        background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(210 12% 11%) 100%);
+        background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--surface-tint)) 100%);
     }
 
     .kpi-card::before {
@@ -351,16 +371,7 @@
         font-family: "IBM Plex Mono", Consolas, monospace;
         @apply text-4xl font-semibold tracking-tight;
         animation: numberRoll 0.8s ease-out forwards;
-    }
-
-    /* Light mode KPI value */
-    :root .kpi-value {
-        color: hsl(210 6% 35%);
-    }
-
-    /* Dark mode KPI value */
-    .dark .kpi-value {
-        color: hsl(210 5% 90%);
+        color: hsl(var(--metric-value));
     }
 
     .kpi-label {
@@ -422,7 +433,7 @@
         font-weight: 400;
         letter-spacing: 0.12em;
         background: hsl(var(--energia-accent));
-        color: hsl(45 30% 98%);
+        color: hsl(var(--accent-foreground));
     }
 
     .btn-primary:hover {
@@ -441,7 +452,7 @@
         content: "";
         position: absolute;
         inset: 0;
-        background: linear-gradient(180deg, hsl(0 0% 100% / 0.1) 0%, transparent 50%);
+        background: linear-gradient(180deg, hsl(var(--accent-foreground) / 0.1) 0%, transparent 50%);
         pointer-events: none;
         border-radius: inherit;
     }
@@ -556,14 +567,7 @@
     .dialog-ledger {
         @apply bg-card border rounded-sm;
         border-color: hsl(var(--border) / 0.5);
-    }
-
-    :root .dialog-ledger {
-        box-shadow: 0 25px 50px -12px hsl(211 50% 30% / 0.25);
-    }
-
-    .dark .dialog-ledger {
-        box-shadow: 0 25px 50px -12px hsl(0 0% 0% / 0.5);
+        box-shadow: var(--dialog-shadow);
     }
 
     .dialog-ledger::before {
