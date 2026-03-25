@@ -1,4 +1,3 @@
-// === RULES ===
 export interface Regola {
     id: number;
     descrizione: string;
@@ -8,7 +7,6 @@ export interface Regola {
     tipo_servizio: "gas" | "luce" | null;
 }
 
-// === SCAGLIONI ===
 export interface Scaglione {
     id: number;
     descrizione: string;
@@ -16,7 +14,6 @@ export interface Scaglione {
     tipo_servizio: "gas" | "luce" | null;
 }
 
-// === AGENTS ===
 export interface Agente {
     id: number;
     nome_cognome: string;
@@ -24,7 +21,6 @@ export interface Agente {
     mail: string | null;
 }
 
-// === AGENT RULE CONFIGURATION ===
 export interface ConfigurazioneRegola {
     regola_id: number;
     regola_nome: string;
@@ -40,7 +36,6 @@ export interface ConfigurazioneResponse {
     configurazione: ConfigurazioneRegola[];
 }
 
-// === LIQUIDATIONS ===
 export interface Liquidazione {
     id?: number;
     piano_provvigionale?: string;

@@ -19,6 +19,10 @@ describe("parseEuroNumber", () => {
         expect(parseEuroNumber("1234.56")).toBe(1234.56);
     });
 
+    it("parses English thousands separators with dot decimals", () => {
+        expect(parseEuroNumber("1,234.56")).toBe(1234.56);
+    });
+
     it("ignores euro symbols and spaces", () => {
         expect(parseEuroNumber("€ 1.234,56")).toBe(1234.56);
         expect(parseEuroNumber("1 234,56")).toBe(1234.56);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Agentation } from "agentation";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -50,6 +50,13 @@ function AuthenticatedApp() {
     const liquidazioni = useLiquidazioni();
     const calcolo = useCalcolo(agents.agents);
     const pendingOrders = usePendingOrders();
+
+    const incompleteRulesCount = useMemo(
+        () =>
+            regole.regole.filter((r) => r.tipo_utenza === null || r.tipo_servizio === null).length +
+            scaglioni.scaglioni.filter((s) => s.tipo_utenza === null || s.tipo_servizio === null).length,
+        [regole.regole, scaglioni.scaglioni],
+    );
 
     useEffect(() => {
         const hash = window.location.hash.replace("#", "") || "dashboard";
@@ -131,6 +138,7 @@ function AuthenticatedApp() {
                     onSettingsOpenChange={appSettings.setSheetOpen}
                     activeTab={activeTab}
                     onTabChange={handleTabChange}
+                    incompleteRulesCount={incompleteRulesCount}
                 />
 
                 <main className="flex-1 max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 w-full">

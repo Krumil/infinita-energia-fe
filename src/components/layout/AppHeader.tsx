@@ -13,6 +13,7 @@ interface AppHeaderProps {
     onSettingsOpenChange: (open: boolean) => void;
     activeTab: string;
     onTabChange: (tab: string) => void;
+    incompleteRulesCount?: number;
 }
 
 const navItems = [
@@ -29,6 +30,7 @@ export function AppHeader({
     onSettingsOpenChange,
     activeTab,
     onTabChange,
+    incompleteRulesCount = 0,
 }: AppHeaderProps) {
     const { t } = useTranslation();
     const { logout, user } = useAuth();
@@ -70,6 +72,11 @@ export function AppHeader({
                                         strokeWidth={isActive ? 2.25 : 1.75}
                                     />
                                     <span className="hidden md:inline">{t(item.labelKey)}</span>
+                                    {item.id === "regole" && incompleteRulesCount > 0 && (
+                                        <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-[10px] font-bold text-white leading-none">
+                                            {incompleteRulesCount}
+                                        </span>
+                                    )}
                                     {isActive && (
                                         <span className="header-tab-indicator absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" />
                                     )}

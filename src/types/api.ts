@@ -1,7 +1,5 @@
 import type { Regola } from "./domain";
 
-// === AGENT API TYPES ===
-
 export interface CreateAgentRequest {
     nome_cognome: string;
     agente_padre?: string;
@@ -16,8 +14,6 @@ export interface AgentCreateResponse {
 export interface AgentMessageResponse {
     message: string;
 }
-
-// === RULES API TYPES ===
 
 export interface UpdateRegolaRequest {
     utilizzato?: boolean;
@@ -37,8 +33,6 @@ export interface ImportRegoleResponse {
     message: string;
 }
 
-// === SCAGLIONI API TYPES ===
-
 export interface UpdateScaglioneRequest {
     tipo_utenza?: "residenziale" | "business" | null;
     tipo_servizio?: "gas" | "luce" | null;
@@ -49,13 +43,9 @@ export interface ImportScaglioniResponse {
     message: string;
 }
 
-// === AGENT CONFIGURATION API TYPES ===
-
 export interface SaveConfigurazioneRequest {
     valori: Array<{ regola_id: number; tasso_id: number; valore: number }>;
 }
-
-// === EXCEL IMPORT TYPES ===
 
 export interface ImportExcelResponse {
     message: string;
@@ -67,15 +57,11 @@ export interface ImportExcelResponse {
     };
 }
 
-// === LIQUIDATION IMPORT TYPES ===
-
 export interface ImportLiquidazioniResponse {
     success: boolean;
     message: string;
     error?: string;
 }
-
-// === COMMISSION CALCULATION TYPES ===
 
 export interface ProvvigioneData {
     cf_piva: string;
@@ -108,8 +94,6 @@ export interface CalcoloInput {
     [key: string]: string | number | undefined;
 }
 
-// === PENDING ORDERS TYPES ===
-
 export interface PendingOrder {
     id_ordine: number;
     data_firma: string | null;
@@ -131,8 +115,6 @@ export interface PendingOrdersResponse {
     count: number;
     data: PendingOrder[];
 }
-
-// === DASHBOARD TYPES ===
 
 export interface DashboardContrattiTotali {
     anno_riferimento: number;
@@ -174,7 +156,6 @@ export interface DashboardProvvigioniMensili {
     dati: DashboardMeseProvvigioni[];
 }
 
-// Contracts by product type
 export interface DashboardProdottoContratti {
     prodotto: string;
     anno_n: number;

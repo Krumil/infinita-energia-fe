@@ -1,7 +1,5 @@
-// Domain types
 export type { Agente, Regola, Scaglione, Liquidazione, AppSettings, ConfigurazioneRegola, ConfigurazioneResponse } from "./domain";
 
-// API types
 export type {
     CreateAgentRequest,
     AgentCreateResponse,
@@ -30,7 +28,6 @@ export type {
     DashboardContrattiPerProdotto,
 } from "./api";
 
-// Component types
 export type {
     FileDropzoneProps,
     KPICardProps,

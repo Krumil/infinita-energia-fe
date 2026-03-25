@@ -1,6 +1,6 @@
 import { RefreshCw, Loader2, BookOpen, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EmptyState, RegoleTable, ScagloniTable } from "@/components";
+import { EmptyState, RegoleTable, ScaglioniTable } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Regola, Scaglione } from "@/types";
 
@@ -84,6 +84,7 @@ export function RegoleTab({
                     ) : (
                         <RegoleTable
                             regole={regole}
+                            scaglioni={scaglioni}
                             onToggleUtilizzato={onToggleUtilizzato}
                             onUpdateDefault={onUpdateDefault}
                             onUpdateTipoUtenza={onUpdateTipoUtenza}
@@ -129,7 +130,7 @@ export function RegoleTab({
                     ) : scaglioni.length === 0 ? (
                         <EmptyState message={t("noScaglioniYet")} icon={<BookOpen className="h-16 w-16" />} />
                     ) : (
-                        <ScagloniTable
+                        <ScaglioniTable
                             scaglioni={scaglioni}
                             onUpdateTipoUtenza={onUpdateScaglioneTipoUtenza}
                             onUpdateTipoServizio={onUpdateScaglioneTipoServizio}

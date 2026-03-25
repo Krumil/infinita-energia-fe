@@ -2,13 +2,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Scaglione } from "@/types/domain";
 
-interface ScagloniTableProps {
+interface ScaglioniTableProps {
     scaglioni: Scaglione[];
     onUpdateTipoUtenza: (scaglione: Scaglione, value: "residenziale" | "business" | null) => Promise<void>;
     onUpdateTipoServizio: (scaglione: Scaglione, value: "gas" | "luce" | null) => Promise<void>;
 }
 
-export function ScagloniTable({ scaglioni, onUpdateTipoUtenza, onUpdateTipoServizio }: ScagloniTableProps) {
+export function ScaglioniTable({ scaglioni, onUpdateTipoUtenza, onUpdateTipoServizio }: ScaglioniTableProps) {
     const { t } = useTranslation();
 
     return (

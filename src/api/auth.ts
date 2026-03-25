@@ -10,7 +10,7 @@ interface AuthResponse {
 }
 
 export async function apiLogin(data: LoginRequest): Promise<AuthResponse> {
-    const res = await fetch(getApiUrl("/auth/login"), {
+    const res = await fetch(getApiUrl("/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -20,7 +20,7 @@ export async function apiLogin(data: LoginRequest): Promise<AuthResponse> {
 }
 
 export async function apiLogout(): Promise<AuthResponse> {
-    const res = await fetch(getApiUrl("/auth/logout"), {
+    const res = await fetch(getApiUrl("/logout"), {
         method: "POST",
         credentials: "include",
     });
