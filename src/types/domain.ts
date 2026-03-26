@@ -25,9 +25,8 @@ export interface Agente {
 export interface ConfigurazioneRegola {
     regola_id: number;
     regola_nome: string;
-    tasso_id: number;
-    tasso_nome: string;
-    tasso_descrizione?: string;
+    scaglione_id: number;
+    scaglione_nome: string;
     valore: number;
     is_custom: boolean;
 }

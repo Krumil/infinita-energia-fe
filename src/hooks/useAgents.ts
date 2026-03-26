@@ -71,7 +71,7 @@ export function useAgents() {
     }, [toast, t]);
 
     const saveAgent = useCallback(
-        async (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; tasso_id: number; valore: number }>): Promise<string | null> => {
+        async (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>): Promise<string | null> => {
             setSaving(true);
             try {
                 if (editingAgent) {

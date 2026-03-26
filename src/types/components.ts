@@ -36,7 +36,7 @@ export interface AgentDialogProps {
     agents: Agente[];
     regole: Regola[];
     scaglioni: Scaglione[];
-    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; tasso_id: number; valore: number }>) => Promise<void>;
+    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<void>;
     saving: boolean;
     onDelete?: () => void;
     deleting?: boolean;

@@ -45,7 +45,7 @@ export interface ImportScaglioniResponse {
 }
 
 export interface SaveConfigurazioneRequest {
-    valori: Array<{ regola_id: number; tasso_id: number; valore: number }>;
+    valori: Array<{ regola_id: number; scaglione_id: number; valore: number }>;
 }
 
 export interface ImportExcelResponse {

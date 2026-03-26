@@ -16,7 +16,7 @@ interface AgentsTabProps {
     onCreateClick: () => void;
     onEdit: (agent: Agente) => void;
     onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
-    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; tasso_id: number; valore: number }>) => Promise<void>;
+    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<void>;
     onDeleteAgent: (agent: Agente) => void;
     regole: Regola[];
     configurazione: ConfigurazioneRegola[];

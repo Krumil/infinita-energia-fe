@@ -44,7 +44,6 @@ export function AgentDialog({
     agent,
     agents,
     regole,
-    scaglioni,
     onSave,
     saving,
     onDelete,
@@ -72,8 +71,8 @@ export function AgentDialog({
         setConfirmingDelete(false);
     }, [agent, open]);
 
-    const handleValueChange = useCallback((regolaId: number, tassoId: number, value: string) => {
-        const key = `${regolaId}_${tassoId}`;
+    const handleValueChange = useCallback((regolaId: number, scaglioneId: number, value: string) => {
+        const key = `${regolaId}_${scaglioneId}`;
         setEditedValues((prev) => {
             const next = new Map(prev);
             if (value === "") {
@@ -110,8 +109,8 @@ export function AgentDialog({
         const valori = editedValues.size > 0
             ? Array.from(editedValues.entries()).map((entry) => {
                 const [key, valore] = entry;
-                const [regolaId, tassoId] = key.split("_").map(Number);
-                return { regola_id: regolaId, tasso_id: tassoId, valore: parseEuroNumber(valore) as number };
+                const [regolaId, scaglioneId] = key.split("_").map(Number);
+                return { regola_id: regolaId, scaglione_id: scaglioneId, valore: parseEuroNumber(valore) as number };
             })
             : undefined;
         await onSave(formData, valori);
@@ -139,85 +138,86 @@ export function AgentDialog({
                     <DialogDescription className="font-body">{t("agentsListDesc")}</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
-                    <div className="flex-1 overflow-y-auto space-y-6 px-1 pt-4 pb-4">
-                        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="nome_cognome" className="editorial-caps text-muted-foreground text-[11px]">
-                                    {t("agentName")} *
-                                </Label>
-                                <Input
-                                    id="nome_cognome"
-                                    value={formData.nome_cognome}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, nome_cognome: e.target.value }))}
-                                    placeholder={t("exampleName")}
-                                    required
-                                    className="font-body"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="agente_padre" className="editorial-caps text-muted-foreground text-[11px]">
-                                    {t("parentAgent")}
-                                </Label>
-                                <SearchableSelect
-                                    id="agente_padre"
-                                    value={formData.agente_padre}
-                                    onValueChange={(value) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            agente_padre: value,
-                                        }))
-                                    }
-                                    options={parentOptions}
-                                    placeholder={t("noParentAgent")}
-                                    searchPlaceholder={t("searchParentAgent")}
-                                    emptyMessage={t("noParentAgentsFound")}
-                                    clearLabel={t("noParentAgent")}
-                                    className="font-body"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="mail" className="editorial-caps text-muted-foreground text-[11px]">
-                                    {t("email")}
-                                </Label>
-                                <Input
-                                    id="mail"
-                                    type="email"
-                                    value={formData.mail || ""}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, mail: e.target.value || undefined }))}
-                                    placeholder="agent@example.com"
-                                    className="font-body"
-                                />
-                            </div>
-                            <div className="rounded-sm border border-border/50 px-4 py-2.5 flex items-center">
-                                <div className="flex items-center gap-2.5">
-                                    <Checkbox
-                                        id="statistiche"
-                                        checked={formData.statistiche ?? false}
-                                        onCheckedChange={(checked) =>
-                                            setFormData((prev) => ({ ...prev, statistiche: checked === true }))
-                                        }
-                                    />
-                                    <Label htmlFor="statistiche" className="font-body text-sm font-medium whitespace-nowrap">
-                                        {t("includeInStatistics")}
+                    <div className="flex-1 overflow-y-auto px-1 pt-4 pb-4">
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="nome_cognome" className="editorial-caps text-muted-foreground">
+                                        {t("agentName")} *
                                     </Label>
+                                    <Input
+                                        id="nome_cognome"
+                                        value={formData.nome_cognome}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, nome_cognome: e.target.value }))}
+                                        placeholder={t("exampleName")}
+                                        required
+                                        className="font-body"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="agente_padre" className="editorial-caps text-muted-foreground">
+                                        {t("parentAgent")}
+                                    </Label>
+                                    <SearchableSelect
+                                        id="agente_padre"
+                                        value={formData.agente_padre}
+                                        onValueChange={(value) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                agente_padre: value,
+                                            }))
+                                        }
+                                        options={parentOptions}
+                                        placeholder={t("noParentAgent")}
+                                        searchPlaceholder={t("searchParentAgent")}
+                                        emptyMessage={t("noParentAgentsFound")}
+                                        clearLabel={t("noParentAgent")}
+                                        className="font-body"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto] gap-4 items-end">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="mail" className="editorial-caps text-muted-foreground">
+                                        {t("email")}
+                                    </Label>
+                                    <Input
+                                        id="mail"
+                                        type="email"
+                                        value={formData.mail || ""}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, mail: e.target.value || undefined }))}
+                                        placeholder="agent@example.com"
+                                        className="font-body"
+                                    />
+                                </div>
+                                <div className="rounded-sm border border-border/50 px-4 py-2.5 flex items-center">
+                                    <div className="flex items-center gap-2.5">
+                                        <Checkbox
+                                            id="statistiche"
+                                            checked={formData.statistiche ?? false}
+                                            onCheckedChange={(checked) =>
+                                                setFormData((prev) => ({ ...prev, statistiche: checked === true }))
+                                            }
+                                        />
+                                        <Label htmlFor="statistiche" className="font-body text-sm font-medium whitespace-nowrap">
+                                            {t("includeInStatistics")}
+                                        </Label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         {isEdit && (
-                            <div className="space-y-2">
-                                <Label className="editorial-caps text-muted-foreground">
-                                    {t("agentConfiguration")}
-                                </Label>
+                            <>
+                                <div className="mt-4" />
                                 <RuleValuesEditor
                                     configurazione={configurazione}
                                     regole={regole}
-                                    scaglioni={scaglioni}
                                     loading={configLoading}
                                     editedValues={editedValues}
                                     onValueChange={handleValueChange}
                                 />
-                            </div>
+                            </>
                         )}
                     </div>
 
