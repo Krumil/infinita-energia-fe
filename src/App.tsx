@@ -5,10 +5,10 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/toaster";
 
 // Layout components
-import { AppHeader, AppFooter } from "@/components";
+import { AppHeader } from "@/components";
 
 // Page components
-import { DashboardTab, AgentsTab, RegoleTab, OrdiniTab, CalcoloTab } from "@/pages";
+import { DashboardTab, AgentsTab, RegoleTab, OrdiniTab, CalcoloTab, InvitiTab } from "@/pages";
 
 // Custom hooks
 import {
@@ -40,7 +40,6 @@ function AuthenticatedApp() {
     const { t } = useTranslation();
 
     const [activeTab, setActiveTab] = useState<string>("dashboard");
-    const [lastAction, setLastAction] = useState<string | null>(null);
 
     const appSettings = useAppSettings();
     const agents = useAgents();
@@ -89,7 +88,6 @@ function AuthenticatedApp() {
     const handleOrdersUpload = async (files: File[]) => {
         const action = await orders.handleUpload(files);
         if (action) {
-            setLastAction(action);
             await pendingOrders.fetchPendingOrders();
         }
     };
@@ -97,8 +95,6 @@ function AuthenticatedApp() {
     const handleLiquidazioniUpload = async (files: File[], competenzaPeriod: string) => {
         const result = await liquidazioni.handleUpload(files, competenzaPeriod);
         if (result) {
-            setLastAction(result.action);
-
             const refreshes: Promise<void>[] = [pendingOrders.fetchPendingOrders()];
             if (result.hasNewRules) {
                 refreshes.push(regole.loadRegole());
@@ -115,24 +111,22 @@ function AuthenticatedApp() {
     };
 
     const handleAgentSave = async (...args: Parameters<typeof agents.saveAgent>) => {
-        const action = await agents.saveAgent(...args);
-        if (action) setLastAction(action);
+        await agents.saveAgent(...args);
     };
 
     const handleAgentDelete = async (agent: Parameters<typeof agents.deleteAgent>[0]) => {
-        const action = await agents.deleteAgent(agent);
-        if (action) setLastAction(action);
+        await agents.deleteAgent(agent);
     };
 
     const handleCalculate = async () => {
-        const action = await calcolo.calculate();
-        if (action) setLastAction(action);
+        await calcolo.calculate();
     };
 
     return (
         <TooltipProvider>
             <div className="min-h-screen flex flex-col">
                 <AppHeader
+                    appVersion={__APP_VERSION__}
                     onSettingsSave={appSettings.saveSettings}
                     settingsOpen={appSettings.sheetOpen}
                     onSettingsOpenChange={appSettings.setSheetOpen}
@@ -159,10 +153,12 @@ function AuthenticatedApp() {
                                 onRefresh={agents.loadAgents}
                                 onCreateClick={agents.openCreateDialog}
                                 onEdit={agents.openEditDialog}
+                                onToggleStatistiche={agents.toggleStatistiche}
                                 onSave={handleAgentSave}
                                 onDeleteAgent={handleAgentDelete}
                                 configurazione={agents.configurazione}
                                 configLoading={agents.configLoading}
+                                scaglioni={scaglioni.scaglioni}
                             />
                         </TabsContent>
 
@@ -218,10 +214,15 @@ function AuthenticatedApp() {
                                 onNavigate={handleTabChange}
                             />
                         </TabsContent>
+
+                        <TabsContent value="inviti">
+                            <InvitiTab
+                                agents={agents.agents}
+                                agentsLoading={agents.loading}
+                            />
+                        </TabsContent>
                     </Tabs>
                 </main>
-
-                <AppFooter lastAction={lastAction} />
 
                 <Toaster />
                 {import.meta.env.DEV && <Agentation />}

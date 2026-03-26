@@ -4,36 +4,56 @@ import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
-import type { ConfigurazioneRegola } from "@/types/domain";
+import type { ConfigurazioneRegola, Scaglione } from "@/types/domain";
 
 interface RuleValuesEditorProps {
     configurazione: ConfigurazioneRegola[];
+    scaglioni: Scaglione[];
     loading: boolean;
     editedValues: Map<string, string>;
     onValueChange: (regolaId: number, tassoId: number, value: string) => void;
 }
 
-export function RuleValuesEditor({ configurazione, loading, editedValues, onValueChange }: RuleValuesEditorProps) {
+function normalizeLabel(value: string): string {
+    return value.trim().toLocaleLowerCase();
+}
+
+export function RuleValuesEditor({ configurazione, scaglioni, loading, editedValues, onValueChange }: RuleValuesEditorProps) {
     const { t } = useTranslation();
     const [openRules, setOpenRules] = useState<Set<number>>(new Set());
+    const scaglioniById = useMemo(
+        () => new Map(scaglioni.map((scaglione) => [scaglione.id, scaglione.descrizione])),
+        [scaglioni],
+    );
 
     const grouped = useMemo(() => {
-        const byRegola = new Map<number, { nome: string; tassi: Array<{ tasso_id: number; tasso_nome: string; valore: number; is_custom: boolean }> }>();
+        const byRegola = new Map<number, {
+            nome: string;
+            tassi: Array<{
+                tasso_id: number;
+                tasso_nome: string;
+                tasso_descrizione?: string;
+                valore: number;
+                is_custom: boolean;
+            }>;
+        }>();
         for (const item of configurazione) {
             let group = byRegola.get(item.regola_id);
             if (!group) {
                 group = { nome: item.regola_nome, tassi: [] };
                 byRegola.set(item.regola_id, group);
             }
+            const tassoDescrizione = item.tasso_descrizione?.trim() || scaglioniById.get(item.tasso_id)?.trim() || undefined;
             group.tassi.push({
                 tasso_id: item.tasso_id,
                 tasso_nome: item.tasso_nome,
+                tasso_descrizione: tassoDescrizione,
                 valore: item.valore,
                 is_custom: item.is_custom,
             });
         }
         return byRegola;
-    }, [configurazione]);
+    }, [configurazione, scaglioniById]);
 
     const cellKey = (regolaId: number, tassoId: number) => `${regolaId}_${tassoId}`;
 
@@ -99,6 +119,9 @@ export function RuleValuesEditor({ configurazione, loading, editedValues, onValu
                                 {group.tassi.map((tasso) => {
                                     const currentVal = getCurrentValue(regolaId, tasso.tasso_id, tasso.valore);
                                     const edited = isEdited(regolaId, tasso.tasso_id);
+                                    const hasDistinctDescription =
+                                        Boolean(tasso.tasso_descrizione) &&
+                                        normalizeLabel(tasso.tasso_nome) !== normalizeLabel(tasso.tasso_descrizione as string);
 
                                     return (
                                         <div
@@ -110,6 +133,9 @@ export function RuleValuesEditor({ configurazione, loading, editedValues, onValu
                                                 !tasso.is_custom && !edited && "text-muted-foreground italic",
                                             )}>
                                                 {tasso.tasso_nome}
+                                                {hasDistinctDescription && (
+                                                    <span className="text-muted-foreground"> {"\u2022"} {tasso.tasso_descrizione}</span>
+                                                )}
                                             </span>
                                             {!tasso.is_custom && !edited && (
                                                 <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-sm text-muted-foreground bg-muted/50 shrink-0">

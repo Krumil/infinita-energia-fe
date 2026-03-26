@@ -17,4 +17,4 @@ export { CommissionsChart } from "./CommissionsChart";
 export { ProductsChart } from "./ProductsChart";
 export { DashboardKPISection } from "./DashboardKPISection";
 
-export { AppHeader, AppFooter } from "./layout";
+export { AppHeader } from "./layout";

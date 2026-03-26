@@ -121,6 +121,23 @@ export function useAgents() {
         [loadAgents, toast, t],
     );
 
+    const toggleStatistiche = useCallback(
+        async (agent: Agente, value: boolean): Promise<void> => {
+            setAgents((prev) => prev.map((current) => (current.id === agent.id ? { ...current, statistiche: value } : current)));
+
+            try {
+                await updateAgente(agent.id, { statistiche: value });
+            } catch (error) {
+                setAgents((prev) =>
+                    prev.map((current) => (current.id === agent.id ? { ...current, statistiche: agent.statistiche } : current)),
+                );
+                const errorMsg = error instanceof ApiError ? error.message : t("error");
+                toast({ title: t("error"), description: errorMsg, variant: "destructive" });
+            }
+        },
+        [toast, t],
+    );
+
     return {
         agents,
         loading,
@@ -134,6 +151,7 @@ export function useAgents() {
         openEditDialog,
         saveAgent,
         deleteAgent,
+        toggleStatistiche,
         configurazione,
         configLoading,
     };

@@ -4,6 +4,7 @@ export interface CreateAgentRequest {
     nome_cognome: string;
     agente_padre?: string;
     mail?: string;
+    statistiche?: boolean;
 }
 
 export interface AgentCreateResponse {
@@ -165,4 +166,12 @@ export interface DashboardProdottoContratti {
 export interface DashboardContrattiPerProdotto {
     anno_riferimento: number;
     dati: DashboardProdottoContratti[];
+}
+
+export interface UpdateInvitoRequest {
+    stato?: "bozza" | "inviato" | "approvato";
+    riferimento_fattura?: string;
+    data_fattura?: string;
+    pagato?: boolean;
+    data_pagamento?: string;
 }

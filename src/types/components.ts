@@ -32,6 +32,7 @@ export interface AgentDialogProps {
     onOpenChange: (open: boolean) => void;
     agent: Agente | null;
     agents: Agente[];
+    scaglioni: Scaglione[];
     onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; tasso_id: number; valore: number }>) => Promise<void>;
     saving: boolean;
     onDelete?: () => void;
@@ -43,6 +44,7 @@ export interface AgentDialogProps {
 export interface AgentsTableProps {
     data: Agente[];
     onEdit: (agent: Agente) => void;
+    onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
 }
 
 export interface RegoleTableProps {

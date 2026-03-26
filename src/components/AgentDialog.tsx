@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Loader2, CheckCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -33,10 +34,23 @@ function createInitialFormData(agent: AgentDialogProps["agent"]): CreateAgentReq
         nome_cognome: agent?.nome_cognome ?? "",
         agente_padre: agent?.agente_padre || undefined,
         mail: agent?.mail || undefined,
+        statistiche: agent?.statistiche ?? false,
     };
 }
 
-export function AgentDialog({ open, onOpenChange, agent, agents, onSave, saving, onDelete, deleting, configurazione, configLoading }: AgentDialogProps) {
+export function AgentDialog({
+    open,
+    onOpenChange,
+    agent,
+    agents,
+    scaglioni,
+    onSave,
+    saving,
+    onDelete,
+    deleting,
+    configurazione,
+    configLoading,
+}: AgentDialogProps) {
     const { t } = useTranslation();
     const isEdit = agent !== null;
 
@@ -74,7 +88,8 @@ export function AgentDialog({ open, onOpenChange, agent, agents, onSave, saving,
         return (
             formData.nome_cognome !== initialFormData.nome_cognome ||
             formData.agente_padre !== initialFormData.agente_padre ||
-            formData.mail !== initialFormData.mail
+            formData.mail !== initialFormData.mail ||
+            formData.statistiche !== initialFormData.statistiche
         );
     }, [formData, initialFormData]);
 
@@ -161,18 +176,34 @@ export function AgentDialog({ open, onOpenChange, agent, agents, onSave, saving,
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="mail" className="editorial-caps text-muted-foreground">
-                                    {t("email")}
-                                </Label>
-                                <Input
-                                    id="mail"
-                                    type="email"
-                                    value={formData.mail || ""}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, mail: e.target.value || undefined }))}
-                                    placeholder="agent@example.com"
-                                    className="font-body"
-                                />
+                            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 items-end">
+                                <div className="space-y-2">
+                                    <Label htmlFor="mail" className="editorial-caps text-muted-foreground">
+                                        {t("email")}
+                                    </Label>
+                                    <Input
+                                        id="mail"
+                                        type="email"
+                                        value={formData.mail || ""}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, mail: e.target.value || undefined }))}
+                                        placeholder="agent@example.com"
+                                        className="font-body"
+                                    />
+                                </div>
+                                <div className="rounded-sm border border-border/50 px-4 py-3 min-h-10 flex items-center">
+                                    <div className="flex items-center gap-3">
+                                    <Checkbox
+                                        id="statistiche"
+                                        checked={formData.statistiche ?? false}
+                                        onCheckedChange={(checked) =>
+                                            setFormData((prev) => ({ ...prev, statistiche: checked === true }))
+                                        }
+                                    />
+                                        <Label htmlFor="statistiche" className="font-body font-medium">
+                                            {t("includeInStatistics")}
+                                        </Label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -183,6 +214,7 @@ export function AgentDialog({ open, onOpenChange, agent, agents, onSave, saving,
                                 </Label>
                                 <RuleValuesEditor
                                     configurazione={configurazione}
+                                    scaglioni={scaglioni}
                                     loading={configLoading}
                                     editedValues={editedValues}
                                     onValueChange={handleValueChange}

@@ -19,6 +19,7 @@ export interface Agente {
     nome_cognome: string;
     agente_padre: string | null;
     mail: string | null;
+    statistiche: boolean | null;
 }
 
 export interface ConfigurazioneRegola {
@@ -26,6 +27,7 @@ export interface ConfigurazioneRegola {
     regola_nome: string;
     tasso_id: number;
     tasso_nome: string;
+    tasso_descrizione?: string;
     valore: number;
     is_custom: boolean;
 }
@@ -69,6 +71,19 @@ export interface Liquidazione {
     metodo_di_pagamento?: string;
     data_importazione?: string;
     competenza_liquidazione?: string; // Format: "YYYY-MM-DD" from Excel (MM/YYYY)
+}
+
+export interface StoricoInvito {
+    id: number;
+    agente_id: number;
+    nome_agente: string;
+    mese_competenza: string;
+    totale_invito: number;
+    stato: "bozza" | "inviato" | "approvato";
+    riferimento_fattura: string | null;
+    data_fattura: string | null;
+    pagato: boolean;
+    data_pagamento: string | null;
 }
 
 export type AppSettings = Record<string, unknown>;

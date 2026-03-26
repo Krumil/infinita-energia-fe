@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -8,7 +9,7 @@ import { SearchableSelect } from "./SearchableSelect";
 import type { AgentsTableProps } from "@/types/components";
 import type { Agente } from "@/types/domain";
 
-export function AgentsTable({ data, onEdit }: AgentsTableProps) {
+export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTableProps) {
     const { t } = useTranslation();
 
     const [sortKey, setSortKey] = useState<keyof Agente>("nome_cognome");
@@ -146,12 +147,22 @@ export function AgentsTable({ data, onEdit }: AgentsTableProps) {
                                     {t("email")} <ArrowUpDown className="h-3 w-3 shrink-0" />
                                 </div>
                             </th>
+                            <th className="text-center">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center justify-center gap-2">
+                                            {t("statistics")}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{t("statisticsTooltip")}</TooltipContent>
+                                </Tooltip>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         {paginated.length === 0 ? (
                             <tr>
-                                <td colSpan={3} className="text-center py-12 font-display italic text-muted-foreground">
+                                <td colSpan={4} className="text-center py-12 font-display italic text-muted-foreground">
                                     {t("noDataFound")}
                                 </td>
                             </tr>
@@ -180,6 +191,19 @@ export function AgentsTable({ data, onEdit }: AgentsTableProps) {
                                     </td>
                                     <td className="text-muted-foreground">
                                         {row.mail || "—"}
+                                    </td>
+                                    <td
+                                        className="text-center"
+                                        onClick={(e) => e.stopPropagation()}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                    >
+                                        <div className="flex items-center justify-center">
+                                            <Checkbox
+                                                checked={row.statistiche ?? false}
+                                                onCheckedChange={(checked) => void onToggleStatistiche(row, checked === true)}
+                                                aria-label={`${t("statistics")} ${row.nome_cognome}`}
+                                            />
+                                        </div>
                                     </td>
                                 </tr>
                             ))

@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, LayoutDashboard, Users, BookOpen, Receipt, Calculator, LogOut } from "lucide-react";
+import { Settings as SettingsIcon, LayoutDashboard, Users, BookOpen, Receipt, Calculator, FileText, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 interface AppHeaderProps {
+    appVersion: string;
     onSettingsSave: () => void;
     settingsOpen: boolean;
     onSettingsOpenChange: (open: boolean) => void;
@@ -22,9 +23,11 @@ const navItems = [
     { id: "regole", labelKey: "regole", icon: BookOpen },
     { id: "ordini", labelKey: "ordini", icon: Receipt },
     { id: "provvigioni", labelKey: "provvigioni", icon: Calculator },
+    { id: "inviti", labelKey: "inviti", icon: FileText },
 ] as const;
 
 export function AppHeader({
+    appVersion,
     onSettingsSave,
     settingsOpen,
     onSettingsOpenChange,
@@ -45,12 +48,15 @@ export function AppHeader({
                             <img src="/logo.png" alt="Infinita Energia" className="h-10 w-10 object-contain" />
                         </div>
                         <div className="header-brand-divider hidden sm:block h-8 w-px" />
+                        <span className="header-brand-subtitle font-mono text-[10px] uppercase tracking-[0.2em] sm:hidden">
+                            v{appVersion}
+                        </span>
                         <div className="hidden sm:flex flex-col justify-center">
                             <h1 className="header-brand-title font-display text-[17px] font-medium tracking-wide leading-tight">
                                 {t("appTitle")}
                             </h1>
-                            <p className="header-brand-subtitle font-mono text-[10px] uppercase tracking-[0.2em] mt-0.5">
-                                {t("systemSubtitle")}
+                            <p className="header-brand-subtitle mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em]">
+                                v{appVersion}
                             </p>
                         </div>
                     </div>

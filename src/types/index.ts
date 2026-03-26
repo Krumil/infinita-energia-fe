@@ -1,4 +1,4 @@
-export type { Agente, Regola, Scaglione, Liquidazione, AppSettings, ConfigurazioneRegola, ConfigurazioneResponse } from "./domain";
+export type { Agente, Regola, Scaglione, Liquidazione, AppSettings, ConfigurazioneRegola, ConfigurazioneResponse, StoricoInvito } from "./domain";
 
 export type {
     CreateAgentRequest,
@@ -26,6 +26,7 @@ export type {
     DashboardProvvigioniMensili,
     DashboardProdottoContratti,
     DashboardContrattiPerProdotto,
+    UpdateInvitoRequest,
 } from "./api";
 
 export type {
