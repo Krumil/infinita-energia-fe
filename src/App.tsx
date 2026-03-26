@@ -156,6 +156,7 @@ function AuthenticatedApp() {
                                 onToggleStatistiche={agents.toggleStatistiche}
                                 onSave={handleAgentSave}
                                 onDeleteAgent={handleAgentDelete}
+                                regole={regole.regole}
                                 configurazione={agents.configurazione}
                                 configLoading={agents.configLoading}
                                 scaglioni={scaglioni.scaglioni}

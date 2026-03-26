@@ -2,7 +2,7 @@ import { Users, RefreshCw, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, AgentDialog, AgentsTable } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Agente, ConfigurazioneRegola, CreateAgentRequest, Scaglione } from "@/types";
+import type { Agente, Regola, ConfigurazioneRegola, CreateAgentRequest, Scaglione } from "@/types";
 
 interface AgentsTabProps {
     agents: Agente[];
@@ -18,6 +18,7 @@ interface AgentsTabProps {
     onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
     onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; tasso_id: number; valore: number }>) => Promise<void>;
     onDeleteAgent: (agent: Agente) => void;
+    regole: Regola[];
     configurazione: ConfigurazioneRegola[];
     configLoading: boolean;
     scaglioni: Scaglione[];
@@ -37,6 +38,7 @@ export function AgentsTab({
     onToggleStatistiche,
     onSave,
     onDeleteAgent,
+    regole,
     configurazione,
     configLoading,
     scaglioni,
@@ -84,6 +86,7 @@ export function AgentsTab({
                 onOpenChange={onDialogOpenChange}
                 agent={editingAgent}
                 agents={agents}
+                regole={regole}
                 scaglioni={scaglioni}
                 onSave={onSave}
                 saving={saving}

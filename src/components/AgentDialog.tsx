@@ -43,6 +43,7 @@ export function AgentDialog({
     onOpenChange,
     agent,
     agents,
+    regole,
     scaglioni,
     onSave,
     saving,
@@ -130,7 +131,7 @@ export function AgentDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden dialog-ledger">
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden dialog-ledger">
                 <DialogHeader>
                     <DialogTitle className="font-display text-2xl">
                         {isEdit ? t("editAgent") : t("addAgent")}
@@ -139,59 +140,56 @@ export function AgentDialog({
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
                     <div className="flex-1 overflow-y-auto space-y-6 px-1 pt-4 pb-4">
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="nome_cognome" className="editorial-caps text-muted-foreground">
-                                        {t("agentName")} *
-                                    </Label>
-                                    <Input
-                                        id="nome_cognome"
-                                        value={formData.nome_cognome}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, nome_cognome: e.target.value }))}
-                                        placeholder={t("exampleName")}
-                                        required
-                                        className="font-body"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="agente_padre" className="editorial-caps text-muted-foreground">
-                                        {t("parentAgent")}
-                                    </Label>
-                                    <SearchableSelect
-                                        id="agente_padre"
-                                        value={formData.agente_padre}
-                                        onValueChange={(value) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                agente_padre: value,
-                                            }))
-                                        }
-                                        options={parentOptions}
-                                        placeholder={t("noParentAgent")}
-                                        searchPlaceholder={t("searchParentAgent")}
-                                        emptyMessage={t("noParentAgentsFound")}
-                                        clearLabel={t("noParentAgent")}
-                                        className="font-body"
-                                    />
-                                </div>
+                        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="nome_cognome" className="editorial-caps text-muted-foreground text-[11px]">
+                                    {t("agentName")} *
+                                </Label>
+                                <Input
+                                    id="nome_cognome"
+                                    value={formData.nome_cognome}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, nome_cognome: e.target.value }))}
+                                    placeholder={t("exampleName")}
+                                    required
+                                    className="font-body"
+                                />
                             </div>
-                            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 items-end">
-                                <div className="space-y-2">
-                                    <Label htmlFor="mail" className="editorial-caps text-muted-foreground">
-                                        {t("email")}
-                                    </Label>
-                                    <Input
-                                        id="mail"
-                                        type="email"
-                                        value={formData.mail || ""}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, mail: e.target.value || undefined }))}
-                                        placeholder="agent@example.com"
-                                        className="font-body"
-                                    />
-                                </div>
-                                <div className="rounded-sm border border-border/50 px-4 py-3 min-h-10 flex items-center">
-                                    <div className="flex items-center gap-3">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="agente_padre" className="editorial-caps text-muted-foreground text-[11px]">
+                                    {t("parentAgent")}
+                                </Label>
+                                <SearchableSelect
+                                    id="agente_padre"
+                                    value={formData.agente_padre}
+                                    onValueChange={(value) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            agente_padre: value,
+                                        }))
+                                    }
+                                    options={parentOptions}
+                                    placeholder={t("noParentAgent")}
+                                    searchPlaceholder={t("searchParentAgent")}
+                                    emptyMessage={t("noParentAgentsFound")}
+                                    clearLabel={t("noParentAgent")}
+                                    className="font-body"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="mail" className="editorial-caps text-muted-foreground text-[11px]">
+                                    {t("email")}
+                                </Label>
+                                <Input
+                                    id="mail"
+                                    type="email"
+                                    value={formData.mail || ""}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, mail: e.target.value || undefined }))}
+                                    placeholder="agent@example.com"
+                                    className="font-body"
+                                />
+                            </div>
+                            <div className="rounded-sm border border-border/50 px-4 py-2.5 flex items-center">
+                                <div className="flex items-center gap-2.5">
                                     <Checkbox
                                         id="statistiche"
                                         checked={formData.statistiche ?? false}
@@ -199,10 +197,9 @@ export function AgentDialog({
                                             setFormData((prev) => ({ ...prev, statistiche: checked === true }))
                                         }
                                     />
-                                        <Label htmlFor="statistiche" className="font-body font-medium">
-                                            {t("includeInStatistics")}
-                                        </Label>
-                                    </div>
+                                    <Label htmlFor="statistiche" className="font-body text-sm font-medium whitespace-nowrap">
+                                        {t("includeInStatistics")}
+                                    </Label>
                                 </div>
                             </div>
                         </div>
@@ -214,6 +211,7 @@ export function AgentDialog({
                                 </Label>
                                 <RuleValuesEditor
                                     configurazione={configurazione}
+                                    regole={regole}
                                     scaglioni={scaglioni}
                                     loading={configLoading}
                                     editedValues={editedValues}
