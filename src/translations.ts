@@ -58,6 +58,9 @@ const en = {
     parentAgentTooltip: "The supervising agent who receives overrides",
     email: "Email",
     mail: "Email",
+    statistics: "Statistics",
+    includeInStatistics: "Include in statistics",
+    statisticsTooltip: "Include this agent in dashboard statistics and filters",
 
     // Regole
     regole: "Regole",
@@ -228,6 +231,10 @@ const en = {
     // Placeholder names
     exampleName: "John Smith",
 
+    // Confirm upload dialog
+    confirmUploadTitle: "Confirm Upload Period",
+    confirmUploadDescription: "You are about to import liquidation data for:",
+
     // Common
     loading: "Loading...",
     error: "Error",
@@ -255,6 +262,31 @@ const en = {
     change: "Change",
     import: "Import",
     uploadLiquidazioni: "Upload Liquidations",
+
+    // Inviti Tab
+    inviti: "Inviti",
+    invoiceInvitations: "Invoice Invitations",
+    invoiceInvitationsDesc: "View and manage invoice invitation records",
+    competenceMonth: "Competence Month",
+    invitationTotal: "Total",
+    invoiceReference: "Invoice Ref.",
+    invoiceDate: "Invoice Date",
+    paid: "Paid",
+    paymentDate: "Payment Date",
+    status: "Status",
+    draft: "Draft",
+    sent: "Sent",
+    approved: "Approved",
+    allStatuses: "All Statuses",
+    allAgents: "All Agents",
+    editInvitation: "Edit Invitation",
+    editInvitationDesc: "Update invoice details and payment information",
+    noInvitiFound: "No invoice invitations found",
+    noInvitiDesc: "Adjust filters or check back later",
+    invitationUpdated: "Invitation updated",
+    invitationUpdateFailed: "Failed to update invitation",
+    fromMonth: "From",
+    toMonth: "To",
 
     // Login
     loginTitle: "Login",
@@ -331,6 +363,9 @@ const it: TranslationTable = {
     parentAgentTooltip: "L'agente supervisore che riceve le provvigioni di override",
     email: "Email",
     mail: "Email",
+    statistics: "Statistiche",
+    includeInStatistics: "Includi nelle statistiche",
+    statisticsTooltip: "Includi questo agente nelle statistiche e nei filtri della dashboard",
 
     // Regole
     regole: "Regole",
@@ -504,6 +539,10 @@ const it: TranslationTable = {
     // Placeholder names
     exampleName: "Mario Rossi",
 
+    // Confirm upload dialog
+    confirmUploadTitle: "Conferma Periodo di Caricamento",
+    confirmUploadDescription: "Stai per importare dati di liquidazione per:",
+
     // Common
     loading: "Caricamento...",
     error: "Errore",
@@ -531,6 +570,31 @@ const it: TranslationTable = {
     change: "Cambia",
     import: "Importa",
     uploadLiquidazioni: "Carica Liquidazioni",
+
+    // Inviti Tab
+    inviti: "Inviti",
+    invoiceInvitations: "Inviti a Fatturare",
+    invoiceInvitationsDesc: "Visualizza e gestisci gli inviti a fatturare",
+    competenceMonth: "Mese Competenza",
+    invitationTotal: "Totale",
+    invoiceReference: "Rif. Fattura",
+    invoiceDate: "Data Fattura",
+    paid: "Pagato",
+    paymentDate: "Data Pagamento",
+    status: "Stato",
+    draft: "Bozza",
+    sent: "Inviato",
+    approved: "Approvato",
+    allStatuses: "Tutti gli Stati",
+    allAgents: "Tutti gli Agenti",
+    editInvitation: "Modifica Invito",
+    editInvitationDesc: "Aggiorna i dettagli della fattura e le informazioni di pagamento",
+    noInvitiFound: "Nessun invito a fatturare trovato",
+    noInvitiDesc: "Modifica i filtri o ricontrolla più tardi",
+    invitationUpdated: "Invito aggiornato",
+    invitationUpdateFailed: "Aggiornamento invito fallito",
+    fromMonth: "Da",
+    toMonth: "A",
 
     // Login
     loginTitle: "Accedi",

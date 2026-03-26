@@ -12,11 +12,22 @@ import {
     ArrowUp,
     ArrowDown,
 } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileDropzone } from "@/components";
+import { DatePicker } from "@/components/DatePicker";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { ImportExcelResponse, PendingOrder } from "@/types";
 
@@ -258,6 +269,7 @@ export function OrdiniTab({
     const [sortField, setSortField] = useState<SortField>("cliente_nome");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
     const [selectedPeriod, setSelectedPeriod] = useState<string>(PERIOD_OPTIONS[0]?.value || "");
+    const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
 
     const handleRefreshWithDates = () => {
         onRefreshPendingOrders(startDate || undefined, endDate || undefined);
@@ -281,13 +293,20 @@ export function OrdiniTab({
 
     const handleLiquidazioniFiles = (files: File[]) => {
         if (files.length > 0 && selectedPeriod) {
-            onLiquidazioniUpload(files, selectedPeriod);
+            setPendingFiles(files);
+        }
+    };
+
+    const confirmUpload = () => {
+        if (pendingFiles && selectedPeriod) {
+            onLiquidazioniUpload(pendingFiles, selectedPeriod);
+            setPendingFiles(null);
         }
     };
 
     return (
-        <div className="space-y-6">
-            <section className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col gap-6 lg:h-[calc(100dvh-11.5rem)]">
+            <section className="grid shrink-0 gap-3 md:grid-cols-2">
                 <div className="ledger-card p-3 space-y-2">
                     <div className="flex items-center gap-2">
                         <FileSpreadsheet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -372,8 +391,8 @@ export function OrdiniTab({
                 </div>
             </section>
 
-            <section>
-                <div className="flex items-center justify-between gap-4 mb-4">
+            <section className="flex min-h-0 flex-1 flex-col">
+                <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <Package className="h-5 w-5 text-energia-accent" />
                         <h2 className="font-display text-xl">
@@ -385,23 +404,23 @@ export function OrdiniTab({
                             )}
                         </h2>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-2">
                             <label className="text-xs text-muted-foreground whitespace-nowrap">{t("startDate")}</label>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={startDate}
-                                onChange={(e) => onStartDateChange(e.target.value)}
-                                className="h-9 w-36"
+                                onChange={onStartDateChange}
+                                placeholder={t("startDate")}
+                                className="h-9"
                             />
                         </div>
                         <div className="flex items-center gap-2">
                             <label className="text-xs text-muted-foreground whitespace-nowrap">{t("endDate")}</label>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={endDate}
-                                onChange={(e) => onEndDateChange(e.target.value)}
-                                className="h-9 w-36"
+                                onChange={onEndDateChange}
+                                placeholder={t("endDate")}
+                                className="h-9"
                             />
                         </div>
                         <div className="relative">
@@ -437,11 +456,11 @@ export function OrdiniTab({
                 </div>
 
                 {pendingOrdersLoading ? (
-                    <div className="ledger-card flex items-center justify-center py-16">
+                    <div className="ledger-card flex flex-1 items-center justify-center py-16">
                         <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
                     </div>
                 ) : pendingOrders.length === 0 ? (
-                    <div className="ledger-card flex flex-col items-center justify-center py-16 text-center">
+                    <div className="ledger-card flex flex-1 flex-col items-center justify-center py-16 text-center">
                         <Package className="h-12 w-12 text-muted-foreground/30 mb-4" />
                         <p className="font-display text-lg text-muted-foreground">{t("noPendingOrders")}</p>
                         <p className="text-sm text-muted-foreground/70 mt-1">
@@ -449,8 +468,8 @@ export function OrdiniTab({
                         </p>
                     </div>
                 ) : (
-                    <div className="ledger-card overflow-hidden">
-                        <div className="max-h-[500px] overflow-auto">
+                    <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
+                        <div className="min-h-0 flex-1 overflow-auto">
                             <Table>
                                 <TableHeader className="sticky top-0 bg-secondary/90 backdrop-blur-sm">
                                     <TableRow>
@@ -561,6 +580,38 @@ export function OrdiniTab({
                     </div>
                 )}
             </section>
+
+            <AlertDialog open={pendingFiles !== null} onOpenChange={(open) => !open && setPendingFiles(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t("confirmUploadTitle")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("confirmUploadDescription")}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-4 space-y-3">
+                        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                            <SelectTrigger className="mx-auto w-fit h-auto px-4 py-2 text-2xl font-semibold tracking-tight">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {PERIOD_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {pendingFiles && (
+                            <p className="text-center text-sm text-muted-foreground">
+                                {pendingFiles.map((f) => f.name).join(", ")}
+                            </p>
+                        )}
+                    </div>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmUpload}>{t("confirm")}</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

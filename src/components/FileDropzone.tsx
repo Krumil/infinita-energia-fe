@@ -76,6 +76,17 @@ export function FileDropzone({ accept, maxSizeMB, multiple = false, onFiles, dis
             onDragOver={handleDrag}
             onDrop={handleDrop}
         >
+
+            <FileSpreadsheet className="dropzone-icon pointer-events-none" />
+            <p className="font-display text-sm text-muted-foreground pointer-events-none">
+                <span className="text-energia-accent font-medium">{t("clickToUpload")}</span>{" "}
+                <span className="text-muted-foreground/70">
+                    {t("or")} {t("dragAndDrop")}
+                </span>
+            </p>
+            <p className="font-mono text-xs text-muted-foreground/50 mt-2 uppercase tracking-wider pointer-events-none">
+                {accept} · {t("max")} {maxSizeMB}MB
+            </p>
             <input
                 type="file"
                 accept={accept}
@@ -85,16 +96,6 @@ export function FileDropzone({ accept, maxSizeMB, multiple = false, onFiles, dis
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 aria-label="File upload"
             />
-            <FileSpreadsheet className="dropzone-icon" />
-            <p className="font-display text-sm text-muted-foreground">
-                <span className="text-energia-accent font-medium">{t("clickToUpload")}</span>{" "}
-                <span className="text-muted-foreground/70">
-                    {t("or")} {t("dragAndDrop")}
-                </span>
-            </p>
-            <p className="font-mono text-xs text-muted-foreground/50 mt-2 uppercase tracking-wider">
-                {accept} · {t("max")} {maxSizeMB}MB
-            </p>
         </div>
     );
 }
