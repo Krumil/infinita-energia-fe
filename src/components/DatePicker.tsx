@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -79,11 +80,32 @@ function toMonthString(date: Date): string {
     return `${y}-${m}`;
 }
 
+const MONTH_LABELS = [
+    "Gen", "Feb", "Mar", "Apr", "Mag", "Giu",
+    "Lug", "Ago", "Set", "Ott", "Nov", "Dic",
+];
+
 export function MonthPicker({ value, onChange, placeholder = "Seleziona mese", className, disabled }: MonthPickerProps) {
     const selected = parseMonth(value);
+    const [open, setOpen] = useState(false);
+    const [viewYear, setViewYear] = useState(() => selected?.getFullYear() ?? new Date().getFullYear());
+
+    const selectedMonth = selected ? selected.getMonth() : -1;
+    const selectedYear = selected?.getFullYear() ?? -1;
+
+    const handleSelect = (monthIndex: number) => {
+        const date = new Date(viewYear, monthIndex, 1);
+        onChange(toMonthString(date));
+        setOpen(false);
+    };
+
+    const handleClear = () => {
+        onChange("");
+        setOpen(false);
+    };
 
     return (
-        <Popover>
+        <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
@@ -98,14 +120,37 @@ export function MonthPicker({ value, onChange, placeholder = "Seleziona mese", c
                     {selected ? format(selected, "MMMM yyyy", { locale: it }) : <span>{placeholder}</span>}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                    mode="single"
-                    selected={selected}
-                    onSelect={(date) => onChange(date ? toMonthString(date) : "")}
-                    locale={it}
-                    captionLayout="dropdown"
-                />
+            <PopoverContent className="w-[240px] p-3" align="start">
+                <div className="flex items-center justify-between mb-3">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewYear((y) => y - 1)}>
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium">{viewYear}</span>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewYear((y) => y + 1)}>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                    {MONTH_LABELS.map((label, i) => {
+                        const isSelected = viewYear === selectedYear && i === selectedMonth;
+                        return (
+                            <Button
+                                key={i}
+                                variant={isSelected ? "default" : "ghost"}
+                                size="sm"
+                                className={cn("h-8 text-xs", isSelected && "btn-primary")}
+                                onClick={() => handleSelect(i)}
+                            >
+                                {label}
+                            </Button>
+                        );
+                    })}
+                </div>
+                {selected && (
+                    <Button variant="ghost" size="sm" className="w-full mt-2 text-xs text-muted-foreground" onClick={handleClear}>
+                        Cancella
+                    </Button>
+                )}
             </PopoverContent>
         </Popover>
     );
