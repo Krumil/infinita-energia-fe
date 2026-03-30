@@ -194,7 +194,6 @@ function AuthenticatedApp() {
                                 liquidazioniResult={liquidazioni.result}
                                 onLiquidazioniUpload={handleLiquidazioniUpload}
                                 pendingOrders={pendingOrders.orders}
-                                pendingOrdersCount={pendingOrders.count}
                                 pendingOrdersLoading={pendingOrders.loading}
                                 onRefreshPendingOrders={pendingOrders.fetchPendingOrders}
                                 startDate={pendingOrders.startDate}

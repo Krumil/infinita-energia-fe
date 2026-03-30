@@ -49,7 +49,6 @@ interface OrdiniTabProps {
     liquidazioniResult: LiquidazioniResult | null;
     onLiquidazioniUpload: (files: File[], competenzaPeriod: string) => void;
     pendingOrders: PendingOrder[];
-    pendingOrdersCount: number;
     pendingOrdersLoading: boolean;
     onRefreshPendingOrders: (startDate?: string, endDate?: string) => void;
     startDate: string;
@@ -251,7 +250,6 @@ export function OrdiniTab({
     liquidazioniResult,
     onLiquidazioniUpload,
     pendingOrders,
-    pendingOrdersCount,
     pendingOrdersLoading,
     onRefreshPendingOrders,
     startDate,
