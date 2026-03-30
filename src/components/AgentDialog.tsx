@@ -235,7 +235,7 @@ export function AgentDialog({
                                     {t("deleteAgent")}
                                 </Button>
                                 <AlertDialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
-                                    <AlertDialogContent className="dialog-ledger">
+                                    <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle className="font-display text-xl">
                                                 {t("deleteAgentConfirm")}

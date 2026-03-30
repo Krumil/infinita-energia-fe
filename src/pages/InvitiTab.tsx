@@ -27,6 +27,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useTranslation } from "@/hooks/useTranslation";
+import { formatDate } from "@/lib/utils";
 import { useInviti } from "@/hooks/useInviti";
 import type { Agente, StoricoInvito, UpdateInvitoRequest } from "@/types";
 
@@ -47,14 +48,6 @@ type SortField =
 
 type SortDirection = "asc" | "desc";
 
-function formatDate(isoDate: string | null): string {
-    if (!isoDate) return "\u2014";
-    const date = new Date(isoDate);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-}
 
 function formatMonth(isoDate: string): string {
     const date = new Date(isoDate);

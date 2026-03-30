@@ -1,4 +1,5 @@
-import type { CalcoloResult, ProvvigioneData } from "@/types";
+import type { CalcoloResult, PendingOrder, ProvvigioneData } from "@/types";
+import { formatDate } from "@/lib/utils";
 
 /**
  * Parses comp_dal date string to a Date object.
@@ -178,6 +179,43 @@ export async function generateCommissionsZip(result: CalcoloResult, periodFolder
     const zipBlob = await zip.generateAsync({ type: "blob" });
 
     return zipBlob;
+}
+
+export async function exportPendingOrdersExcel(orders: PendingOrder[]): Promise<void> {
+    const XLSX = await import("xlsx");
+
+    const headers = ["ID Ordine", "Cliente", "POD/PDR", "Prodotto", "Agente", "Stato", "Data Firma", "Metodo Pagamento"];
+
+    const rows = orders.map((o) => [
+        o.id_ordine,
+        o.cliente_nome || "",
+        o.pod_pdr,
+        o.prodotto,
+        o.agente || "",
+        o.stato || "",
+        formatDate(o.data_firma, ""),
+        o.metodo_pagam || "",
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+    worksheet["!cols"] = [
+        { wch: 12 },  // ID Ordine
+        { wch: 30 },  // Cliente
+        { wch: 25 },  // POD/PDR
+        { wch: 15 },  // Prodotto
+        { wch: 20 },  // Agente
+        { wch: 15 },  // Stato
+        { wch: 12 },  // Data Firma
+        { wch: 18 },  // Metodo Pagamento
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Ordini Inevasi");
+
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as ArrayBuffer;
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    downloadBlob(blob, "ordini-inevasi.xlsx");
 }
 
 /**

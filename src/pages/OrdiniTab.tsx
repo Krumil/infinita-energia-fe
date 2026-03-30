@@ -11,6 +11,7 @@ import {
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
+    Download,
 } from "lucide-react";
 import {
     AlertDialog,
@@ -29,6 +30,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { FileDropzone } from "@/components";
 import { DatePicker } from "@/components/DatePicker";
 import { useTranslation } from "@/hooks/useTranslation";
+import { exportPendingOrdersExcel } from "@/lib/exportUtils";
+import { formatDate } from "@/lib/utils";
 import type { ImportExcelResponse, PendingOrder } from "@/types";
 
 interface LiquidazioniResult {
@@ -99,14 +102,6 @@ function generatePeriodOptions(): { value: string; label: string }[] {
 
 const PERIOD_OPTIONS = generatePeriodOptions();
 
-function formatDate(isoDate: string | null): string {
-    if (!isoDate) return "—";
-    const date = new Date(isoDate);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-}
 
 function filterOrders(orders: PendingOrder[], query: string): PendingOrder[] {
     if (!query.trim()) return orders;
@@ -397,9 +392,9 @@ export function OrdiniTab({
                         <Package className="h-5 w-5 text-energia-accent" />
                         <h2 className="font-display text-xl">
                             {t("pendingOrders")}
-                            {pendingOrdersCount > 0 && (
+                            {processedOrders.length > 0 && (
                                 <span className="ml-2 text-muted-foreground font-normal text-base">
-                                    ({pendingOrdersCount})
+                                    ({processedOrders.length})
                                 </span>
                             )}
                         </h2>
@@ -451,6 +446,14 @@ export function OrdiniTab({
                             ) : (
                                 <RefreshCw className="h-4 w-4" />
                             )}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => exportPendingOrdersExcel(processedOrders)}
+                            disabled={pendingOrdersLoading || processedOrders.length === 0}
+                        >
+                            <Download className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
@@ -582,14 +585,14 @@ export function OrdiniTab({
             </section>
 
             <AlertDialog open={pendingFiles !== null} onOpenChange={(open) => !open && setPendingFiles(null)}>
-                <AlertDialogContent>
+                <AlertDialogContent className="w-auto min-w-[280px]">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>{t("confirmUploadTitle")}</AlertDialogTitle>
-                        <AlertDialogDescription>{t("confirmUploadDescription")}</AlertDialogDescription>
+                        <AlertDialogTitle className="text-center">{t("confirmUploadTitle")}</AlertDialogTitle>
+                        <AlertDialogDescription className="text-center">{t("confirmUploadDescription")}</AlertDialogDescription>
                     </AlertDialogHeader>
-                    <div className="py-4 space-y-3">
+                    <div className="py-2">
                         <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                            <SelectTrigger className="mx-auto w-fit h-auto px-4 py-2 text-2xl font-semibold tracking-tight">
+                            <SelectTrigger className="mx-auto w-48 h-11 text-base">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -600,14 +603,9 @@ export function OrdiniTab({
                                 ))}
                             </SelectContent>
                         </Select>
-                        {pendingFiles && (
-                            <p className="text-center text-sm text-muted-foreground">
-                                {pendingFiles.map((f) => f.name).join(", ")}
-                            </p>
-                        )}
                     </div>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                    <AlertDialogFooter className="grid grid-cols-2 gap-2">
+                        <AlertDialogCancel className="mt-0">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmUpload}>{t("confirm")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
