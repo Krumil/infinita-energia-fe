@@ -184,8 +184,7 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
                                                                                         {item.pod_pdr}
                                                                                     </TableCell>
                                                                                     <TableCell
-                                                                                        className="text-sm text-muted-foreground max-w-xs truncate"
-                                                                                        title={item.regola}
+                                                                                        className="text-sm text-muted-foreground"
                                                                                     >
                                                                                         {item.regola}
                                                                                     </TableCell>

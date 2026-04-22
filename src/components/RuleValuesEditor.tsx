@@ -49,7 +49,7 @@ function ScaglioneRow({
             "grid grid-cols-[1fr_auto_5rem] items-center gap-2 px-3 py-1.5 text-xs",
             showCustom && "bg-emerald-500/[0.05]",
         )}>
-            <span className={cn("font-body truncate", !showCustom && "text-muted-foreground")}>
+            <span className={cn("font-body", !showCustom && "text-muted-foreground")}>
                 {scaglione.scaglione_nome}
             </span>
             <span className={cn(
@@ -92,7 +92,7 @@ function RuleGroup({
                     "h-3 w-3 text-muted-foreground transition-transform duration-200",
                     isOpen && "rotate-90",
                 )} />
-                <span className="font-display text-xs font-medium flex-1 truncate">
+                <span className="font-display text-xs font-medium flex-1">
                     {group.nome}
                 </span>
                 {isGeneral && (
