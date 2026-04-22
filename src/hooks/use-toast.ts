@@ -66,7 +66,7 @@ const addToRemoveQueue = (toastId: string) => {
     toastTimeouts.set(toastId, timeout);
 };
 
-export const reducer = (state: State, action: Action): State => {
+const reducer = (state: State, action: Action): State => {
     switch (action.type) {
         case "ADD_TOAST":
             return {
@@ -148,7 +148,7 @@ function toast({ ...props }: Toast) {
             ...props,
             id,
             open: true,
-            onOpenChange: (open) => {
+            onOpenChange: (open: boolean) => {
                 if (!open) dismiss();
             },
         },

@@ -1,30 +1,52 @@
-// === AGENT API TYPES ===
+import type { Regola } from "./domain";
 
 export interface CreateAgentRequest {
     nome_cognome: string;
     agente_padre?: string;
+    mail?: string;
     statistiche?: boolean;
-    gettone_residenziale_standard?: number;
-    gettone_residenziale_bonus?: number;
-    gettone_residenziale_malus?: number;
-    rinnovo_residenziale?: number;
-    gettone_business_standard?: number;
-    gettone_business_bonus?: number;
-    gettone_business_malus?: number;
-    rinnovo_business?: number;
-    bonus_sdd?: number;
 }
 
 export interface AgentCreateResponse {
     message: string;
-    id: number;
+    agente_id: number;
 }
 
 export interface AgentMessageResponse {
     message: string;
 }
 
-// === EXCEL IMPORT TYPES ===
+export interface UpdateRegolaRequest {
+    utilizzato?: boolean;
+    valore_default?: number;
+    tipo_utenza?: "residenziale" | "business" | null;
+    tipo_servizio?: "gas" | "luce" | null;
+}
+
+export interface UpdateRegolaResponse {
+    success: boolean;
+    message: string;
+    regola: Regola;
+}
+
+export interface ImportRegoleResponse {
+    success: boolean;
+    message: string;
+}
+
+export interface UpdateScaglioneRequest {
+    tipo_utenza?: "residenziale" | "business" | null;
+    tipo_servizio?: "gas" | "luce" | null;
+}
+
+export interface ImportScaglioniResponse {
+    success: boolean;
+    message: string;
+}
+
+export interface SaveConfigurazioneRequest {
+    valori: Array<{ regola_id: number; scaglione_id: number; valore: number }>;
+}
 
 export interface ImportExcelResponse {
     message: string;
@@ -36,15 +58,11 @@ export interface ImportExcelResponse {
     };
 }
 
-// === LIQUIDATION IMPORT TYPES ===
-
 export interface ImportLiquidazioniResponse {
     success: boolean;
     message: string;
     error?: string;
 }
-
-// === COMMISSION CALCULATION TYPES ===
 
 export interface ProvvigioneData {
     cf_piva: string;
@@ -65,45 +83,17 @@ export interface CalcoloResult {
     [venditoreName: string]: CalcoloVenditoreResult;
 }
 
-// Liquidation record for calculation input
-// Uses original column names with spaces/special chars as expected by backend
 export interface CalcoloInput {
-    "Partner Comm.": string;
-    Regola: string;
-    "Tipo Cliente": string;
-    Venditore: string;
-    Consumo: number;
-    Quantità: number;
-    "Importo €": number;
+    venditore: string;
+    regola: string;
+    scaglione_consumo: string;
+    importo_euro: number;
+    pod_pdr: string;
+    cliente: string;
+    cf_piva: string;
+    comp_al: string;
     [key: string]: string | number | undefined;
 }
-
-// === BULK IMPORT TYPES ===
-
-// CSV Agent row type (for bulk import)
-export interface AgentCsvRow {
-    nome_cognome: string;
-    agente_padre?: string;
-    gettone_residenziale_standard?: string | number;
-    gettone_residenziale_bonus?: string | number;
-    gettone_residenziale_malus?: string | number;
-    rinnovo_residenziale?: string | number;
-    gettone_business_standard?: string | number;
-    gettone_business_bonus?: string | number;
-    gettone_business_malus?: string | number;
-    rinnovo_business?: string | number;
-    bonus_sdd?: string | number;
-    [key: string]: string | number | undefined;
-}
-
-// Bulk agent import result
-export interface BulkAgentImportResult {
-    success: number;
-    failed: number;
-    errors: Array<{ row: number; name: string; error: string }>;
-}
-
-// === PENDING ORDERS TYPES ===
 
 export interface PendingOrder {
     id_ordine: number;
@@ -126,8 +116,6 @@ export interface PendingOrdersResponse {
     count: number;
     data: PendingOrder[];
 }
-
-// === DASHBOARD TYPES ===
 
 export interface DashboardContrattiTotali {
     anno_riferimento: number;
@@ -165,11 +153,10 @@ export interface DashboardMeseProvvigioni {
 
 export interface DashboardProvvigioniMensili {
     anno_riferimento: number;
-    unità_misura: string;
+    unita_misura: string;
     dati: DashboardMeseProvvigioni[];
 }
 
-// Contracts by product type
 export interface DashboardProdottoContratti {
     prodotto: string;
     anno_n: number;
@@ -179,4 +166,12 @@ export interface DashboardProdottoContratti {
 export interface DashboardContrattiPerProdotto {
     anno_riferimento: number;
     dati: DashboardProdottoContratti[];
+}
+
+export interface UpdateInvitoRequest {
+    stato?: "bozza" | "inviato" | "approvato";
+    riferimento_fattura?: string;
+    data_fattura?: string;
+    pagato?: boolean;
+    data_pagamento?: string;
 }

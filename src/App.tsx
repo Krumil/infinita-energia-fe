@@ -1,24 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Agentation } from "agentation";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/toaster";
 
 // Layout components
-import { AppHeader, AppFooter } from "@/components";
+import { AppHeader } from "@/components";
 
 // Page components
-import { DashboardTab, AgentsTab, OrdiniTab, CalcoloTab } from "@/pages";
+import { DashboardTab, AgentsTab, RegoleTab, OrdiniTab, CalcoloTab, InvitiTab } from "@/pages";
 
 // Custom hooks
-import { useAppSettings, useAgents, useOrders, useLiquidazioni, useCalcolo, usePendingOrders } from "@/hooks";
+import {
+    useAppSettings,
+    useAgents,
+    useRegole,
+    useScaglioni,
+    useOrders,
+    useLiquidazioni,
+    useCalcolo,
+    usePendingOrders,
+    useToast,
+    useTranslation,
+} from "@/hooks";
 import { useAuth } from "@/contexts/AuthContext";
-
-// ========== Main App Component ==========
 
 export default function App() {
     const { isAuthenticated } = useAuth();
 
-    // Don't render anything if not authenticated - prevents data loading
     if (!isAuthenticated) {
         return null;
     }
@@ -27,21 +36,27 @@ export default function App() {
 }
 
 function AuthenticatedApp() {
-    // Tab navigation state
+    const { toast } = useToast();
+    const { t } = useTranslation();
+
     const [activeTab, setActiveTab] = useState<string>("dashboard");
 
-    // Last action for footer (shared state across hooks)
-    const [lastAction, setLastAction] = useState<string | null>(null);
-
-    // Custom hooks for state management - only called when authenticated
     const appSettings = useAppSettings();
     const agents = useAgents();
+    const regole = useRegole();
+    const scaglioni = useScaglioni();
     const orders = useOrders();
     const liquidazioni = useLiquidazioni();
     const calcolo = useCalcolo(agents.agents);
     const pendingOrders = usePendingOrders();
 
-    // Sync activeTab with URL hash
+    const incompleteRulesCount = useMemo(
+        () =>
+            regole.regole.filter((r) => r.tipo_utenza === null || r.tipo_servizio === null).length +
+            scaglioni.scaglioni.filter((s) => s.tipo_utenza === null || s.tipo_servizio === null).length,
+        [regole.regole, scaglioni.scaglioni],
+    );
+
     useEffect(() => {
         const hash = window.location.hash.replace("#", "") || "dashboard";
         setActiveTab(hash);
@@ -70,47 +85,54 @@ function AuthenticatedApp() {
         }
     };
 
-    // Wrapper handlers that update lastAction
     const handleOrdersUpload = async (files: File[]) => {
         const action = await orders.handleUpload(files);
         if (action) {
-            setLastAction(action);
             await pendingOrders.fetchPendingOrders();
         }
     };
 
     const handleLiquidazioniUpload = async (files: File[], competenzaPeriod: string) => {
-        const action = await liquidazioni.handleUpload(files, competenzaPeriod);
-        if (action) {
-            setLastAction(action);
-            await pendingOrders.fetchPendingOrders();
+        const result = await liquidazioni.handleUpload(files, competenzaPeriod);
+        if (result) {
+            const refreshes: Promise<void>[] = [pendingOrders.fetchPendingOrders()];
+            if (result.hasNewRules) {
+                refreshes.push(regole.loadRegole());
+            }
+            await Promise.all(refreshes);
+
+            if (result.hasNewRules) {
+                toast({
+                    title: t("newRulesCreated"),
+                    description: t("newRulesCreatedDesc"),
+                });
+            }
         }
     };
 
-    const handleAgentSave = async (data: Parameters<typeof agents.saveAgent>[0]) => {
-        const action = await agents.saveAgent(data);
-        if (action) setLastAction(action);
+    const handleAgentSave = async (...args: Parameters<typeof agents.saveAgent>) => {
+        await agents.saveAgent(...args);
     };
 
-    const handleAgentDelete = async () => {
-        const action = await agents.confirmDelete();
-        if (action) setLastAction(action);
+    const handleAgentDelete = async (agent: Parameters<typeof agents.deleteAgent>[0]) => {
+        await agents.deleteAgent(agent);
     };
 
     const handleCalculate = async () => {
-        const action = await calcolo.calculate();
-        if (action) setLastAction(action);
+        await calcolo.calculate();
     };
 
     return (
         <TooltipProvider>
             <div className="min-h-screen flex flex-col">
                 <AppHeader
+                    appVersion={__APP_VERSION__}
                     onSettingsSave={appSettings.saveSettings}
                     settingsOpen={appSettings.sheetOpen}
                     onSettingsOpenChange={appSettings.setSheetOpen}
                     activeTab={activeTab}
                     onTabChange={handleTabChange}
+                    incompleteRulesCount={incompleteRulesCount}
                 />
 
                 <main className="flex-1 max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 w-full">
@@ -127,16 +149,38 @@ function AuthenticatedApp() {
                                 onDialogOpenChange={agents.setDialogOpen}
                                 editingAgent={agents.editingAgent}
                                 saving={agents.saving}
-                                deleteDialogOpen={agents.deleteDialogOpen}
-                                onDeleteDialogOpenChange={agents.setDeleteDialogOpen}
-                                deletingAgent={agents.deletingAgent}
+                                deleting={agents.deleting}
                                 onRefresh={agents.loadAgents}
                                 onCreateClick={agents.openCreateDialog}
                                 onEdit={agents.openEditDialog}
-                                onDelete={agents.openDeleteDialog}
-                                onSave={handleAgentSave}
-                                onConfirmDelete={handleAgentDelete}
                                 onToggleStatistiche={agents.toggleStatistiche}
+                                onSave={handleAgentSave}
+                                onDeleteAgent={handleAgentDelete}
+                                regole={regole.regole}
+                                configurazione={agents.configurazione}
+                                configLoading={agents.configLoading}
+                                scaglioni={scaglioni.scaglioni}
+                            />
+                        </TabsContent>
+
+                        <TabsContent value="regole">
+                            <RegoleTab
+                                regole={regole.regole}
+                                loading={regole.loading}
+                                importing={regole.importing}
+                                onRefresh={regole.loadRegole}
+                                onImportRegole={regole.importRegole}
+                                onToggleUtilizzato={regole.toggleUtilizzato}
+                                onUpdateDefault={regole.updateDefault}
+                                onUpdateTipoUtenza={regole.updateTipoUtenza}
+                                onUpdateTipoServizio={regole.updateTipoServizio}
+                                scaglioni={scaglioni.scaglioni}
+                                scaglioniLoading={scaglioni.loading}
+                                scaglioniImporting={scaglioni.importing}
+                                onRefreshScaglioni={scaglioni.loadScaglioni}
+                                onImportScaglioni={scaglioni.importScaglioni}
+                                onUpdateScaglioneTipoUtenza={scaglioni.updateTipoUtenza}
+                                onUpdateScaglioneTipoServizio={scaglioni.updateTipoServizio}
                             />
                         </TabsContent>
 
@@ -150,7 +194,6 @@ function AuthenticatedApp() {
                                 liquidazioniResult={liquidazioni.result}
                                 onLiquidazioniUpload={handleLiquidazioniUpload}
                                 pendingOrders={pendingOrders.orders}
-                                pendingOrdersCount={pendingOrders.count}
                                 pendingOrdersLoading={pendingOrders.loading}
                                 onRefreshPendingOrders={pendingOrders.fetchPendingOrders}
                                 startDate={pendingOrders.startDate}
@@ -171,12 +214,18 @@ function AuthenticatedApp() {
                                 onNavigate={handleTabChange}
                             />
                         </TabsContent>
+
+                        <TabsContent value="inviti">
+                            <InvitiTab
+                                agents={agents.agents}
+                                agentsLoading={agents.loading}
+                            />
+                        </TabsContent>
                     </Tabs>
                 </main>
 
-                <AppFooter lastAction={lastAction} />
-
                 <Toaster />
+                {import.meta.env.DEV && <Agentation />}
             </div>
         </TooltipProvider>
     );

@@ -1,32 +1,39 @@
-import { Settings as SettingsIcon, LayoutDashboard, Users, Receipt, Calculator, LogOut } from "lucide-react";
+import { Settings as SettingsIcon, LayoutDashboard, Users, BookOpen, Receipt, Calculator, FileText, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { SettingsPanel } from "@/components";
+import { SettingsPanel } from "@/components/SettingsPanel";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 interface AppHeaderProps {
+    appVersion: string;
     onSettingsSave: () => void;
     settingsOpen: boolean;
     onSettingsOpenChange: (open: boolean) => void;
     activeTab: string;
     onTabChange: (tab: string) => void;
+    incompleteRulesCount?: number;
 }
 
 const navItems = [
     { id: "dashboard", labelKey: "dashboard", icon: LayoutDashboard },
     { id: "agenti", labelKey: "agenti", icon: Users },
+    { id: "regole", labelKey: "regole", icon: BookOpen },
     { id: "ordini", labelKey: "ordini", icon: Receipt },
     { id: "provvigioni", labelKey: "provvigioni", icon: Calculator },
+    { id: "inviti", labelKey: "inviti", icon: FileText },
 ] as const;
 
 export function AppHeader({
+    appVersion,
     onSettingsSave,
     settingsOpen,
     onSettingsOpenChange,
     activeTab,
     onTabChange,
+    incompleteRulesCount = 0,
 }: AppHeaderProps) {
     const { t } = useTranslation();
     const { logout, user } = useAuth();
@@ -40,13 +47,16 @@ export function AppHeader({
                         <div className="relative flex-shrink-0">
                             <img src="/logo.png" alt="Infinita Energia" className="h-10 w-10 object-contain" />
                         </div>
-                        <div className="hidden sm:block h-8 w-px bg-white/15" />
+                        <div className="header-brand-divider hidden sm:block h-8 w-px" />
+                        <span className="header-brand-subtitle font-mono text-[10px] uppercase tracking-[0.2em] sm:hidden">
+                            v{appVersion}
+                        </span>
                         <div className="hidden sm:flex flex-col justify-center">
-                            <h1 className="font-display text-[17px] font-medium tracking-wide text-white leading-tight">
+                            <h1 className="header-brand-title font-display text-[17px] font-medium tracking-wide leading-tight">
                                 {t("appTitle")}
                             </h1>
-                            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50 mt-0.5">
-                                Sistema Provvigionale
+                            <p className="header-brand-subtitle mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em]">
+                                v{appVersion}
                             </p>
                         </div>
                     </div>
@@ -61,31 +71,27 @@ export function AppHeader({
                                     key={item.id}
                                     onClick={() => onTabChange(item.id)}
                                     aria-current={isActive ? "page" : undefined}
-                                    className={`
-                                        relative flex items-center gap-2.5 px-4 py-2.5
-                                        font-display text-[13px] tracking-[0.04em] uppercase
-                                        rounded-md transition-all duration-200
-                                        ${
-                                            isActive
-                                                ? "bg-white/[0.12] text-white"
-                                                : "text-white/60 hover:text-white hover:bg-white/[0.06]"
-                                        }
-                                    `}
+                                    className={cn("header-nav-item", isActive && "is-active")}
                                 >
                                     <Icon
                                         className={`h-4 w-4 ${isActive ? "text-energia-accent" : "text-current"}`}
                                         strokeWidth={isActive ? 2.25 : 1.75}
                                     />
                                     <span className="hidden md:inline">{t(item.labelKey)}</span>
+                                    {item.id === "regole" && incompleteRulesCount > 0 && (
+                                        <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-[10px] font-bold text-white leading-none">
+                                            {incompleteRulesCount}
+                                        </span>
+                                    )}
                                     {isActive && (
-                                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-energia-accent rounded-full" />
+                                        <span className="header-tab-indicator absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" />
                                     )}
                                 </button>
                             );
                         })}
 
                         {/* Divider */}
-                        <div className="w-px h-5 mx-2 bg-white/10" />
+                        <div className="header-section-divider w-px h-5 mx-2" />
 
                         {/* Settings */}
                         <Sheet open={settingsOpen} onOpenChange={onSettingsOpenChange}>
@@ -93,14 +99,7 @@ export function AppHeader({
                                 <TooltipTrigger asChild>
                                     <SheetTrigger asChild>
                                         <button
-                                            className="
-                                                flex items-center justify-center
-                                                w-10 h-10 rounded-md
-                                                text-white/60 hover:text-white
-                                                hover:bg-white/[0.06]
-                                                transition-all duration-200
-                                                group
-                                            "
+                                            className="header-utility-btn group"
                                             aria-label={t("settings")}
                                         >
                                             <SettingsIcon
@@ -133,13 +132,7 @@ export function AppHeader({
                             <TooltipTrigger asChild>
                                 <button
                                     onClick={logout}
-                                    className="
-                                        flex items-center justify-center
-                                        w-10 h-10 rounded-md
-                                        text-white/60 hover:text-red-400
-                                        hover:bg-white/[0.06]
-                                        transition-all duration-200
-                                    "
+                                    className="header-utility-btn header-utility-btn-danger"
                                     aria-label={t("logout")}
                                 >
                                     <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />

@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
-import { parseLiquidazioniExcel, calcolaProvvigioni, convertToCalcoloInput, ApiError } from "@/api";
+import { calcolaProvvigioni } from "@/api/calcolo";
+import { ApiError } from "@/api/client";
+import { parseLiquidazioniExcel, convertToCalcoloInput } from "@/importers/liquidazioni";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Agente, Liquidazione, CalcoloResult } from "@/types";
@@ -7,6 +9,42 @@ import type { Agente, Liquidazione, CalcoloResult } from "@/types";
 export interface UnmatchedAgent {
     name: string;
     count: number;
+}
+
+function normalizeSellerName(value: string | null | undefined): string {
+    return value?.trim().toLowerCase() ?? "";
+}
+
+function createAgentNameSet(agents: Agente[]): Set<string> {
+    return new Set(agents.map((agent) => normalizeSellerName(agent.nome_cognome)).filter(Boolean));
+}
+
+function collectUnmatchedAgents(data: Liquidazione[], agentNames: Set<string>): UnmatchedAgent[] {
+    const venditoreCounts = new Map<string, number>();
+
+    for (const record of data) {
+        const venditore = record.venditore?.trim() || "";
+        if (venditore) {
+            venditoreCounts.set(venditore, (venditoreCounts.get(venditore) || 0) + 1);
+        }
+    }
+
+    const unmatched: UnmatchedAgent[] = [];
+    for (const [venditore, count] of venditoreCounts) {
+        if (!agentNames.has(venditore.toLowerCase())) {
+            unmatched.push({ name: venditore, count });
+        }
+    }
+
+    unmatched.sort((a, b) => b.count - a.count);
+    return unmatched;
+}
+
+function filterMatchedLiquidazioni(data: Liquidazione[], agentNames: Set<string>): Liquidazione[] {
+    return data.filter((record) => {
+        const venditore = normalizeSellerName(record.venditore);
+        return venditore !== "" && agentNames.has(venditore);
+    });
 }
 
 export function useCalcolo(agents: Agente[]) {
@@ -27,29 +65,8 @@ export function useCalcolo(agents: Agente[]) {
                 const parsed = await parseLiquidazioniExcel(file);
                 setData(parsed);
                 setResult(null);
-
-                // Validate agents against loaded agents list
-                const agentNames = new Set(agents.map((a) => a.nome_cognome.toLowerCase().trim()));
-                const venditoreCounts = new Map<string, number>();
-
-                // Count records per venditore
-                for (const record of parsed) {
-                    const venditore = record.venditore?.trim() || "";
-                    if (venditore) {
-                        venditoreCounts.set(venditore, (venditoreCounts.get(venditore) || 0) + 1);
-                    }
-                }
-
-                // Find unmatched agents
-                const unmatched: UnmatchedAgent[] = [];
-                for (const [venditore, count] of venditoreCounts) {
-                    if (!agentNames.has(venditore.toLowerCase())) {
-                        unmatched.push({ name: venditore, count });
-                    }
-                }
-
-                // Sort by count descending
-                unmatched.sort((a, b) => b.count - a.count);
+                const agentNames = createAgentNameSet(agents);
+                const unmatched = collectUnmatchedAgents(parsed, agentNames);
                 setUnmatchedAgents(unmatched);
 
                 if (unmatched.length > 0) {
@@ -88,7 +105,27 @@ export function useCalcolo(agents: Agente[]) {
         setResult(null);
 
         try {
-            const inputData = convertToCalcoloInput(data);
+            const agentNames = createAgentNameSet(agents);
+            if (agentNames.size === 0) {
+                toast({
+                    title: t("error"),
+                    description: t("loadAgentsFirst"),
+                    variant: "destructive",
+                });
+                return null;
+            }
+
+            const matchedData = filterMatchedLiquidazioni(data, agentNames);
+            if (matchedData.length === 0) {
+                toast({
+                    title: t("error"),
+                    description: t("noMatchedRecordsToCalculate"),
+                    variant: "destructive",
+                });
+                return null;
+            }
+
+            const inputData = convertToCalcoloInput(matchedData);
             const calcResult = await calcolaProvvigioni(inputData);
             setResult(calcResult);
             toast({
@@ -107,7 +144,7 @@ export function useCalcolo(agents: Agente[]) {
         } finally {
             setLoading(false);
         }
-    }, [data, toast, t]);
+    }, [agents, data, toast, t]);
 
     return {
         data,

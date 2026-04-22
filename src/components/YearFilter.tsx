@@ -35,7 +35,7 @@ export function YearFilter({ availableYears, value, onChange, variant = "default
             <Card className="animate-fade-up">
                 <CardContent className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[hsl(var(--energia-primary)/0.1)] flex items-center justify-center text-[hsl(var(--energia-primary))]">
+                        <div className="w-8 h-8 rounded-lg bg-energia-primary/10 flex items-center justify-center text-energia-primary">
                             <Calendar className="h-4 w-4" />
                         </div>
                         <div className="flex items-center gap-3">

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { apiLogin, apiLogout, checkAuthStatus, setUnauthorizedCallback, ApiError } from "../api";
+import { apiLogin, apiLogout, checkAuthStatus } from "@/api/auth";
+import { ApiError, setUnauthorizedCallback } from "@/api/client";
 
 interface AuthContextType {
     isAuthenticated: boolean;

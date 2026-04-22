@@ -3,7 +3,7 @@ import type { Language } from "../translations";
 
 type Theme = "light" | "dark" | "system";
 
-export type ThemeLanguageContextType = {
+type ThemeLanguageContextType = {
     theme: Theme;
     setTheme: (theme: Theme) => void;
     language: Language;

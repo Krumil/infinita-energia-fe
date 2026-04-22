@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import type { Agente } from "./domain";
+import type { Agente, Regola, Scaglione, ConfigurazioneRegola } from "./domain";
 import type { CreateAgentRequest, CalcoloResult } from "./api";
 
-// === FILE DROPZONE ===
+export type TipoUtenza = "residenziale" | "business";
 
 export interface FileDropzoneProps {
     accept: string;
@@ -12,8 +12,6 @@ export interface FileDropzoneProps {
     disabled?: boolean;
 }
 
-// === KPI CARD ===
-
 export interface KPICardProps {
     title: string;
     value: string | number;
@@ -22,40 +20,44 @@ export interface KPICardProps {
     delay?: number;
 }
 
-// === EMPTY STATE ===
-
 export interface EmptyStateProps {
     message: string;
     icon?: ReactNode;
 }
 
-// === SETTINGS PANEL ===
-
 export interface SettingsPanelProps {
     onSave: () => void;
 }
-
-// === AGENT DIALOG ===
 
 export interface AgentDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     agent: Agente | null;
     agents: Agente[];
-    onSave: (data: CreateAgentRequest) => Promise<void>;
+    regole: Regola[];
+    scaglioni: Scaglione[];
+    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<void>;
     saving: boolean;
+    onDelete?: () => void;
+    deleting?: boolean;
+    configurazione: ConfigurazioneRegola[];
+    configLoading: boolean;
 }
-
-// === AGENTS TABLE ===
 
 export interface AgentsTableProps {
     data: Agente[];
     onEdit: (agent: Agente) => void;
-    onDelete: (agent: Agente) => void;
     onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
 }
 
-// === CALCOLO RESULTS ===
+export interface RegoleTableProps {
+    regole: Regola[];
+    scaglioni: Scaglione[];
+    onToggleUtilizzato: (regola: Regola, value: boolean) => Promise<void>;
+    onUpdateDefault: (regola: Regola, value: number) => Promise<void>;
+    onUpdateTipoUtenza: (regola: Regola, value: "residenziale" | "business" | null) => Promise<void>;
+    onUpdateTipoServizio: (regola: Regola, value: "gas" | "luce" | null) => Promise<void>;
+}
 
 export interface CalcoloResultsProps {
     data: CalcoloResult;

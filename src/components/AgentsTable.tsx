@@ -1,180 +1,51 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, Pencil, Trash2, Check, X as XIcon } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "@/hooks/useTranslation";
+import { SearchableSelect } from "./SearchableSelect";
 import type { AgentsTableProps } from "@/types/components";
 import type { Agente } from "@/types/domain";
 
-function formatCurrency(amount: number, currency: string = "EUR"): string {
-    return new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
-}
-
-interface ColumnDef {
-    key: string;
-    defaultWidth: number;
-    minWidth: number;
-}
-
-interface ResizeHandleProps {
-    index: number;
-    onMouseDown: (e: React.MouseEvent, index: number) => void;
-    onDoubleClick: (index: number) => void;
-}
-
-function ResizeHandle({ index, onMouseDown, onDoubleClick }: ResizeHandleProps) {
-    return (
-        <div
-            className="absolute right-0 top-0 h-full w-1 cursor-col-resize group hover:bg-energia-accent/50 z-10"
-            onMouseDown={(e) => onMouseDown(e, index)}
-            onDoubleClick={(e) => {
-                e.stopPropagation();
-                onDoubleClick(index);
-            }}
-            onClick={(e) => e.stopPropagation()}
-        >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-border/50 group-hover:bg-energia-accent rounded-full" />
-        </div>
-    );
-}
-
-const COLUMNS: ColumnDef[] = [
-    { key: "nome_cognome", defaultWidth: 140, minWidth: 100 },
-    { key: "agente_padre", defaultWidth: 160, minWidth: 100 },
-    { key: "gettone_residenziale_standard", defaultWidth: 100, minWidth: 80 },
-    { key: "gettone_residenziale_bonus", defaultWidth: 100, minWidth: 80 },
-    { key: "gettone_residenziale_malus", defaultWidth: 100, minWidth: 80 },
-    { key: "rinnovo_residenziale", defaultWidth: 100, minWidth: 80 },
-    { key: "gettone_business_standard", defaultWidth: 100, minWidth: 80 },
-    { key: "gettone_business_bonus", defaultWidth: 100, minWidth: 80 },
-    { key: "gettone_business_malus", defaultWidth: 100, minWidth: 80 },
-    { key: "rinnovo_business", defaultWidth: 100, minWidth: 80 },
-    { key: "bonus_sdd", defaultWidth: 100, minWidth: 80 },
-    { key: "statistiche", defaultWidth: 80, minWidth: 60 },
-    { key: "actions", defaultWidth: 96, minWidth: 96 },
-];
-
-const COLUMN_WIDTHS_KEY = "agents-table-column-widths";
-
-export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: AgentsTableProps) {
+export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTableProps) {
     const { t } = useTranslation();
+
     const [sortKey, setSortKey] = useState<keyof Agente>("nome_cognome");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
     const [filter, setFilter] = useState("");
+    const [parentFilter, setParentFilter] = useState<string | undefined>(undefined);
     const [page, setPage] = useState(0);
     const pageSize = 20;
 
-    // Column resize state
-    const [columnWidths, setColumnWidths] = useState<number[]>(() => {
-        if (typeof window === "undefined") return COLUMNS.map((col) => col.defaultWidth);
-        const saved = localStorage.getItem(COLUMN_WIDTHS_KEY);
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length === COLUMNS.length) {
-                    return parsed;
-                }
-            } catch {
-                // Invalid JSON, use defaults
-            }
-        }
-        return COLUMNS.map((col) => col.defaultWidth);
-    });
-    const resizingRef = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
-    const justResizedRef = useRef(false);
-
-    // Popover state for statistiche toggle feedback
-    const [popoverState, setPopoverState] = useState<{ agentId: number; added: boolean } | null>(null);
-
-    // Auto-dismiss popover after 1.5 seconds
-    useEffect(() => {
-        if (popoverState) {
-            const timer = setTimeout(() => {
-                setPopoverState(null);
-            }, 1500);
-            return () => clearTimeout(timer);
-        }
-    }, [popoverState]);
-
-    // Column resize handlers
-    const handleMouseDown = useCallback((e: React.MouseEvent, index: number) => {
-        e.preventDefault();
-        e.stopPropagation();
-        resizingRef.current = {
-            index,
-            startX: e.clientX,
-            startWidth: columnWidths[index],
-        };
-        document.body.style.cursor = "col-resize";
-        document.body.style.userSelect = "none";
-    }, [columnWidths]);
-
-    const handleResetColumnWidth = useCallback((index: number) => {
-        setColumnWidths((prev) => {
-            const next = [...prev];
-            next[index] = COLUMNS[index].defaultWidth;
-            return next;
-        });
-    }, []);
-
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!resizingRef.current) return;
-            const { index, startX, startWidth } = resizingRef.current;
-            const diff = e.clientX - startX;
-            const newWidth = Math.max(COLUMNS[index].minWidth, startWidth + diff);
-            setColumnWidths((prev) => {
-                const next = [...prev];
-                next[index] = newWidth;
-                return next;
-            });
-        };
-
-        const handleMouseUp = () => {
-            if (resizingRef.current) {
-                justResizedRef.current = true;
-                setTimeout(() => {
-                    justResizedRef.current = false;
-                }, 0);
-            }
-            resizingRef.current = null;
-            document.body.style.cursor = "";
-            document.body.style.userSelect = "";
-        };
-
-        document.addEventListener("mousemove", handleMouseMove);
-        document.addEventListener("mouseup", handleMouseUp);
-        return () => {
-            document.removeEventListener("mousemove", handleMouseMove);
-            document.removeEventListener("mouseup", handleMouseUp);
-        };
-    }, []);
-
-    // Persist column widths to localStorage
-    useEffect(() => {
-        localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(columnWidths));
-    }, [columnWidths]);
-
-    const handleToggleStatistiche = useCallback(
-        (agent: Agente, checked: boolean) => {
-            setPopoverState({ agentId: agent.id, added: checked });
-            onToggleStatistiche(agent, checked);
-        },
-        [onToggleStatistiche],
-    );
+    const parentOptions = useMemo(() => {
+        return Array.from(
+            new Set(
+                data
+                    .map((item) => item.agente_padre?.trim())
+                    .filter((value): value is string => Boolean(value)),
+            ),
+        )
+            .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }))
+            .map((value) => ({ value, label: value }));
+    }, [data]);
 
     const filtered = useMemo(() => {
-        if (!filter) return data;
-        const lowerFilter = filter.toLowerCase();
-        return data.filter(
-            (item) =>
+        const lowerFilter = filter.trim().toLowerCase();
+
+        return data.filter((item) => {
+            const matchesText =
+                lowerFilter === "" ||
                 item.nome_cognome.toLowerCase().includes(lowerFilter) ||
-                item.agente_padre?.toLowerCase().includes(lowerFilter),
-        );
-    }, [data, filter]);
+                item.agente_padre?.toLowerCase().includes(lowerFilter) ||
+                item.mail?.toLowerCase().includes(lowerFilter);
+
+            const matchesParent = !parentFilter || item.agente_padre === parentFilter;
+
+            return matchesText && matchesParent;
+        });
+    }, [data, filter, parentFilter]);
 
     const sorted = useMemo(() => {
         return [...filtered].sort((a, b) => {
@@ -182,9 +53,6 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
             const bVal = b[sortKey];
             if (aVal === null || aVal === undefined) return 1;
             if (bVal === null || bVal === undefined) return -1;
-            if (typeof aVal === "number" && typeof bVal === "number") {
-                return sortDir === "asc" ? aVal - bVal : bVal - aVal;
-            }
             const aStr = String(aVal);
             const bStr = String(bVal);
             return sortDir === "asc" ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
@@ -194,24 +62,20 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
     const paginated = sorted.slice(page * pageSize, (page + 1) * pageSize);
     const totalPages = Math.ceil(sorted.length / pageSize);
 
-    const handleSort = (key: keyof Agente) => {
-        if (justResizedRef.current) return;
-        if (sortKey === key) {
-            setSortDir(sortDir === "asc" ? "desc" : "asc");
-        } else {
-            setSortKey(key);
+    const handleSort = useCallback((key: keyof Agente) => {
+        setSortKey((prev) => {
+            if (prev === key) {
+                setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                return prev;
+            }
             setSortDir("asc");
-        }
-    };
-
-    const formatRate = (val: number | null) => {
-        if (val === null || val === undefined) return "—";
-        return formatCurrency(val);
-    };
+            return key;
+        });
+    }, []);
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                     <Input
@@ -224,141 +88,87 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
                         className="pl-10 font-mono text-sm"
                     />
                 </div>
-                {filter && (
-                    <Button variant="ghost" size="sm" onClick={() => setFilter("")} className="btn-ghost">
+                <div className="md:w-72">
+                    <SearchableSelect
+                        value={parentFilter}
+                        onValueChange={(value) => {
+                            setParentFilter(value);
+                            setPage(0);
+                        }}
+                        options={parentOptions}
+                        placeholder={t("allParentAgents")}
+                        searchPlaceholder={t("searchParentAgent")}
+                        emptyMessage={t("noParentAgentsFound")}
+                        clearLabel={t("allParentAgents")}
+                        className="font-body"
+                    />
+                </div>
+                {(filter || parentFilter) && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            setFilter("");
+                            setParentFilter(undefined);
+                            setPage(0);
+                        }}
+                        className="btn-ghost"
+                    >
                         <X className="h-4 w-4" />
                     </Button>
                 )}
             </div>
             <div className="border border-border/50 overflow-x-auto rounded-sm shadow-sm">
                 <table className="ledger-table w-full">
-                    <colgroup>
-                        {columnWidths.map((width, i) => (
-                            <col key={i} style={{ width }} />
-                        ))}
-                    </colgroup>
                     <thead>
                         <tr>
-                            <th className="relative cursor-pointer hover:text-foreground" onClick={() => handleSort("nome_cognome")}>
+                            <th className="cursor-pointer hover:text-foreground" onClick={() => handleSort("nome_cognome")}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-2 pr-2">
+                                        <div className="flex items-center gap-2">
                                             {t("agentName")} <ArrowUpDown className="h-3 w-3 shrink-0" />
                                         </div>
                                     </TooltipTrigger>
                                     <TooltipContent>{t("agentNameTooltip")}</TooltipContent>
                                 </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={0} />
                             </th>
-                            <th className="relative cursor-pointer hover:text-foreground" onClick={() => handleSort("agente_padre")}>
+                            <th className="cursor-pointer hover:text-foreground" onClick={() => handleSort("agente_padre")}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-2 pr-2">
+                                        <div className="flex items-center gap-2">
                                             {t("parentAgent")} <ArrowUpDown className="h-3 w-3 shrink-0" />
                                         </div>
                                     </TooltipTrigger>
                                     <TooltipContent>{t("parentAgentTooltip")}</TooltipContent>
                                 </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={1} />
                             </th>
-                            <th className="relative text-right">
+                            <th className="cursor-pointer hover:text-foreground" onClick={() => handleSort("mail")}>
+                                <div className="flex items-center gap-2">
+                                    {t("email")} <ArrowUpDown className="h-3 w-3 shrink-0" />
+                                </div>
+                            </th>
+                            <th className="text-center">
                                 <Tooltip>
-                                    <TooltipTrigger className="w-full text-right pr-2">
-                                        {t("residentialStandard")}
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center justify-center gap-2">
+                                            {t("statistics")}
+                                        </div>
                                     </TooltipTrigger>
-                                    <TooltipContent>{t("residentialStandardTooltip")}</TooltipContent>
-                                </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={2} />
-                            </th>
-                            <th className="relative text-right">
-                                <Tooltip>
-                                    <TooltipTrigger className="w-full text-right pr-2">
-                                        {t("residentialBonus")}
-                                    </TooltipTrigger>
-                                    <TooltipContent>{t("residentialBonusTooltip")}</TooltipContent>
-                                </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={3} />
-                            </th>
-                            <th className="relative text-right">
-                                <Tooltip>
-                                    <TooltipTrigger className="w-full text-right pr-2">
-                                        {t("residentialMalus")}
-                                    </TooltipTrigger>
-                                    <TooltipContent>{t("residentialMalusTooltip")}</TooltipContent>
-                                </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={4} />
-                            </th>
-                            <th className="relative text-right">
-                                <Tooltip>
-                                    <TooltipTrigger className="w-full text-right pr-2">
-                                        {t("residentialRenewal")}
-                                    </TooltipTrigger>
-                                    <TooltipContent>{t("residentialRenewalTooltip")}</TooltipContent>
-                                </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={5} />
-                            </th>
-                            <th className="relative text-right">
-                                <Tooltip>
-                                    <TooltipTrigger className="w-full text-right pr-2">
-                                        {t("businessStandard")}
-                                    </TooltipTrigger>
-                                    <TooltipContent>{t("businessStandardTooltip")}</TooltipContent>
-                                </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={6} />
-                            </th>
-                            <th className="relative text-right">
-                                <Tooltip>
-                                    <TooltipTrigger className="w-full text-right pr-2">{t("businessBonus")}</TooltipTrigger>
-                                    <TooltipContent>{t("businessBonusTooltip")}</TooltipContent>
-                                </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={7} />
-                            </th>
-                            <th className="relative text-right">
-                                <Tooltip>
-                                    <TooltipTrigger className="w-full text-right pr-2">{t("businessMalus")}</TooltipTrigger>
-                                    <TooltipContent>{t("businessMalusTooltip")}</TooltipContent>
-                                </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={8} />
-                            </th>
-                            <th className="relative text-right">
-                                <Tooltip>
-                                    <TooltipTrigger className="w-full text-right pr-2">
-                                        {t("businessRenewal")}
-                                    </TooltipTrigger>
-                                    <TooltipContent>{t("businessRenewalTooltip")}</TooltipContent>
-                                </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={9} />
-                            </th>
-                            <th className="relative text-right">
-                                <Tooltip>
-                                    <TooltipTrigger className="w-full text-right pr-2">{t("sddBonus")}</TooltipTrigger>
-                                    <TooltipContent>{t("sddBonusTooltip")}</TooltipContent>
-                                </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={10} />
-                            </th>
-                            <th className="relative text-center">
-                                <Tooltip>
-                                    <TooltipTrigger className="w-full text-center">{t("statistics")}</TooltipTrigger>
                                     <TooltipContent>{t("statisticsTooltip")}</TooltipContent>
                                 </Tooltip>
-                                <ResizeHandle onMouseDown={handleMouseDown} onDoubleClick={handleResetColumnWidth} index={11} />
                             </th>
-                            <th>{t("actions")}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {paginated.length === 0 ? (
                             <tr>
-                                <td
-                                    colSpan={13}
-                                    className="text-center py-12 font-display italic text-muted-foreground"
-                                >
+                                <td colSpan={4} className="text-center py-12 font-display italic text-muted-foreground">
                                     {t("noDataFound")}
                                 </td>
                             </tr>
                         ) : (
                             paginated.map((row) => (
-                                <tr key={row.id}>
+                                <tr key={row.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onEdit(row)}>
                                     <td className="font-body font-medium overflow-hidden">
                                         <Tooltip>
                                             <TooltipTrigger asChild>
@@ -379,101 +189,20 @@ export function AgentsTable({ data, onEdit, onDelete, onToggleStatistiche }: Age
                                             "—"
                                         )}
                                     </td>
-                                    <td data-numeric className="text-right">
-                                        {formatRate(row.gettone_residenziale_standard)}
+                                    <td className="text-muted-foreground">
+                                        {row.mail || "—"}
                                     </td>
-                                    <td data-numeric className="text-right">
-                                        {formatRate(row.gettone_residenziale_bonus)}
-                                    </td>
-                                    <td data-numeric className="text-right">
-                                        {formatRate(row.gettone_residenziale_malus)}
-                                    </td>
-                                    <td data-numeric className="text-right">
-                                        {formatRate(row.rinnovo_residenziale)}
-                                    </td>
-                                    <td data-numeric className="text-right">
-                                        {formatRate(row.gettone_business_standard)}
-                                    </td>
-                                    <td data-numeric className="text-right">
-                                        {formatRate(row.gettone_business_bonus)}
-                                    </td>
-                                    <td data-numeric className="text-right">
-                                        {formatRate(row.gettone_business_malus)}
-                                    </td>
-                                    <td data-numeric className="text-right">
-                                        {formatRate(row.rinnovo_business)}
-                                    </td>
-                                    <td data-numeric className="text-right">
-                                        {formatRate(row.bonus_sdd)}
-                                    </td>
-                                    <td className="text-center align-middle">
+                                    <td
+                                        className="text-center"
+                                        onClick={(e) => e.stopPropagation()}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                    >
                                         <div className="flex items-center justify-center">
-                                            <Popover open={popoverState?.agentId === row.id}>
-                                                <PopoverTrigger asChild>
-                                                    <div>
-                                                        <Checkbox
-                                                            checked={row.statistiche ?? false}
-                                                            onCheckedChange={(checked) => {
-                                                                handleToggleStatistiche(row, checked === true);
-                                                            }}
-                                                            aria-label={`${t("statistics")} ${row.nome_cognome}`}
-                                                            className="data-[state=checked]:bg-energia-accent data-[state=checked]:border-energia-accent data-[state=checked]:text-white cursor-pointer"
-                                                        />
-                                                    </div>
-                                                </PopoverTrigger>
-                                                <PopoverContent
-                                                    side="top"
-                                                    className="w-auto px-3 py-2 text-sm font-medium"
-                                                    sideOffset={8}
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        {popoverState?.added ? (
-                                                            <>
-                                                                <Check className="h-4 w-4 text-energia-accent" />
-                                                                <span>{t("addedToStats")}</span>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <XIcon className="h-4 w-4 text-muted-foreground" />
-                                                                <span>{t("removedFromStats")}</span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </PopoverContent>
-                                            </Popover>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 p-0 hover:bg-secondary/50"
-                                                        onClick={() => onEdit(row)}
-                                                        aria-label={t("editAgent")}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>{t("editAgent")}</TooltipContent>
-                                            </Tooltip>
-
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 p-0 hover:bg-secondary/50 text-destructive hover:text-destructive"
-                                                        onClick={() => onDelete(row)}
-                                                        aria-label={t("deleteAgent")}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>{t("deleteAgent")}</TooltipContent>
-                                            </Tooltip>
+                                            <Checkbox
+                                                checked={row.statistiche ?? false}
+                                                onCheckedChange={(checked) => void onToggleStatistiche(row, checked === true)}
+                                                aria-label={`${t("statistics")} ${row.nome_cognome}`}
+                                            />
                                         </div>
                                     </td>
                                 </tr>

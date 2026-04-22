@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
-import { parseLiquidazioniExcel, importLiquidazioni, ApiError } from "@/api";
+import { importLiquidazioni } from "@/api/liquidazioni";
+import { ApiError } from "@/api/client";
+import { parseLiquidazioniExcel } from "@/importers/liquidazioni";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -7,6 +9,12 @@ interface LiquidazioniResult {
     success: boolean;
     message: string;
     count: number;
+    hasNewRules: boolean;
+}
+
+function extractNewRulesCount(message: string): number {
+    const match = message.match(/Aggiunte\s+(\d+)\s+nuove regole/i);
+    return match ? Number(match[1]) : 0;
 }
 
 export function useLiquidazioni() {
@@ -17,7 +25,7 @@ export function useLiquidazioni() {
     const [result, setResult] = useState<LiquidazioniResult | null>(null);
 
     const handleUpload = useCallback(
-        async (files: File[], competenzaPeriod?: string): Promise<string | null> => {
+        async (files: File[], competenzaPeriod?: string): Promise<{ action: string; hasNewRules: boolean } | null> => {
             const file = files[0];
             if (!file) return null;
 
@@ -60,17 +68,22 @@ export function useLiquidazioni() {
                 const importResult = await importLiquidazioni(parsedData);
 
                 if (importResult.success) {
+                    const newRulesCount = extractNewRulesCount(importResult.message);
                     const resultData = {
                         success: true,
                         message: importResult.message,
                         count: parsedData.length,
+                        hasNewRules: newRulesCount > 0,
                     };
                     setResult(resultData);
                     toast({
                         title: t("success"),
                         description: importResult.message,
                     });
-                    return `${t("liquidationsImported")}: ${parsedData.length}`;
+                    return {
+                        action: `${t("liquidationsImported")}: ${parsedData.length}`,
+                        hasNewRules: resultData.hasNewRules,
+                    };
                 } else {
                     toast({
                         title: t("error"),

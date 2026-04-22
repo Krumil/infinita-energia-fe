@@ -1,39 +1,27 @@
 import { Users, RefreshCw, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { EmptyState, AgentDialog, AgentsTable } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Agente, CreateAgentRequest } from "@/types";
+import type { Agente, Regola, ConfigurazioneRegola, CreateAgentRequest, Scaglione } from "@/types";
 
 interface AgentsTabProps {
     agents: Agente[];
     loading: boolean;
-    // Dialog state
     dialogOpen: boolean;
     onDialogOpenChange: (open: boolean) => void;
     editingAgent: Agente | null;
     saving: boolean;
-    // Delete dialog state
-    deleteDialogOpen: boolean;
-    onDeleteDialogOpenChange: (open: boolean) => void;
-    deletingAgent: Agente | null;
-    // Actions
+    deleting: boolean;
     onRefresh: () => void;
     onCreateClick: () => void;
     onEdit: (agent: Agente) => void;
-    onDelete: (agent: Agente) => void;
-    onSave: (data: CreateAgentRequest) => Promise<void>;
-    onConfirmDelete: () => void;
     onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
+    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<void>;
+    onDeleteAgent: (agent: Agente) => void;
+    regole: Regola[];
+    configurazione: ConfigurazioneRegola[];
+    configLoading: boolean;
+    scaglioni: Scaglione[];
 }
 
 export function AgentsTab({
@@ -43,16 +31,17 @@ export function AgentsTab({
     onDialogOpenChange,
     editingAgent,
     saving,
-    deleteDialogOpen,
-    onDeleteDialogOpenChange,
-    deletingAgent,
+    deleting,
     onRefresh,
     onCreateClick,
     onEdit,
-    onDelete,
-    onSave,
-    onConfirmDelete,
     onToggleStatistiche,
+    onSave,
+    onDeleteAgent,
+    regole,
+    configurazione,
+    configLoading,
+    scaglioni,
 }: AgentsTabProps) {
     const { t } = useTranslation();
 
@@ -86,7 +75,6 @@ export function AgentsTab({
                     <AgentsTable
                         data={agents}
                         onEdit={onEdit}
-                        onDelete={onDelete}
                         onToggleStatistiche={onToggleStatistiche}
                     />
                 )}
@@ -98,34 +86,15 @@ export function AgentsTab({
                 onOpenChange={onDialogOpenChange}
                 agent={editingAgent}
                 agents={agents}
+                regole={regole}
+                scaglioni={scaglioni}
                 onSave={onSave}
                 saving={saving}
+                onDelete={editingAgent ? () => onDeleteAgent(editingAgent) : undefined}
+                deleting={deleting}
+                configurazione={configurazione}
+                configLoading={configLoading}
             />
-
-            <AlertDialog open={deleteDialogOpen} onOpenChange={onDeleteDialogOpenChange}>
-                <AlertDialogContent className="dialog-ledger">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="font-display text-xl">{t("deleteAgentConfirm")}</AlertDialogTitle>
-                        <AlertDialogDescription className="font-body">
-                            {t("deleteAgentDescription")}
-                            {deletingAgent && (
-                                <span className="block mt-3 font-display text-foreground text-lg">
-                                    {deletingAgent.nome_cognome}
-                                </span>
-                            )}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="btn-ghost">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={onConfirmDelete}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            {t("deleteAgent")}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }

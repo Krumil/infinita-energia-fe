@@ -12,25 +12,25 @@ export default {
             colors: {
                 // Infinita Energia brand palette
                 "energia-primary": {
-                    DEFAULT: "#6EC1E4",
-                    light: "#8fd0eb",
-                    dark: "#4aa8d4",
+                    DEFAULT: "hsl(var(--energia-primary) / <alpha-value>)",
+                    light: "hsl(var(--energia-primary-light) / <alpha-value>)",
+                    dark: "hsl(var(--energia-primary-dark) / <alpha-value>)",
                 },
                 "energia-accent": {
-                    DEFAULT: "#61CE70",
-                    light: "#7ed98a",
-                    dark: "#4ab85a",
+                    DEFAULT: "hsl(var(--energia-accent) / <alpha-value>)",
+                    light: "hsl(var(--energia-accent-light) / <alpha-value>)",
+                    dark: "hsl(var(--energia-accent-dark) / <alpha-value>)",
                 },
                 "energia-secondary": {
-                    DEFAULT: "#54595F",
-                    light: "#6b7178",
+                    DEFAULT: "hsl(var(--energia-secondary) / <alpha-value>)",
+                    light: "hsl(var(--energia-secondary) / <alpha-value>)",
                 },
                 "energia-text": {
-                    DEFAULT: "#7A7A7A",
+                    DEFAULT: "hsl(var(--energia-text) / <alpha-value>)",
                 },
                 sage: {
-                    DEFAULT: "#61CE70",
-                    light: "#7ed98a",
+                    DEFAULT: "hsl(var(--sage) / <alpha-value>)",
+                    light: "hsl(var(--sage-light) / <alpha-value>)",
                 },
                 // Keep shadcn compatibility
                 border: "hsl(var(--border))",

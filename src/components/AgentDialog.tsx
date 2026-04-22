@@ -1,10 +1,9 @@
-import { useState } from "react";
-import { Loader2, CheckCircle } from "lucide-react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { Loader2, CheckCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Dialog,
     DialogContent,
@@ -13,303 +12,269 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useTranslation } from "@/hooks/useTranslation";
+import { parseEuroNumber } from "@/lib/numbers";
+import { RuleValuesEditor } from "./RuleValuesEditor";
+import { SearchableSelect } from "./SearchableSelect";
 import type { AgentDialogProps } from "@/types/components";
-import type { Agente } from "@/types/domain";
 import type { CreateAgentRequest } from "@/types/api";
 
-function createInitialFormData(agent: Agente | null): CreateAgentRequest {
-    if (agent) {
-        return {
-            nome_cognome: agent.nome_cognome,
-            agente_padre: agent.agente_padre || undefined,
-            statistiche: agent.statistiche ?? undefined,
-            gettone_residenziale_standard: agent.gettone_residenziale_standard ?? undefined,
-            gettone_residenziale_bonus: agent.gettone_residenziale_bonus ?? undefined,
-            gettone_residenziale_malus: agent.gettone_residenziale_malus ?? undefined,
-            rinnovo_residenziale: agent.rinnovo_residenziale ?? undefined,
-            gettone_business_standard: agent.gettone_business_standard ?? undefined,
-            gettone_business_bonus: agent.gettone_business_bonus ?? undefined,
-            gettone_business_malus: agent.gettone_business_malus ?? undefined,
-            rinnovo_business: agent.rinnovo_business ?? undefined,
-            bonus_sdd: agent.bonus_sdd ?? undefined,
-        };
-    }
+function createInitialFormData(agent: AgentDialogProps["agent"]): CreateAgentRequest {
     return {
-        nome_cognome: "",
-        agente_padre: undefined,
-        statistiche: undefined,
-        gettone_residenziale_standard: undefined,
-        gettone_residenziale_bonus: undefined,
-        gettone_residenziale_malus: undefined,
-        rinnovo_residenziale: undefined,
-        gettone_business_standard: undefined,
-        gettone_business_bonus: undefined,
-        gettone_business_malus: undefined,
-        rinnovo_business: undefined,
-        bonus_sdd: undefined,
+        nome_cognome: agent?.nome_cognome ?? "",
+        agente_padre: agent?.agente_padre || undefined,
+        mail: agent?.mail || undefined,
+        statistiche: agent?.statistiche ?? false,
     };
 }
 
-export function AgentDialog({ open, onOpenChange, agent, agents, onSave, saving }: AgentDialogProps) {
+export function AgentDialog({
+    open,
+    onOpenChange,
+    agent,
+    agents,
+    regole,
+    onSave,
+    saving,
+    onDelete,
+    deleting,
+    configurazione,
+    configLoading,
+}: AgentDialogProps) {
     const { t } = useTranslation();
     const isEdit = agent !== null;
 
+    const [initialFormData, setInitialFormData] = useState<CreateAgentRequest>(() => createInitialFormData(agent));
     const [formData, setFormData] = useState<CreateAgentRequest>(() => createInitialFormData(agent));
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
+    const [editedValues, setEditedValues] = useState<Map<string, string>>(new Map());
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        const nextInitialFormData = createInitialFormData(agent);
+        setInitialFormData(nextInitialFormData);
+        setFormData(nextInitialFormData);
+        setEditedValues(new Map());
+        setConfirmingDelete(false);
+    }, [agent, open]);
+
+    const handleValueChange = useCallback((regolaId: number, scaglioneId: number, value: string) => {
+        const key = `${regolaId}_${scaglioneId}`;
+        setEditedValues((prev) => {
+            const next = new Map(prev);
+            if (value === "") {
+                next.delete(key);
+            } else {
+                next.set(key, value);
+            }
+            return next;
+        });
+    }, []);
+
+    const hasFormChanges = useMemo(() => {
+        return (
+            formData.nome_cognome !== initialFormData.nome_cognome ||
+            formData.agente_padre !== initialFormData.agente_padre ||
+            formData.mail !== initialFormData.mail ||
+            formData.statistiche !== initialFormData.statistiche
+        );
+    }, [formData, initialFormData]);
+
+    const hasChanges = hasFormChanges || editedValues.size > 0;
+    const hasInvalidEditedValues = useMemo(
+        () => Array.from(editedValues.values()).some((value) => parseEuroNumber(value) === undefined),
+        [editedValues],
+    );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await onSave(formData);
+
+        if (hasInvalidEditedValues) {
+            return;
+        }
+
+        const valori = editedValues.size > 0
+            ? Array.from(editedValues.entries()).map((entry) => {
+                const [key, valore] = entry;
+                const [regolaId, scaglioneId] = key.split("_").map(Number);
+                return { regola_id: regolaId, scaglione_id: scaglioneId, valore: parseEuroNumber(valore) as number };
+            })
+            : undefined;
+        await onSave(formData, valori);
     };
 
-    const handleNumberChange = (field: keyof CreateAgentRequest, value: string) => {
-        const num = value === "" ? undefined : parseFloat(value);
-        setFormData((prev) => ({ ...prev, [field]: num }));
-    };
+    const availableParents = useMemo(
+        () => agents
+            .filter((candidate) => !agent || candidate.id !== agent.id)
+            .sort((left, right) => left.nome_cognome.localeCompare(right.nome_cognome, undefined, { sensitivity: "base" })),
+        [agent, agents],
+    );
 
-    const availableParents = agents.filter((a) => !agent || a.id !== agent.id);
+    const parentOptions = useMemo(
+        () => availableParents.map((candidate) => ({ value: candidate.nome_cognome, label: candidate.nome_cognome })),
+        [availableParents],
+    );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dialog-ledger">
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden dialog-ledger">
                 <DialogHeader>
                     <DialogTitle className="font-display text-2xl">
                         {isEdit ? t("editAgent") : t("addAgent")}
                     </DialogTitle>
                     <DialogDescription className="font-body">{t("agentsListDesc")}</DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-8 pt-4">
-                    {/* Basic Info */}
-                    <div className="grid gap-6 sm:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="nome_cognome" className="editorial-caps text-muted-foreground">
-                                {t("agentName")} *
-                            </Label>
-                            <Input
-                                id="nome_cognome"
-                                value={formData.nome_cognome}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, nome_cognome: e.target.value }))}
-                                placeholder="Mario Rossi"
-                                required
-                                className="font-body"
-                            />
+                <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+                    <div className="flex-1 overflow-y-auto px-1 pt-4 pb-4">
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="nome_cognome" className="editorial-caps text-muted-foreground">
+                                        {t("agentName")} *
+                                    </Label>
+                                    <Input
+                                        id="nome_cognome"
+                                        value={formData.nome_cognome}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, nome_cognome: e.target.value }))}
+                                        placeholder={t("exampleName")}
+                                        required
+                                        className="font-body"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="agente_padre" className="editorial-caps text-muted-foreground">
+                                        {t("parentAgent")}
+                                    </Label>
+                                    <SearchableSelect
+                                        id="agente_padre"
+                                        value={formData.agente_padre}
+                                        onValueChange={(value) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                agente_padre: value,
+                                            }))
+                                        }
+                                        options={parentOptions}
+                                        placeholder={t("noParentAgent")}
+                                        searchPlaceholder={t("searchParentAgent")}
+                                        emptyMessage={t("noParentAgentsFound")}
+                                        clearLabel={t("noParentAgent")}
+                                        className="font-body"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto] gap-4 items-end">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="mail" className="editorial-caps text-muted-foreground">
+                                        {t("email")}
+                                    </Label>
+                                    <Input
+                                        id="mail"
+                                        type="email"
+                                        value={formData.mail || ""}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, mail: e.target.value || undefined }))}
+                                        placeholder="agent@example.com"
+                                        className="font-body"
+                                    />
+                                </div>
+                                <div className="rounded-sm border border-border/50 px-4 py-2.5 flex items-center">
+                                    <div className="flex items-center gap-2.5">
+                                        <Checkbox
+                                            id="statistiche"
+                                            checked={formData.statistiche ?? false}
+                                            onCheckedChange={(checked) =>
+                                                setFormData((prev) => ({ ...prev, statistiche: checked === true }))
+                                            }
+                                        />
+                                        <Label htmlFor="statistiche" className="font-body text-sm font-medium whitespace-nowrap">
+                                            {t("includeInStatistics")}
+                                        </Label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="agente_padre" className="editorial-caps text-muted-foreground">
-                                {t("parentAgent")}
-                            </Label>
-                            <Select
-                                value={formData.agente_padre || "__none__"}
-                                onValueChange={(value) =>
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        agente_padre: value === "__none__" ? undefined : value,
-                                    }))
-                                }
-                            >
-                                <SelectTrigger id="agente_padre" className="font-body">
-                                    <SelectValue placeholder="—" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="__none__">—</SelectItem>
-                                    {availableParents.map((a) => (
-                                        <SelectItem key={a.id} value={a.nome_cognome}>
-                                            {a.nome_cognome}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+
+                        {isEdit && (
+                            <>
+                                <div className="mt-4" />
+                                <RuleValuesEditor
+                                    configurazione={configurazione}
+                                    regole={regole}
+                                    loading={configLoading}
+                                    editedValues={editedValues}
+                                    onValueChange={handleValueChange}
+                                />
+                            </>
+                        )}
                     </div>
 
-                    {/* Statistics Option */}
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="statistiche"
-                            checked={formData.statistiche ?? false}
-                            onCheckedChange={(checked) =>
-                                setFormData((prev) => ({ ...prev, statistiche: checked === true }))
-                            }
-                        />
-                        <Label
-                            htmlFor="statistiche"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                            {t("includeInStatistics")}
-                        </Label>
-                    </div>
-
-                    {/* Residential Rates */}
-                    <div className="space-y-4">
-                        <h4 className="editorial-caps text-energia-accent border-b border-energia-accent/20 pb-2">
-                            Residenziale
-                        </h4>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            <div className="space-y-2">
-                                <Label
-                                    htmlFor="gettone_residenziale_standard"
-                                    className="text-xs text-muted-foreground"
+                    <DialogFooter className="shrink-0 pt-4 border-t border-border/50 flex items-center gap-2">
+                        {isEdit && onDelete && (
+                            <div className="flex-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setConfirmingDelete(true)}
+                                    disabled={saving || deleting}
+                                    className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
                                 >
-                                    {t("residentialStandard")}
-                                </Label>
-                                <Input
-                                    id="gettone_residenziale_standard"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.gettone_residenziale_standard ?? ""}
-                                    onChange={(e) =>
-                                        handleNumberChange("gettone_residenziale_standard", e.target.value)
-                                    }
-                                    placeholder="0.00"
-                                    className="font-mono"
-                                />
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    {t("deleteAgent")}
+                                </Button>
+                                <AlertDialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle className="font-display text-xl">
+                                                {t("deleteAgentConfirm")}
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription className="font-body">
+                                                {t("deleteAgentDescription")}
+                                                <span className="block mt-3 font-display text-foreground text-lg">
+                                                    {agent?.nome_cognome}
+                                                </span>
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel className="btn-ghost">{t("cancel")}</AlertDialogCancel>
+                                            <AlertDialogAction
+                                                onClick={() => {
+                                                    setConfirmingDelete(false);
+                                                    onDelete();
+                                                }}
+                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                            >
+                                                {t("deleteAgent")}
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="gettone_residenziale_bonus" className="text-xs text-muted-foreground">
-                                    {t("residentialBonus")}
-                                </Label>
-                                <Input
-                                    id="gettone_residenziale_bonus"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.gettone_residenziale_bonus ?? ""}
-                                    onChange={(e) => handleNumberChange("gettone_residenziale_bonus", e.target.value)}
-                                    placeholder="0.00"
-                                    className="font-mono"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="gettone_residenziale_malus" className="text-xs text-muted-foreground">
-                                    {t("residentialMalus")}
-                                </Label>
-                                <Input
-                                    id="gettone_residenziale_malus"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.gettone_residenziale_malus ?? ""}
-                                    onChange={(e) => handleNumberChange("gettone_residenziale_malus", e.target.value)}
-                                    placeholder="0.00"
-                                    className="font-mono"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="rinnovo_residenziale" className="text-xs text-muted-foreground">
-                                    {t("residentialRenewal")}
-                                </Label>
-                                <Input
-                                    id="rinnovo_residenziale"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.rinnovo_residenziale ?? ""}
-                                    onChange={(e) => handleNumberChange("rinnovo_residenziale", e.target.value)}
-                                    placeholder="0.00"
-                                    className="font-mono"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Business Rates */}
-                    <div className="space-y-4">
-                        <h4 className="editorial-caps text-energia-accent border-b border-energia-accent/20 pb-2">
-                            Business
-                        </h4>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="gettone_business_standard" className="text-xs text-muted-foreground">
-                                    {t("businessStandard")}
-                                </Label>
-                                <Input
-                                    id="gettone_business_standard"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.gettone_business_standard ?? ""}
-                                    onChange={(e) => handleNumberChange("gettone_business_standard", e.target.value)}
-                                    placeholder="0.00"
-                                    className="font-mono"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="gettone_business_bonus" className="text-xs text-muted-foreground">
-                                    {t("businessBonus")}
-                                </Label>
-                                <Input
-                                    id="gettone_business_bonus"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.gettone_business_bonus ?? ""}
-                                    onChange={(e) => handleNumberChange("gettone_business_bonus", e.target.value)}
-                                    placeholder="0.00"
-                                    className="font-mono"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="gettone_business_malus" className="text-xs text-muted-foreground">
-                                    {t("businessMalus")}
-                                </Label>
-                                <Input
-                                    id="gettone_business_malus"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.gettone_business_malus ?? ""}
-                                    onChange={(e) => handleNumberChange("gettone_business_malus", e.target.value)}
-                                    placeholder="0.00"
-                                    className="font-mono"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="rinnovo_business" className="text-xs text-muted-foreground">
-                                    {t("businessRenewal")}
-                                </Label>
-                                <Input
-                                    id="rinnovo_business"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.rinnovo_business ?? ""}
-                                    onChange={(e) => handleNumberChange("rinnovo_business", e.target.value)}
-                                    placeholder="0.00"
-                                    className="font-mono"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* SDD Bonus */}
-                    <div className="space-y-4">
-                        <h4 className="editorial-caps text-energia-accent border-b border-energia-accent/20 pb-2">
-                            Bonus
-                        </h4>
-                        <div className="grid gap-4 sm:grid-cols-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="bonus_sdd" className="text-xs text-muted-foreground">
-                                    {t("sddBonus")}
-                                </Label>
-                                <Input
-                                    id="bonus_sdd"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.bonus_sdd ?? ""}
-                                    onChange={(e) => handleNumberChange("bonus_sdd", e.target.value)}
-                                    placeholder="0.00"
-                                    className="font-mono"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <DialogFooter className="pt-4 border-t border-border/50">
+                        )}
                         <Button
                             type="button"
                             variant="outline"
                             onClick={() => onOpenChange(false)}
-                            disabled={saving}
+                            disabled={saving || deleting}
                             className="btn-ghost"
                         >
                             {t("cancel")}
                         </Button>
                         <Button
                             type="submit"
-                            disabled={saving || !formData.nome_cognome.trim()}
+                            disabled={saving || deleting || !formData.nome_cognome.trim() || hasInvalidEditedValues || (isEdit && !hasChanges)}
                             className="btn-primary"
                         >
                             {saving ? (

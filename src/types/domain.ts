@@ -1,21 +1,42 @@
-// === AGENTS ===
+export interface Regola {
+    id: number;
+    descrizione: string;
+    utilizzato: boolean;
+    valore_default: number;
+    tipo_utenza: "residenziale" | "business" | null;
+    tipo_servizio: "gas" | "luce" | null;
+}
+
+export interface Scaglione {
+    id: number;
+    descrizione: string;
+    tipo_utenza: "residenziale" | "business" | null;
+    tipo_servizio: "gas" | "luce" | null;
+}
+
 export interface Agente {
     id: number;
     nome_cognome: string;
     agente_padre: string | null;
+    mail: string | null;
     statistiche: boolean | null;
-    gettone_residenziale_standard: number | null;
-    gettone_residenziale_bonus: number | null;
-    gettone_residenziale_malus: number | null;
-    rinnovo_residenziale: number | null;
-    gettone_business_standard: number | null;
-    gettone_business_bonus: number | null;
-    gettone_business_malus: number | null;
-    rinnovo_business: number | null;
-    bonus_sdd: number | null;
 }
 
-// === LIQUIDATIONS ===
+export interface ConfigurazioneRegola {
+    regola_id: number;
+    regola_nome: string;
+    scaglione_id: number;
+    scaglione_nome: string;
+    valore: number;
+    is_custom: boolean;
+}
+
+export interface ConfigurazioneResponse {
+    agente_id: number;
+    nome_agente: string;
+    configurazione: ConfigurazioneRegola[];
+}
+
 export interface Liquidazione {
     id?: number;
     piano_provvigionale?: string;
@@ -51,5 +72,17 @@ export interface Liquidazione {
     competenza_liquidazione?: string; // Format: "YYYY-MM-DD" from Excel (MM/YYYY)
 }
 
-// Application settings - extensible for future preferences
+export interface StoricoInvito {
+    id: number;
+    agente_id: number;
+    nome_agente: string;
+    mese_competenza: string;
+    totale_invito: number;
+    stato: "bozza" | "inviato" | "approvato";
+    riferimento_fattura: string | null;
+    data_fattura: string | null;
+    pagato: boolean;
+    data_pagamento: string | null;
+}
+
 export type AppSettings = Record<string, unknown>;

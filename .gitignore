@@ -58,3 +58,7 @@ ehthumbs.db
 # Misc
 *.local
 claudedocs/
+.desloppify/
+scorecard.png
+
+.claude/
