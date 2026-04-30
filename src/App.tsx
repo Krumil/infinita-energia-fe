@@ -12,7 +12,6 @@ import { DashboardTab, AgentsTab, RegoleTab, OrdiniTab, CalcoloTab, InvitiTab } 
 
 // Custom hooks
 import {
-    useAppSettings,
     useAgents,
     useRegole,
     useScaglioni,
@@ -41,7 +40,7 @@ function AuthenticatedApp() {
 
     const [activeTab, setActiveTab] = useState<string>("dashboard");
 
-    const appSettings = useAppSettings();
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const agents = useAgents();
     const regole = useRegole();
     const scaglioni = useScaglioni();
@@ -110,26 +109,13 @@ function AuthenticatedApp() {
         }
     };
 
-    const handleAgentSave = async (...args: Parameters<typeof agents.saveAgent>) => {
-        await agents.saveAgent(...args);
-    };
-
-    const handleAgentDelete = async (agent: Parameters<typeof agents.deleteAgent>[0]) => {
-        await agents.deleteAgent(agent);
-    };
-
-    const handleCalculate = async () => {
-        await calcolo.calculate();
-    };
-
     return (
         <TooltipProvider>
             <div className="min-h-screen flex flex-col">
                 <AppHeader
                     appVersion={__APP_VERSION__}
-                    onSettingsSave={appSettings.saveSettings}
-                    settingsOpen={appSettings.sheetOpen}
-                    onSettingsOpenChange={appSettings.setSheetOpen}
+                    settingsOpen={settingsOpen}
+                    onSettingsOpenChange={setSettingsOpen}
                     activeTab={activeTab}
                     onTabChange={handleTabChange}
                     incompleteRulesCount={incompleteRulesCount}
@@ -154,8 +140,8 @@ function AuthenticatedApp() {
                                 onCreateClick={agents.openCreateDialog}
                                 onEdit={agents.openEditDialog}
                                 onToggleStatistiche={agents.toggleStatistiche}
-                                onSave={handleAgentSave}
-                                onDeleteAgent={handleAgentDelete}
+                                onSave={agents.saveAgent}
+                                onDeleteAgent={agents.deleteAgent}
                                 regole={regole.regole}
                                 configurazione={agents.configurazione}
                                 configLoading={agents.configLoading}
@@ -210,7 +196,7 @@ function AuthenticatedApp() {
                                 loading={calcolo.loading}
                                 unmatchedAgents={calcolo.unmatchedAgents}
                                 onUpload={calcolo.handleUpload}
-                                onCalculate={handleCalculate}
+                                onCalculate={calcolo.calculate}
                                 onNavigate={handleTabChange}
                             />
                         </TabsContent>

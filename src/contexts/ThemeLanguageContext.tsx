@@ -1,8 +1,17 @@
-import { useEffect, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 import type { Language } from "../translations";
-import { ThemeLanguageContext } from "./themeLanguageContextDef";
 
 type Theme = "light" | "dark" | "system";
+
+type ThemeLanguageContextType = {
+    theme: Theme;
+    setTheme: (theme: Theme) => void;
+    language: Language;
+    setLanguage: (language: Language) => void;
+    effectiveTheme: "light" | "dark";
+};
+
+export const ThemeLanguageContext = createContext<ThemeLanguageContextType | undefined>(undefined);
 
 const THEME_KEY = "app-theme";
 const LANGUAGE_KEY = "app-language";

@@ -84,5 +84,3 @@ export interface StoricoInvito {
     pagato: boolean;
     data_pagamento: string | null;
 }
-
-export type AppSettings = Record<string, unknown>;

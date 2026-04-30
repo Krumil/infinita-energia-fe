@@ -1,5 +1,3 @@
-// Custom hooks
-export { useAppSettings } from "./useAppSettings";
 export { useAgents } from "./useAgents";
 export { useRegole } from "./useRegole";
 export { useScaglioni } from "./useScaglioni";
