@@ -54,7 +54,6 @@ export function AgentDialog({
     const { t } = useTranslation();
     const isEdit = agent !== null;
 
-    const [initialFormData, setInitialFormData] = useState<CreateAgentRequest>(() => createInitialFormData(agent));
     const [formData, setFormData] = useState<CreateAgentRequest>(() => createInitialFormData(agent));
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [editedValues, setEditedValues] = useState<Map<string, string>>(new Map());
@@ -65,7 +64,6 @@ export function AgentDialog({
         }
 
         const nextInitialFormData = createInitialFormData(agent);
-        setInitialFormData(nextInitialFormData);
         setFormData(nextInitialFormData);
         setEditedValues(new Map());
         setConfirmingDelete(false);
@@ -84,16 +82,6 @@ export function AgentDialog({
         });
     }, []);
 
-    const hasFormChanges = useMemo(() => {
-        return (
-            formData.nome_cognome !== initialFormData.nome_cognome ||
-            formData.agente_padre !== initialFormData.agente_padre ||
-            formData.mail !== initialFormData.mail ||
-            formData.statistiche !== initialFormData.statistiche
-        );
-    }, [formData, initialFormData]);
-
-    const hasChanges = hasFormChanges || editedValues.size > 0;
     const hasInvalidEditedValues = useMemo(
         () => Array.from(editedValues.values()).some((value) => parseEuroNumber(value) === undefined),
         [editedValues],
@@ -274,7 +262,7 @@ export function AgentDialog({
                         </Button>
                         <Button
                             type="submit"
-                            disabled={saving || deleting || !formData.nome_cognome.trim() || hasInvalidEditedValues || (isEdit && !hasChanges)}
+                            disabled={saving || deleting || !formData.nome_cognome.trim() || hasInvalidEditedValues}
                             className="btn-primary"
                         >
                             {saving ? (

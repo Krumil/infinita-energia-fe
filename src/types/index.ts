@@ -1,4 +1,4 @@
-export type { Agente, Regola, Scaglione, Liquidazione, AppSettings, ConfigurazioneRegola, ConfigurazioneResponse, StoricoInvito } from "./domain";
+export type { Agente, Regola, Scaglione, Liquidazione, ConfigurazioneRegola, ConfigurazioneResponse, StoricoInvito } from "./domain";
 
 export type {
     CreateAgentRequest,
@@ -33,7 +33,6 @@ export type {
     FileDropzoneProps,
     KPICardProps,
     EmptyStateProps,
-    SettingsPanelProps,
     AgentDialogProps,
     AgentsTableProps,
     RegoleTableProps,

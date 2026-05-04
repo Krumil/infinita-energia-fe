@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import type { Agente, Regola, Scaglione, ConfigurazioneRegola } from "./domain";
 import type { CreateAgentRequest, CalcoloResult } from "./api";
 
-export type TipoUtenza = "residenziale" | "business";
-
 export interface FileDropzoneProps {
     accept: string;
     maxSizeMB: number;
@@ -25,10 +23,6 @@ export interface EmptyStateProps {
     icon?: ReactNode;
 }
 
-export interface SettingsPanelProps {
-    onSave: () => void;
-}
-
 export interface AgentDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -36,7 +30,7 @@ export interface AgentDialogProps {
     agents: Agente[];
     regole: Regola[];
     scaglioni: Scaglione[];
-    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<void>;
+    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<unknown>;
     saving: boolean;
     onDelete?: () => void;
     deleting?: boolean;

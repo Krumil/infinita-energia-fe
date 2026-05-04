@@ -5,7 +5,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
 import type { ConfigurazioneRegola, Regola } from "@/types/domain";
-import type { TipoUtenza } from "@/types/components";
 
 interface RuleValuesEditorProps {
     configurazione: ConfigurazioneRegola[];
@@ -24,7 +23,7 @@ interface GroupedScaglione {
 
 interface GroupedRule {
     nome: string;
-    tipoUtenza: TipoUtenza | null;
+    tipoUtenza: "residenziale" | "business" | null;
     scaglioni: GroupedScaglione[];
 }
 

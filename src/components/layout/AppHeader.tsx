@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 
 interface AppHeaderProps {
     appVersion: string;
-    onSettingsSave: () => void;
     settingsOpen: boolean;
     onSettingsOpenChange: (open: boolean) => void;
     activeTab: string;
@@ -28,7 +27,6 @@ const navItems = [
 
 export function AppHeader({
     appVersion,
-    onSettingsSave,
     settingsOpen,
     onSettingsOpenChange,
     activeTab,
@@ -123,7 +121,7 @@ export function AppHeader({
                                     </SheetDescription>
                                 </SheetHeader>
                                 <Separator className="my-6 bg-border/50" />
-                                <SettingsPanel onSave={onSettingsSave} />
+                                <SettingsPanel />
                             </SheetContent>
                         </Sheet>
 

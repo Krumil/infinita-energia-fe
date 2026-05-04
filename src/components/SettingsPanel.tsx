@@ -1,11 +1,8 @@
-import { CheckCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslation, useThemeLanguage } from "@/hooks";
-import type { SettingsPanelProps } from "@/types/components";
 
-export function SettingsPanel({ onSave }: SettingsPanelProps) {
+export function SettingsPanel() {
     const { t } = useTranslation();
     const { theme, setTheme, language, setLanguage } = useThemeLanguage();
 
@@ -49,10 +46,6 @@ export function SettingsPanel({ onSave }: SettingsPanelProps) {
                     </SelectContent>
                 </Select>
             </div>
-
-            <Button onClick={onSave} className="w-full btn-primary">
-                <CheckCircle className="mr-2 h-4 w-4" /> {t("saveSettings")}
-            </Button>
         </div>
     );
 }
