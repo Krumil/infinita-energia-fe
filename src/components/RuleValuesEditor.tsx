@@ -40,30 +40,18 @@ function ScaglioneRow({
 }) {
     const key = `${regolaId}_${scaglione.scaglione_id}`;
     const currentVal = editedValues.get(key) ?? String(scaglione.valore);
-    const edited = editedValues.has(key);
-    const showCustom = scaglione.is_custom || edited;
 
     return (
-        <div className={cn(
-            "grid grid-cols-[1fr_auto_5rem] items-center gap-2 px-3 py-1.5 text-xs",
-            showCustom && "bg-emerald-500/[0.05]",
-        )}>
-            <span className={cn("font-body", !showCustom && "text-muted-foreground")}>
+        <div className="grid grid-cols-[1fr_5rem] items-center gap-2 px-3 py-1.5 text-xs">
+            <span className="font-body">
                 {scaglione.scaglione_nome}
             </span>
-            <span className={cn(
-                "w-2 h-2 rounded-full shrink-0",
-                showCustom ? "bg-emerald-500" : "bg-border",
-            )} />
             <Input
                 type="text"
                 inputMode="decimal"
                 value={currentVal}
                 onChange={(e) => onValueChange(regolaId, scaglione.scaglione_id, e.target.value)}
-                className={cn(
-                    "font-mono text-right h-7 px-2 text-xs",
-                    showCustom ? "border-emerald-500/40 font-semibold" : "border-border/50",
-                )}
+                className="font-mono text-right h-7 px-2 text-xs border-border/50"
             />
         </div>
     );
@@ -241,14 +229,6 @@ export function RuleValuesEditor({ configurazione, regole, loading, editedValues
                 />
             </div>
             <div className="flex items-center gap-6 text-xs text-muted-foreground font-body px-1">
-                <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    {t("customValue")}
-                </span>
-                <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-border" />
-                    {t("defaultValue")}
-                </span>
                 <span className="flex items-center gap-1.5">
                     <span className="text-[9px] px-1 py-0.5 rounded-sm bg-primary/10 text-primary font-mono uppercase">Gen</span>
                     {t("tipoUtenza")}: -
