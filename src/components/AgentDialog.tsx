@@ -94,11 +94,14 @@ export function AgentDialog({
             return;
         }
 
-        const valori = editedValues.size > 0
-            ? Array.from(editedValues.entries()).map((entry) => {
-                const [key, valore] = entry;
-                const [regolaId, scaglioneId] = key.split("_").map(Number);
-                return { regola_id: regolaId, scaglione_id: scaglioneId, valore: parseEuroNumber(valore) as number };
+        const valori = isEdit && configurazione.length > 0
+            ? configurazione.map((item) => {
+                const key = `${item.regola_id}_${item.scaglione_id}`;
+                const edited = editedValues.get(key);
+                const valore = edited !== undefined
+                    ? parseEuroNumber(edited) as number
+                    : item.valore;
+                return { regola_id: item.regola_id, scaglione_id: item.scaglione_id, valore };
             })
             : undefined;
         await onSave(formData, valori);
