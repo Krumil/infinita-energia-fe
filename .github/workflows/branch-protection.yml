@@ -1,0 +1,19 @@
+name: Branch Protection
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-source-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only dev can merge to main
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_REF" != "dev" ]; then
+            echo "Only the 'dev' branch can merge into 'main'."
+            echo "Please target 'dev' instead."
+            exit 1
+          fi
