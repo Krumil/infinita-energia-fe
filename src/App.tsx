@@ -46,13 +46,13 @@ function AuthenticatedApp() {
     const scaglioni = useScaglioni();
     const orders = useOrders();
     const liquidazioni = useLiquidazioni();
-    const calcolo = useCalcolo(agents.agents);
+    const calcolo = useCalcolo();
     const pendingOrders = usePendingOrders();
 
     const incompleteRulesCount = useMemo(
         () =>
-            regole.regole.filter((r) => r.tipo_utenza === null || r.tipo_servizio === null).length +
-            scaglioni.scaglioni.filter((s) => s.tipo_utenza === null || s.tipo_servizio === null).length,
+            regole.regole.filter((r) => r.tipo_utenza === null).length +
+            scaglioni.scaglioni.filter((s) => s.tipo_utenza === null).length,
         [regole.regole, scaglioni.scaglioni],
     );
 
