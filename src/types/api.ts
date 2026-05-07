@@ -175,3 +175,13 @@ export interface UpdateInvitoRequest {
     pagato?: boolean;
     data_pagamento?: string;
 }
+
+export interface CheckAgentiResponse {
+    matches: string[];
+    not_found: string[];
+    stats: {
+        total_input: number;
+        matched_count: number;
+        not_found_count: number;
+    };
+}

@@ -27,6 +27,7 @@ export type {
     DashboardProdottoContratti,
     DashboardContrattiPerProdotto,
     UpdateInvitoRequest,
+    CheckAgentiResponse,
 } from "./api";
 
 export type {
