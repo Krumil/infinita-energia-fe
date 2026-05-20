@@ -89,6 +89,28 @@ function sanitizeFilename(name: string): string {
     return name.replace(/[<>:"/\\|?*]/g, "_");
 }
 
+export const PROVVIGIONE_HEADERS = [
+    "Cliente",
+    "CF/PIVA",
+    "POD/PDR",
+    "Comp. al",
+    "Regola",
+    "Importo Provvigione",
+    "Venditore",
+] as const;
+
+export function provvigioneToRow(item: ProvvigioneData): (string | number)[] {
+    return [
+        item.cliente,
+        item.cf_piva,
+        item.pod_pdr,
+        item.comp_al,
+        item.regola,
+        item.importo_provvigione ?? 0,
+        item.venditore,
+    ];
+}
+
 /**
  * Creates an Excel workbook (binary) for a single seller's commissions.
  * @param sellerName - Name of the seller (used in header)
@@ -103,25 +125,9 @@ export async function createSellerExcel(
 ): Promise<Uint8Array> {
     const XLSX = await import("xlsx");
 
-    // Define headers
-    const headers = ["Cliente", "CF/PIVA", "POD/PDR", "Comp. al", "Regola", "Importo Provvigione", "Venditore"];
-
-    // Create data rows
-    const rows = data.map((item) => [
-        item.cliente,
-        item.cf_piva,
-        item.pod_pdr,
-        item.comp_al,
-        item.regola,
-        item.importo_provvigione ?? 0,
-        item.venditore,
-    ]);
-
-    // Add summary row
+    const rows = data.map(provvigioneToRow);
     const summaryRow = ["TOTALE", "", "", "", "", totalCommission, sellerName];
-
-    // Combine all data
-    const worksheetData = [headers, ...rows, summaryRow];
+    const worksheetData = [[...PROVVIGIONE_HEADERS], ...rows, summaryRow];
 
     // Create worksheet
     const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);

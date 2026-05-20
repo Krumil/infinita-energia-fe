@@ -15,6 +15,7 @@ export type {
     ProvvigioneData,
     CalcoloVenditoreResult,
     CalcoloResult,
+    CalcoloNonPagatiResponse,
     CalcoloInput,
     PendingOrder,
     PendingOrdersResponse,

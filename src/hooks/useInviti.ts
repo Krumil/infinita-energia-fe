@@ -19,6 +19,7 @@ export function useInviti() {
 
     const [selectedAgenteId, setSelectedAgenteId] = useState<number | undefined>();
     const [selectedStato, setSelectedStato] = useState<string | undefined>();
+    const [selectedPagato, setSelectedPagato] = useState<boolean | undefined>();
     const [dataInizio, setDataInizio] = useState("");
     const [dataFine, setDataFine] = useState("");
 
@@ -28,6 +29,7 @@ export function useInviti() {
             const params: Parameters<typeof getStoricoInviti>[0] = {};
             if (selectedAgenteId) params.agente_id = selectedAgenteId;
             if (selectedStato) params.stato = selectedStato;
+            if (selectedPagato !== undefined) params.pagato = selectedPagato;
             if (dataInizio) params.data_inizio = `${dataInizio}-01`;
             if (dataFine) params.data_fine = `${dataFine}-01`;
 
@@ -39,7 +41,7 @@ export function useInviti() {
         } finally {
             setLoading(false);
         }
-    }, [selectedAgenteId, selectedStato, dataInizio, dataFine]);
+    }, [selectedAgenteId, selectedStato, selectedPagato, dataInizio, dataFine]);
 
     useEffect(() => {
         fetchInviti();
@@ -79,6 +81,8 @@ export function useInviti() {
         setSelectedAgenteId,
         selectedStato,
         setSelectedStato,
+        selectedPagato,
+        setSelectedPagato,
         dataInizio,
         setDataInizio,
         dataFine,

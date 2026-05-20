@@ -5,6 +5,7 @@ export interface CreateAgentRequest {
     agente_padre?: string;
     mail?: string;
     statistiche?: boolean;
+    percentuale_provvigione_figlio?: number;
 }
 
 export interface AgentCreateResponse {
@@ -82,6 +83,10 @@ export interface CalcoloVenditoreResult {
 export interface CalcoloResult {
     [venditoreName: string]: CalcoloVenditoreResult;
 }
+
+export type CalcoloNonPagatiResponse =
+    | { kind: "data"; totale_provvigione: number; dati_provvigione: ProvvigioneData[] }
+    | { kind: "empty"; message: string };
 
 export interface CalcoloInput {
     venditore: string;

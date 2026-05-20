@@ -57,6 +57,9 @@ export function AgentDialog({
     const [formData, setFormData] = useState<CreateAgentRequest>(() => createInitialFormData(agent));
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [editedValues, setEditedValues] = useState<Map<string, string>>(new Map());
+    const [percentageInput, setPercentageInput] = useState<string>(
+        agent?.percentuale_provvigione_figlio != null ? String(agent.percentuale_provvigione_figlio) : "",
+    );
 
     useEffect(() => {
         if (!open) {
@@ -67,6 +70,9 @@ export function AgentDialog({
         setFormData(nextInitialFormData);
         setEditedValues(new Map());
         setConfirmingDelete(false);
+        setPercentageInput(
+            agent?.percentuale_provvigione_figlio != null ? String(agent.percentuale_provvigione_figlio) : "",
+        );
     }, [agent, open]);
 
     const handleValueChange = useCallback((regolaId: number, scaglioneId: number, value: string) => {
@@ -87,30 +93,55 @@ export function AgentDialog({
         [editedValues],
     );
 
+    const parsedPercentage = useMemo(() => {
+        const trimmed = percentageInput.trim();
+        if (trimmed === "") {
+            return { kind: "empty" } as const;
+        }
+        if (!/^\d+$/.test(trimmed)) {
+            return { kind: "invalid" } as const;
+        }
+        const value = parseInt(trimmed, 10);
+        if (value < 0 || value > 100) {
+            return { kind: "invalid" } as const;
+        }
+        return { kind: "valid", value } as const;
+    }, [percentageInput]);
+
+    const isPercentageInvalid = parsedPercentage.kind === "invalid";
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (hasInvalidEditedValues) {
+        if (hasInvalidEditedValues || isPercentageInvalid) {
             return;
         }
 
-        const valori = isEdit && configurazione.length > 0
-            ? configurazione.map((item) => {
-                const key = `${item.regola_id}_${item.scaglione_id}`;
-                const edited = editedValues.get(key);
-                const valore = edited !== undefined
-                    ? parseEuroNumber(edited) as number
-                    : item.valore;
-                return { regola_id: item.regola_id, scaglione_id: item.scaglione_id, valore };
-            })
-            : undefined;
-        await onSave(formData, valori);
+        const valori =
+            isEdit && configurazione.length > 0
+                ? configurazione.map((item) => {
+                      const key = `${item.regola_id}_${item.scaglione_id}`;
+                      const edited = editedValues.get(key);
+                      const valore = edited !== undefined ? (parseEuroNumber(edited) as number) : item.valore;
+                      return { regola_id: item.regola_id, scaglione_id: item.scaglione_id, valore };
+                  })
+                : undefined;
+
+        const body: CreateAgentRequest = {
+            ...formData,
+            percentuale_provvigione_figlio: parsedPercentage.kind === "valid" ? parsedPercentage.value : undefined,
+        };
+
+        await onSave(body, valori);
     };
 
     const availableParents = useMemo(
-        () => agents
-            .filter((candidate) => !agent || candidate.id !== agent.id)
-            .sort((left, right) => left.nome_cognome.localeCompare(right.nome_cognome, undefined, { sensitivity: "base" })),
+        () =>
+            agents
+                .filter((candidate) => !agent || candidate.id !== agent.id)
+                .sort((left, right) =>
+                    left.nome_cognome.localeCompare(right.nome_cognome, undefined, { sensitivity: "base" }),
+                ),
         [agent, agents],
     );
 
@@ -139,7 +170,9 @@ export function AgentDialog({
                                     <Input
                                         id="nome_cognome"
                                         value={formData.nome_cognome}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, nome_cognome: e.target.value }))}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({ ...prev, nome_cognome: e.target.value }))
+                                        }
                                         placeholder={t("exampleName")}
                                         required
                                         className="font-body"
@@ -167,7 +200,31 @@ export function AgentDialog({
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-[1fr_auto] gap-4 items-end">
+                            <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-end">
+                                <div className="space-y-1.5">
+                                    <Label
+                                        htmlFor="percentuale_provvigione_figlio"
+                                        className="editorial-caps text-muted-foreground"
+                                    >
+                                        {t("childCommissionPercent")}
+                                    </Label>
+                                    <div
+                                        className="flex h-10 w-28 items-center rounded-md border border-input bg-background pl-3 pr-3 text-base ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 md:text-sm"
+                                        aria-invalid={isPercentageInvalid}
+                                    >
+                                        <input
+                                            id="percentuale_provvigione_figlio"
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={percentageInput}
+                                            onChange={(e) => setPercentageInput(e.target.value)}
+                                            placeholder="100"
+                                            className="font-body w-full min-w-0 bg-transparent text-right outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                            aria-invalid={isPercentageInvalid}
+                                        />
+                                        <span className="ml-1 select-none text-sm text-muted-foreground">%</span>
+                                    </div>
+                                </div>
                                 <div className="space-y-1.5">
                                     <Label htmlFor="mail" className="editorial-caps text-muted-foreground">
                                         {t("email")}
@@ -176,7 +233,9 @@ export function AgentDialog({
                                         id="mail"
                                         type="email"
                                         value={formData.mail || ""}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, mail: e.target.value || undefined }))}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({ ...prev, mail: e.target.value || undefined }))
+                                        }
                                         placeholder="agent@example.com"
                                         className="font-body"
                                     />
@@ -190,8 +249,11 @@ export function AgentDialog({
                                                 setFormData((prev) => ({ ...prev, statistiche: checked === true }))
                                             }
                                         />
-                                        <Label htmlFor="statistiche" className="font-body text-sm font-medium whitespace-nowrap">
-                                            {t("includeInStatistics")}
+                                        <Label
+                                            htmlFor="statistiche"
+                                            className="font-body text-sm font-medium whitespace-nowrap"
+                                        >
+                                            {t("statistics")}
                                         </Label>
                                     </div>
                                 </div>
@@ -265,7 +327,13 @@ export function AgentDialog({
                         </Button>
                         <Button
                             type="submit"
-                            disabled={saving || deleting || !formData.nome_cognome.trim() || hasInvalidEditedValues}
+                            disabled={
+                                saving ||
+                                deleting ||
+                                !formData.nome_cognome.trim() ||
+                                hasInvalidEditedValues ||
+                                isPercentageInvalid
+                            }
                             className="btn-primary"
                         >
                             {saving ? (

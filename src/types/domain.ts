@@ -20,6 +20,7 @@ export interface Agente {
     agente_padre: string | null;
     mail: string | null;
     statistiche: boolean | null;
+    percentuale_provvigione_figlio: number | null;
 }
 
 export interface ConfigurazioneRegola {

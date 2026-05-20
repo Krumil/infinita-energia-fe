@@ -1,5 +1,17 @@
-import type { CalcoloInput, CalcoloResult, CheckAgentiResponse } from "@/types";
-import { authFetch, getApiUrl, handleResponse, handleResponseWithSanitization } from "./client";
+import type {
+    CalcoloInput,
+    CalcoloNonPagatiResponse,
+    CalcoloResult,
+    CheckAgentiResponse,
+    ProvvigioneData,
+} from "@/types";
+import {
+    ApiError,
+    authFetch,
+    getApiUrl,
+    handleResponse,
+    handleResponseWithSanitization,
+} from "./client";
 
 export async function calcolaProvvigioni(data: CalcoloInput[]): Promise<CalcoloResult> {
     const res = await authFetch(getApiUrl("/calcolo"), {
@@ -17,4 +29,49 @@ export async function checkAgenti(nomi: string[]): Promise<CheckAgentiResponse> 
         body: JSON.stringify({ nomi }),
     });
     return handleResponse<CheckAgentiResponse>(res);
+}
+
+interface NonPagatiBody {
+    totale_provvigione?: number;
+    dati_provvigione?: ProvvigioneData[];
+    message?: string;
+    data?: Record<string, unknown>;
+    error?: string;
+}
+
+export async function getCalcoloNonPagati(
+    agenteId: number,
+    mesi?: string[],
+): Promise<CalcoloNonPagatiResponse> {
+    const base = getApiUrl(`/non-pagati/${agenteId}`);
+    const url =
+        mesi && mesi.length > 0
+            ? `${base}?${new URLSearchParams({ mesi: mesi.join(",") }).toString()}`
+            : base;
+    const res = await authFetch(url);
+
+    if (!res.ok) {
+        let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+        try {
+            const errorData = (await res.json()) as NonPagatiBody;
+            if (errorData.error) {
+                errorMessage = errorData.error;
+            }
+        } catch {
+            // Ignore JSON parsing errors
+        }
+        throw new ApiError(res.status, errorMessage);
+    }
+
+    const body = (await res.json()) as NonPagatiBody;
+    const emptyData = body.data && typeof body.data === "object" && Object.keys(body.data).length === 0;
+    if (emptyData && body.message) {
+        return { kind: "empty", message: body.message };
+    }
+
+    return {
+        kind: "data",
+        totale_provvigione: body.totale_provvigione ?? 0,
+        dati_provvigione: body.dati_provvigione ?? [],
+    };
 }
