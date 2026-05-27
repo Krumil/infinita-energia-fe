@@ -5,6 +5,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { StoricoInvito, UpdateInvitoRequest } from "@/types";
 
+function defaultDataInizio(): string {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 12);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    return `${yyyy}-${mm}`;
+}
+
 export function useInviti() {
     const { toast } = useToast();
     const { t } = useTranslation();
@@ -20,7 +28,7 @@ export function useInviti() {
     const [selectedAgenteId, setSelectedAgenteId] = useState<number | undefined>();
     const [selectedStato, setSelectedStato] = useState<string | undefined>();
     const [selectedPagato, setSelectedPagato] = useState<boolean | undefined>();
-    const [dataInizio, setDataInizio] = useState("");
+    const [dataInizio, setDataInizio] = useState(defaultDataInizio);
     const [dataFine, setDataFine] = useState("");
 
     const fetchInviti = useCallback(async () => {

@@ -41,14 +41,13 @@ interface NonPagatiBody {
 
 export async function getCalcoloNonPagati(
     agenteId: number,
-    mesi?: string[],
+    mesi: string[],
 ): Promise<CalcoloNonPagatiResponse> {
-    const base = getApiUrl(`/non-pagati/${agenteId}`);
-    const url =
-        mesi && mesi.length > 0
-            ? `${base}?${new URLSearchParams({ mesi: mesi.join(",") }).toString()}`
-            : base;
-    const res = await authFetch(url);
+    const res = await authFetch(getApiUrl("/non-pagati"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agente_id: agenteId, mesi_competenza: mesi }),
+    });
 
     if (!res.ok) {
         let errorMessage = `HTTP ${res.status}: ${res.statusText}`;

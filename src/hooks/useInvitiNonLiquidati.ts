@@ -1,10 +1,12 @@
 import { useCallback, useState } from "react";
 import { getCalcoloNonPagati } from "@/api/calcolo";
+import { getStoricoInviti } from "@/api/inviti";
 import { ApiError } from "@/api/client";
 import { downloadCsv, toCsv } from "@/lib/csvUtils";
 import { PROVVIGIONE_HEADERS, provvigioneToRow } from "@/lib/exportUtils";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
+import type { StoricoInvito } from "@/types";
 
 export interface NonLiquidatiAgent {
     id: number;
@@ -31,17 +33,31 @@ export function useInvitiNonLiquidati() {
     const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
     const [selectedInvitoIds, setSelectedInvitoIds] = useState<Set<number>>(new Set());
     const [loading, setLoading] = useState(false);
+    const [nonLiquidatiInviti, setNonLiquidatiInviti] = useState<StoricoInvito[]>([]);
+    const [selectionLoading, setSelectionLoading] = useState(false);
 
-    const enterSelectionMode = useCallback(() => {
+    const enterSelectionMode = useCallback(async () => {
         setSelectionMode(true);
         setSelectedAgentId(null);
         setSelectedInvitoIds(new Set());
-    }, []);
+        setSelectionLoading(true);
+        try {
+            const data = await getStoricoInviti({ pagato: false });
+            setNonLiquidatiInviti(data);
+        } catch (err) {
+            const reason = err instanceof ApiError ? err.message : t("fetchError");
+            toast({ title: t("error"), description: reason, variant: "destructive" });
+            setNonLiquidatiInviti([]);
+        } finally {
+            setSelectionLoading(false);
+        }
+    }, [t, toast]);
 
     const exitSelectionMode = useCallback(() => {
         setSelectionMode(false);
         setSelectedAgentId(null);
         setSelectedInvitoIds(new Set());
+        setNonLiquidatiInviti([]);
     }, []);
 
     const selectAgent = useCallback((agentId: number, eligibleInvitoIds: number[]) => {
@@ -93,6 +109,7 @@ export function useInvitiNonLiquidati() {
                 setSelectionMode(false);
                 setSelectedAgentId(null);
                 setSelectedInvitoIds(new Set());
+                setNonLiquidatiInviti([]);
             } catch (err) {
                 const reason = err instanceof ApiError ? err.message : t("error");
                 toast({ title: t("error"), description: reason, variant: "destructive" });
@@ -108,6 +125,8 @@ export function useInvitiNonLiquidati() {
         selectedAgentId,
         selectedInvitoIds,
         loading,
+        nonLiquidatiInviti,
+        selectionLoading,
         enterSelectionMode,
         exitSelectionMode,
         selectAgent,

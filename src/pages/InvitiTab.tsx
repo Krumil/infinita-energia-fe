@@ -233,6 +233,8 @@ export function InvitiTab({ agents }: InvitiTabProps) {
         selectedAgentId,
         selectedInvitoIds,
         loading: nonLiqLoading,
+        nonLiquidatiInviti,
+        selectionLoading,
         enterSelectionMode,
         exitSelectionMode,
         selectAgent,
@@ -267,8 +269,8 @@ export function InvitiTab({ agents }: InvitiTabProps) {
     }, [inviti, filterQuery, sortField, sortDirection]);
 
     const eligibleInviti = useMemo(
-        () => processedInviti.filter(isEligibleInvito),
-        [processedInviti],
+        () => filterInviti(nonLiquidatiInviti, filterQuery).filter(isEligibleInvito),
+        [nonLiquidatiInviti, filterQuery],
     );
 
     const agentGroups = useMemo(() => {
@@ -346,7 +348,7 @@ export function InvitiTab({ agents }: InvitiTabProps) {
         if (selectedAgentId == null) return;
         const group = agentGroups.find((g) => g.id === selectedAgentId);
         if (!group) return;
-        const mesi = processedInviti
+        const mesi = eligibleInviti
             .filter((inv) => inv.agente_id === selectedAgentId && selectedInvitoIds.has(inv.id))
             .map((inv) => inv.mese_competenza);
         void runCalculation({ id: group.id, name: group.name }, mesi);
@@ -423,37 +425,37 @@ export function InvitiTab({ agents }: InvitiTabProps) {
 
                 {/* Row 2: Compact filter strip */}
                 <div className="flex items-center gap-3 px-4 py-2.5 bg-secondary/30">
-                    <SearchableSelect
-                        value={selectedAgenteId ? String(selectedAgenteId) : undefined}
-                        options={sortedAgentOptions}
-                        onValueChange={handleAgentFilterChange}
-                        placeholder={t("allAgents")}
-                        searchPlaceholder={t("searchParentAgent")}
-                        emptyMessage={t("noParentAgentsFound")}
-                        clearLabel={t("allAgents")}
-                        className="h-8 w-44 text-xs"
-                    />
-
-                    <div className="h-4 w-px bg-border/50" />
-
-                    <div className="flex items-center gap-1.5">
-                        <MonthPicker
-                            value={dataInizio}
-                            onChange={setDataInizio}
-                            placeholder={t("fromMonth")}
-                            className="h-8 text-xs"
-                        />
-                        <span className="text-xs text-muted-foreground">&ndash;</span>
-                        <MonthPicker
-                            value={dataFine}
-                            onChange={setDataFine}
-                            placeholder={t("toMonth")}
-                            className="h-8 text-xs"
-                        />
-                    </div>
-
                     {!selectionMode && (
                         <>
+                            <SearchableSelect
+                                value={selectedAgenteId ? String(selectedAgenteId) : undefined}
+                                options={sortedAgentOptions}
+                                onValueChange={handleAgentFilterChange}
+                                placeholder={t("allAgents")}
+                                searchPlaceholder={t("searchParentAgent")}
+                                emptyMessage={t("noParentAgentsFound")}
+                                clearLabel={t("allAgents")}
+                                className="h-8 w-44 text-xs"
+                            />
+
+                            <div className="h-4 w-px bg-border/50" />
+
+                            <div className="flex items-center gap-1.5">
+                                <MonthPicker
+                                    value={dataInizio}
+                                    onChange={setDataInizio}
+                                    placeholder={t("fromMonth")}
+                                    className="h-8 text-xs"
+                                />
+                                <span className="text-xs text-muted-foreground">&ndash;</span>
+                                <MonthPicker
+                                    value={dataFine}
+                                    onChange={setDataFine}
+                                    placeholder={t("toMonth")}
+                                    className="h-8 text-xs"
+                                />
+                            </div>
+
                             <div className="h-4 w-px bg-border/50" />
 
                             <Select
@@ -511,15 +513,9 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                 </div>
             </div>
 
-            {loading && inviti.length === 0 ? (
+            {selectionMode && selectionLoading ? (
                 <div className="ledger-card flex flex-1 items-center justify-center py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
-                </div>
-            ) : inviti.length === 0 ? (
-                <div className="ledger-card flex flex-1 flex-col items-center justify-center py-16 text-center">
-                    <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                    <p className="font-display text-lg text-muted-foreground">{t("noInvitiFound")}</p>
-                    <p className="text-sm text-muted-foreground/70 mt-1">{t("noInvitiDesc")}</p>
                 </div>
             ) : selectionMode ? (
                 <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -627,6 +623,16 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                             </TableBody>
                         </Table>
                     </div>
+                </div>
+            ) : loading && inviti.length === 0 ? (
+                <div className="ledger-card flex flex-1 items-center justify-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
+                </div>
+            ) : inviti.length === 0 ? (
+                <div className="ledger-card flex flex-1 flex-col items-center justify-center py-16 text-center">
+                    <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                    <p className="font-display text-lg text-muted-foreground">{t("noInvitiFound")}</p>
+                    <p className="text-sm text-muted-foreground/70 mt-1">{t("noInvitiDesc")}</p>
                 </div>
             ) : (
                 <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -779,8 +785,8 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                     <Button
                         size="sm"
                         className="btn-primary"
-                        onClick={enterSelectionMode}
-                        disabled={inviti.length === 0}
+                        onClick={() => void enterSelectionMode()}
+                        disabled={selectionLoading}
                     >
                         <Calculator className="h-4 w-4 mr-2" />
                         {t("unpaidCalcButton")}
