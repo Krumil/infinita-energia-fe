@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import {
+    Calculator,
     FileText,
     Loader2,
     RefreshCw,
@@ -29,6 +30,7 @@ import {
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatDate } from "@/lib/utils";
 import { useInviti } from "@/hooks/useInviti";
+import { useInvitiNonLiquidati } from "@/hooks/useInvitiNonLiquidati";
 import type { Agente, StoricoInvito, UpdateInvitoRequest } from "@/types";
 
 interface InvitiTabProps {
@@ -60,6 +62,10 @@ function formatMonth(isoDate: string): string {
 
 function formatCurrency(value: number): string {
     return value.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+}
+
+function isEligibleInvito(invito: StoricoInvito): boolean {
+    return !invito.pagato && invito.stato !== "inviato";
 }
 
 function getStatoBadge(stato: string) {
@@ -212,6 +218,8 @@ export function InvitiTab({ agents }: InvitiTabProps) {
         setSelectedAgenteId,
         selectedStato,
         setSelectedStato,
+        selectedPagato,
+        setSelectedPagato,
         dataInizio,
         setDataInizio,
         dataFine,
@@ -219,6 +227,20 @@ export function InvitiTab({ agents }: InvitiTabProps) {
         fetchInviti,
         updateInvito,
     } = useInviti();
+
+    const {
+        selectionMode,
+        selectedAgentId,
+        selectedInvitoIds,
+        loading: nonLiqLoading,
+        nonLiquidatiInviti,
+        selectionLoading,
+        enterSelectionMode,
+        exitSelectionMode,
+        selectAgent,
+        toggleInvito,
+        runCalculation,
+    } = useInvitiNonLiquidati();
 
     const [filterQuery, setFilterQuery] = useState("");
     const [sortField, setSortField] = useState<SortField>("mese_competenza");
@@ -246,7 +268,72 @@ export function InvitiTab({ agents }: InvitiTabProps) {
         return sortInviti(filtered, sortField, sortDirection);
     }, [inviti, filterQuery, sortField, sortDirection]);
 
+    const eligibleInviti = useMemo(
+        () => filterInviti(nonLiquidatiInviti, filterQuery).filter(isEligibleInvito),
+        [nonLiquidatiInviti, filterQuery],
+    );
+
+    const agentGroups = useMemo(() => {
+        const map = new Map<number, { id: number; name: string; count: number; total: number }>();
+        for (const inv of eligibleInviti) {
+            const existing = map.get(inv.agente_id);
+            if (existing) {
+                existing.count += 1;
+                existing.total += inv.totale_invito;
+            } else {
+                map.set(inv.agente_id, {
+                    id: inv.agente_id,
+                    name: inv.nome_agente,
+                    count: 1,
+                    total: inv.totale_invito,
+                });
+            }
+        }
+        return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "it"));
+    }, [eligibleInviti]);
+
+    type RenderRow =
+        | { kind: "group"; group: { id: number; name: string; count: number; total: number } }
+        | { kind: "detail"; invito: StoricoInvito };
+
+    const renderRows = useMemo<RenderRow[]>(() => {
+        const byAgent = new Map<number, StoricoInvito[]>();
+        for (const inv of eligibleInviti) {
+            const list = byAgent.get(inv.agente_id);
+            if (list) list.push(inv);
+            else byAgent.set(inv.agente_id, [inv]);
+        }
+        const rows: RenderRow[] = [];
+        for (const group of agentGroups) {
+            rows.push({ kind: "group", group });
+            const items = byAgent.get(group.id) ?? [];
+            const sorted = [...items].sort((a, b) =>
+                b.mese_competenza.localeCompare(a.mese_competenza),
+            );
+            for (const invito of sorted) {
+                rows.push({ kind: "detail", invito });
+            }
+        }
+        return rows;
+    }, [eligibleInviti, agentGroups]);
+
+    const eligibleByAgent = useMemo(() => {
+        const map = new Map<number, number[]>();
+        for (const inv of eligibleInviti) {
+            const list = map.get(inv.agente_id);
+            if (list) list.push(inv.id);
+            else map.set(inv.agente_id, [inv.id]);
+        }
+        return map;
+    }, [eligibleInviti]);
+
+    const handleSelectAgent = (agentId: number) => {
+        if (agentId === selectedAgentId) return;
+        selectAgent(agentId, eligibleByAgent.get(agentId) ?? []);
+    };
+
     const handleRowClick = (invito: StoricoInvito) => {
+        if (selectionMode) return;
         setEditingInvito(invito);
         setEditForm({
             stato: invito.stato,
@@ -255,6 +342,16 @@ export function InvitiTab({ agents }: InvitiTabProps) {
             pagato: invito.pagato,
             data_pagamento: invito.data_pagamento || "",
         });
+    };
+
+    const handleRunCalculation = () => {
+        if (selectedAgentId == null) return;
+        const group = agentGroups.find((g) => g.id === selectedAgentId);
+        if (!group) return;
+        const mesi = eligibleInviti
+            .filter((inv) => inv.agente_id === selectedAgentId && selectedInvitoIds.has(inv.id))
+            .map((inv) => inv.mese_competenza);
+        void runCalculation({ id: group.id, name: group.name }, mesi);
     };
 
     const handleSave = async () => {
@@ -288,6 +385,18 @@ export function InvitiTab({ agents }: InvitiTabProps) {
         setSelectedStato(value === "all" ? undefined : value);
     };
 
+    const handlePagatoFilterChange = (value: string) => {
+        if (value === "paid") {
+            setSelectedPagato(true);
+        } else if (value === "unpaid") {
+            setSelectedPagato(false);
+        } else {
+            setSelectedPagato(undefined);
+        }
+    };
+
+    const pagatoFilterValue = selectedPagato === true ? "paid" : selectedPagato === false ? "unpaid" : "all";
+
     return (
         <div className="flex flex-col gap-6 lg:h-[calc(100dvh-11.5rem)]">
             {/* Two-row header: title row + filter strip */}
@@ -316,51 +425,71 @@ export function InvitiTab({ agents }: InvitiTabProps) {
 
                 {/* Row 2: Compact filter strip */}
                 <div className="flex items-center gap-3 px-4 py-2.5 bg-secondary/30">
-                    <SearchableSelect
-                        value={selectedAgenteId ? String(selectedAgenteId) : undefined}
-                        options={sortedAgentOptions}
-                        onValueChange={handleAgentFilterChange}
-                        placeholder={t("allAgents")}
-                        searchPlaceholder={t("searchParentAgent")}
-                        emptyMessage={t("noParentAgentsFound")}
-                        clearLabel={t("allAgents")}
-                        className="h-8 w-44 text-xs"
-                    />
+                    {!selectionMode && (
+                        <>
+                            <SearchableSelect
+                                value={selectedAgenteId ? String(selectedAgenteId) : undefined}
+                                options={sortedAgentOptions}
+                                onValueChange={handleAgentFilterChange}
+                                placeholder={t("allAgents")}
+                                searchPlaceholder={t("searchParentAgent")}
+                                emptyMessage={t("noParentAgentsFound")}
+                                clearLabel={t("allAgents")}
+                                className="h-8 w-44 text-xs"
+                            />
 
-                    <div className="h-4 w-px bg-border/50" />
+                            <div className="h-4 w-px bg-border/50" />
 
-                    <div className="flex items-center gap-1.5">
-                        <MonthPicker
-                            value={dataInizio}
-                            onChange={setDataInizio}
-                            placeholder={t("fromMonth")}
-                            className="h-8 text-xs"
-                        />
-                        <span className="text-xs text-muted-foreground">&ndash;</span>
-                        <MonthPicker
-                            value={dataFine}
-                            onChange={setDataFine}
-                            placeholder={t("toMonth")}
-                            className="h-8 text-xs"
-                        />
-                    </div>
+                            <div className="flex items-center gap-1.5">
+                                <MonthPicker
+                                    value={dataInizio}
+                                    onChange={setDataInizio}
+                                    placeholder={t("fromMonth")}
+                                    className="h-8 text-xs"
+                                />
+                                <span className="text-xs text-muted-foreground">&ndash;</span>
+                                <MonthPicker
+                                    value={dataFine}
+                                    onChange={setDataFine}
+                                    placeholder={t("toMonth")}
+                                    className="h-8 text-xs"
+                                />
+                            </div>
 
-                    <div className="h-4 w-px bg-border/50" />
+                            <div className="h-4 w-px bg-border/50" />
 
-                    <Select
-                        value={selectedStato || "all"}
-                        onValueChange={handleStatoFilterChange}
-                    >
-                        <SelectTrigger className="h-8 w-32 text-xs">
-                            <SelectValue placeholder={t("allStatuses")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">{t("allStatuses")}</SelectItem>
-                            <SelectItem value="bozza">{t("draft")}</SelectItem>
-                            <SelectItem value="inviato">{t("sent")}</SelectItem>
-                            <SelectItem value="approvato">{t("approved")}</SelectItem>
-                        </SelectContent>
-                    </Select>
+                            <Select
+                                value={selectedStato || "all"}
+                                onValueChange={handleStatoFilterChange}
+                            >
+                                <SelectTrigger className="h-8 w-32 text-xs">
+                                    <SelectValue placeholder={t("allStatuses")} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">{t("allStatuses")}</SelectItem>
+                                    <SelectItem value="bozza">{t("draft")}</SelectItem>
+                                    <SelectItem value="inviato">{t("sent")}</SelectItem>
+                                    <SelectItem value="approvato">{t("approved")}</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <div className="h-4 w-px bg-border/50" />
+
+                            <Select
+                                value={pagatoFilterValue}
+                                onValueChange={handlePagatoFilterChange}
+                            >
+                                <SelectTrigger className="h-8 w-36 text-xs">
+                                    <SelectValue placeholder={t("allPaymentStatuses")} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">{t("allPaymentStatuses")}</SelectItem>
+                                    <SelectItem value="paid">{t("paidOnly")}</SelectItem>
+                                    <SelectItem value="unpaid">{t("unpaidOnly")}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </>
+                    )}
 
                     <div className="flex-1" />
 
@@ -384,7 +513,118 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                 </div>
             </div>
 
-            {loading && inviti.length === 0 ? (
+            {selectionMode && selectionLoading ? (
+                <div className="ledger-card flex flex-1 items-center justify-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
+                </div>
+            ) : selectionMode ? (
+                <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <div className="min-h-0 flex-1 overflow-auto">
+                        <Table>
+                            <TableHeader className="sticky top-0 bg-secondary/90 backdrop-blur-sm">
+                                <TableRow>
+                                    <TableHead className="w-[48px]" />
+                                    <TableHead className="min-w-[160px]">{t("agent")}</TableHead>
+                                    <TableHead className="w-[150px]">{t("competenceMonth")}</TableHead>
+                                    <TableHead className="w-[120px] text-right">{t("invitationTotal")}</TableHead>
+                                    <TableHead className="w-[110px]">{t("status")}</TableHead>
+                                    <TableHead className="w-[150px]">{t("invoiceReference")}</TableHead>
+                                    <TableHead className="w-[110px]">{t("invoiceDate")}</TableHead>
+                                    <TableHead className="w-[70px]">{t("paid")}</TableHead>
+                                    <TableHead className="w-[120px]">{t("paymentDate")}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {renderRows.length > 0 ? (
+                                    renderRows.map((row) => {
+                                        if (row.kind === "group") {
+                                            const isSelected = selectedAgentId === row.group.id;
+                                            return (
+                                                <TableRow
+                                                    key={`group-${row.group.id}`}
+                                                    className={`bg-secondary/40 hover:bg-secondary/60 cursor-pointer border-t border-border/40 ${
+                                                        isSelected ? "ring-1 ring-inset ring-primary/40" : ""
+                                                    }`}
+                                                    onClick={() => handleSelectAgent(row.group.id)}
+                                                >
+                                                    <TableCell>
+                                                        <span
+                                                            role="radio"
+                                                            aria-checked={isSelected}
+                                                            aria-label={row.group.name}
+                                                            className={`inline-flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                                                                isSelected ? "border-primary" : "border-primary/70"
+                                                            }`}
+                                                        >
+                                                            {isSelected && (
+                                                                <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                                                            )}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell colSpan={8} className="font-semibold">
+                                                        {row.group.name}
+                                                        <span className="ml-2 text-muted-foreground font-normal text-xs">
+                                                            {t("unpaidCalcGroupSummary")
+                                                                .replace("{count}", String(row.group.count))
+                                                                .replace(
+                                                                    "{total}",
+                                                                    formatCurrency(row.group.total),
+                                                                )}
+                                                        </span>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        }
+                                        const { invito } = row;
+                                        const inSelectedAgent = invito.agente_id === selectedAgentId;
+                                        return (
+                                            <TableRow
+                                                key={`detail-${invito.id}`}
+                                                className={inSelectedAgent ? "" : "opacity-60"}
+                                            >
+                                                <TableCell>
+                                                    {inSelectedAgent && (
+                                                        <Checkbox
+                                                            checked={selectedInvitoIds.has(invito.id)}
+                                                            onCheckedChange={() => toggleInvito(invito.id)}
+                                                            aria-label={formatMonth(invito.mese_competenza)}
+                                                            className="h-4 w-4 border-2 border-primary/70 data-[state=checked]:border-primary"
+                                                        />
+                                                    )}
+                                                </TableCell>
+                                                <TableCell />
+                                                <TableCell className="text-muted-foreground">
+                                                    {formatMonth(invito.mese_competenza)}
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono text-xs">
+                                                    {formatCurrency(invito.totale_invito)}
+                                                </TableCell>
+                                                <TableCell>{getStatoBadge(invito.stato)}</TableCell>
+                                                <TableCell className="font-mono text-xs">
+                                                    {invito.riferimento_fattura || "—"}
+                                                </TableCell>
+                                                <TableCell className="font-mono text-xs text-muted-foreground">
+                                                    {formatDate(invito.data_fattura)}
+                                                </TableCell>
+                                                <TableCell>{getPagatoBadge(invito.pagato)}</TableCell>
+                                                <TableCell className="font-mono text-xs text-muted-foreground">
+                                                    {formatDate(invito.data_pagamento)}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                                            {t("noDataFound")}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+            ) : loading && inviti.length === 0 ? (
                 <div className="ledger-card flex flex-1 items-center justify-center py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
                 </div>
@@ -514,6 +754,45 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                     </div>
                 </div>
             )}
+
+            <div className="shrink-0 flex items-center justify-end gap-2">
+                {selectionMode ? (
+                    <>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={exitSelectionMode}
+                            disabled={nonLiqLoading}
+                        >
+                            {t("unpaidCalcCancel")}
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="btn-primary"
+                            onClick={handleRunCalculation}
+                            disabled={nonLiqLoading || selectedAgentId == null || selectedInvitoIds.size === 0}
+                        >
+                            {nonLiqLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                                <Calculator className="h-4 w-4 mr-2" />
+                            )}
+                            {t("unpaidCalcRun")}
+                            {selectedInvitoIds.size > 0 && ` (${selectedInvitoIds.size})`}
+                        </Button>
+                    </>
+                ) : (
+                    <Button
+                        size="sm"
+                        className="btn-primary"
+                        onClick={() => void enterSelectionMode()}
+                        disabled={selectionLoading}
+                    >
+                        <Calculator className="h-4 w-4 mr-2" />
+                        {t("unpaidCalcButton")}
+                    </Button>
+                )}
+            </div>
 
             <Dialog open={!!editingInvito} onOpenChange={(open) => !open && setEditingInvito(null)}>
                 <DialogContent className="sm:max-w-[480px]">

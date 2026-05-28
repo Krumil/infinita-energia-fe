@@ -5,6 +5,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { StoricoInvito, UpdateInvitoRequest } from "@/types";
 
+function defaultDataInizio(): string {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 12);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    return `${yyyy}-${mm}`;
+}
+
 export function useInviti() {
     const { toast } = useToast();
     const { t } = useTranslation();
@@ -19,7 +27,8 @@ export function useInviti() {
 
     const [selectedAgenteId, setSelectedAgenteId] = useState<number | undefined>();
     const [selectedStato, setSelectedStato] = useState<string | undefined>();
-    const [dataInizio, setDataInizio] = useState("");
+    const [selectedPagato, setSelectedPagato] = useState<boolean | undefined>();
+    const [dataInizio, setDataInizio] = useState(defaultDataInizio);
     const [dataFine, setDataFine] = useState("");
 
     const fetchInviti = useCallback(async () => {
@@ -28,6 +37,7 @@ export function useInviti() {
             const params: Parameters<typeof getStoricoInviti>[0] = {};
             if (selectedAgenteId) params.agente_id = selectedAgenteId;
             if (selectedStato) params.stato = selectedStato;
+            if (selectedPagato !== undefined) params.pagato = selectedPagato;
             if (dataInizio) params.data_inizio = `${dataInizio}-01`;
             if (dataFine) params.data_fine = `${dataFine}-01`;
 
@@ -39,7 +49,7 @@ export function useInviti() {
         } finally {
             setLoading(false);
         }
-    }, [selectedAgenteId, selectedStato, dataInizio, dataFine]);
+    }, [selectedAgenteId, selectedStato, selectedPagato, dataInizio, dataFine]);
 
     useEffect(() => {
         fetchInviti();
@@ -79,6 +89,8 @@ export function useInviti() {
         setSelectedAgenteId,
         selectedStato,
         setSelectedStato,
+        selectedPagato,
+        setSelectedPagato,
         dataInizio,
         setDataInizio,
         dataFine,
