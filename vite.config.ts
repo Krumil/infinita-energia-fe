@@ -1,11 +1,8 @@
-import fs from "node:fs";
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const packageJson = JSON.parse(
-    fs.readFileSync(new URL("./package.json", import.meta.url), "utf-8"),
-) as { version: string };
+import packageJson from "./package.json";
 
 // https://vite.dev/config/
 export default defineConfig({

@@ -1,26 +1,50 @@
 import * as React from "react";
+import { z } from "zod";
 import * as RechartsPrimitive from "recharts";
 import { cn } from "@/lib/utils";
 
-export type ChartConfig = {
-    [k in string]: {
+export interface ChartConfig {
+    [key: string]: {
         label?: React.ReactNode;
         icon?: React.ComponentType;
         color?: string;
     };
-};
+}
 
-type ChartContextProps = {
+interface ChartContextProps {
     config: ChartConfig;
-};
+}
+
+interface ChartStyle extends React.CSSProperties {
+    [property: `--${string}`]: string | number | undefined;
+}
+
+interface ChartDatum {
+    [field: string]: string | number | null | undefined;
+}
+
+interface ChartPayloadSource {
+    payload?: ChartDatum;
+}
+
+interface ChartTooltipItem extends ChartPayloadSource {
+    name?: string;
+    dataKey?: string | number;
+    value?: number;
+    color?: string;
+}
+
+const chartText = z.string();
 
 const ChartContext = React.createContext<ChartContextProps | null>(null);
 
 function useChart() {
     const context = React.useContext(ChartContext);
+
     if (!context) {
         throw new Error("useChart must be used within a <ChartContainer />");
     }
+
     return context;
 }
 
@@ -36,12 +60,13 @@ const ChartContainer = React.forwardRef<
 
     // Generate CSS variables from config
     const cssVariables = React.useMemo(() => {
-        const vars: Record<string, string> = {};
+        const vars: ChartStyle = {};
         Object.entries(config).forEach(([key, value]) => {
             if (value.color) {
                 vars[`--color-${key}`] = value.color;
             }
         });
+
         return vars;
     }, [config]);
 
@@ -54,7 +79,7 @@ const ChartContainer = React.forwardRef<
                     "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
                     className,
                 )}
-                style={cssVariables as React.CSSProperties}
+                style={cssVariables}
                 {...props}
             >
                 <RechartsPrimitive.ResponsiveContainer>{children}</RechartsPrimitive.ResponsiveContainer>
@@ -62,27 +87,22 @@ const ChartContainer = React.forwardRef<
         </ChartContext.Provider>
     );
 });
+
 ChartContainer.displayName = "Chart";
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
 interface ChartTooltipContentProps extends React.ComponentProps<"div"> {
     active?: boolean;
-    payload?: Array<{
-        name?: string;
-        dataKey?: string | number;
-        value?: number;
-        color?: string;
-        payload?: Record<string, unknown>;
-    }>;
+    payload?: ChartTooltipItem[];
     label?: string;
     hideLabel?: boolean;
     hideIndicator?: boolean;
     indicator?: "line" | "dot" | "dashed";
     nameKey?: string;
     labelKey?: string;
-    labelFormatter?: (value: unknown, payload: unknown[]) => React.ReactNode;
-    formatter?: (value: number, name: string, item: unknown, index: number, payload: unknown) => React.ReactNode;
+    labelFormatter?: (value: React.ReactNode, payload: ChartTooltipItem[]) => React.ReactNode;
+    formatter?: (value: number, name: string, item: ChartTooltipItem, index: number, payload: ChartDatum | undefined) => React.ReactNode;
     labelClassName?: string;
     color?: string;
 }
@@ -116,9 +136,12 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
             const [item] = payload;
             const key = `${labelKey || item?.dataKey || item?.name || "value"}`;
             const itemConfig = getPayloadConfigFromPayload(config, item, key);
+
+            const parsedLabel = chartText.safeParse(label);
+
             const value =
-                !labelKey && typeof label === "string"
-                    ? config[label as keyof typeof config]?.label || label
+                !labelKey && parsedLabel.success
+                    ? config[parsedLabel.data]?.label || parsedLabel.data
                     : itemConfig?.label;
 
             if (labelFormatter && payload) {
@@ -151,8 +174,14 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
                     {payload.map((item, index) => {
                         const key = `${nameKey || item.name || item.dataKey || "value"}`;
                         const itemConfig = getPayloadConfigFromPayload(config, item, key);
-                        const indicatorColor =
-                            color || ((item.payload as Record<string, unknown>)?.fill as string) || item.color;
+
+                        const fill = chartText.safeParse(item.payload?.fill);
+                        const indicatorColor = color || (fill.success ? fill.data : undefined) || item.color;
+
+                        const indicatorStyle: ChartStyle = {
+                            "--color-bg": indicatorColor,
+                            "--color-border": indicatorColor,
+                        };
 
                         return (
                             <div
@@ -181,12 +210,7 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
                                                             "my-0.5": nestLabel && indicator === "dashed",
                                                         },
                                                     )}
-                                                    style={
-                                                        {
-                                                            "--color-bg": indicatorColor,
-                                                            "--color-border": indicatorColor,
-                                                        } as React.CSSProperties
-                                                    }
+                                                    style={indicatorStyle}
                                                 />
                                             )
                                         )}
@@ -218,6 +242,7 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
         );
     },
 );
+
 ChartTooltipContent.displayName = "ChartTooltipContent";
 
 const ChartLegend = RechartsPrimitive.Legend;
@@ -225,6 +250,7 @@ const ChartLegend = RechartsPrimitive.Legend;
 interface ChartLegendContentProps extends React.ComponentProps<"div"> {
     payload?: Array<{
         value?: string;
+        payload?: ChartDatum;
         dataKey?: string | number;
         color?: string;
     }>;
@@ -279,30 +305,19 @@ const ChartLegendContent = React.forwardRef<HTMLDivElement, ChartLegendContentPr
         );
     },
 );
+
 ChartLegendContent.displayName = "ChartLegendContent";
 
-// Helper to extract item config from a payload.
-function getPayloadConfigFromPayload(config: ChartConfig, payload: unknown, key: string) {
-    if (typeof payload !== "object" || payload === null) {
-        return undefined;
-    }
-
-    const payloadPayload =
-        "payload" in payload && typeof payload.payload === "object" && payload.payload !== null
-            ? payload.payload
-            : undefined;
-
-    let configLabelKey: string = key;
-
-    if (key in config) {
+function getPayloadConfigFromPayload(config: ChartConfig, item: ChartPayloadSource, key: string): ChartConfig[string] | undefined {
+    if (Object.prototype.hasOwnProperty.call(config, key)) {
         return config[key];
     }
 
-    if (payloadPayload && key in (payloadPayload as Record<string, unknown>)) {
-        configLabelKey = (payloadPayload as Record<string, string>)[key];
-    }
+    const label = chartText.safeParse(item.payload?.[key]);
 
-    return configLabelKey in config ? config[configLabelKey] : config[key];
+    return label.success && Object.prototype.hasOwnProperty.call(config, label.data)
+        ? config[label.data]
+        : undefined;
 }
 
 export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent };

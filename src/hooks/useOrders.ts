@@ -16,6 +16,7 @@ export function useOrders() {
     const handleUpload = useCallback(
         async (files: File[]): Promise<string | null> => {
             const file = files[0];
+
             if (!file) return null;
 
             setImporting(true);
@@ -35,6 +36,7 @@ export function useOrders() {
                     title: t("uploadSuccessful"),
                     description: uploadResult.message,
                 });
+
                 return t("ordersImported");
             } catch (error) {
                 clearInterval(progressInterval);
@@ -44,6 +46,7 @@ export function useOrders() {
                     description: errorMsg,
                     variant: "destructive",
                 });
+
                 return null;
             } finally {
                 setImporting(false);

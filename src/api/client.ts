@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 const BASE_API = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 
 type UnauthorizedCallback = () => void;
@@ -42,21 +44,27 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
 async function throwIfNotOk(res: Response): Promise<void> {
     if (!res.ok) {
         let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+
         try {
-            const errorData = await res.json();
-            if (errorData.error) {
-                errorMessage = errorData.error;
-            }
+            const errorData = apiErrorResponseSchema.safeParse(await res.json());
+
+            if (errorData.success) errorMessage = errorData.data.error;
         } catch {
             // Ignore JSON parsing errors
         }
+
         throw new ApiError(res.status, errorMessage);
     }
 }
 
 export async function handleResponse<T>(res: Response): Promise<T> {
     await throwIfNotOk(res);
+
     return res.json();
+}
+
+export async function handleEmptyResponse(res: Response): Promise<void> {
+    await throwIfNotOk(res);
 }
 
 function sanitizeJson(text: string): string {
@@ -66,9 +74,14 @@ function sanitizeJson(text: string): string {
         .replace(/:\s*-Infinity\b/g, ": null");
 }
 
-export async function handleResponseWithSanitization<T>(res: Response): Promise<T> {
+export async function handleResponseWithSanitization<T>(res: Response, schema: z.ZodType<T>): Promise<T> {
     await throwIfNotOk(res);
     const text = await res.text();
     const sanitized = sanitizeJson(text);
-    return JSON.parse(sanitized) as T;
+
+    const payload: unknown = JSON.parse(sanitized);
+
+    return schema.parse(payload);
 }
+
+const apiErrorResponseSchema = z.object({ error: z.string() }).passthrough();

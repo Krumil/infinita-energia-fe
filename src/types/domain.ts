@@ -1,4 +1,4 @@
-export interface Regola {
+export interface Rule {
     id: number;
     descrizione: string;
     utilizzato: boolean;
@@ -7,14 +7,14 @@ export interface Regola {
     tipo_servizio: "gas" | "luce" | null;
 }
 
-export interface Scaglione {
+export interface Tier {
     id: number;
     descrizione: string;
     tipo_utenza: "residenziale" | "business" | null;
     tipo_servizio: "gas" | "luce" | null;
 }
 
-export interface Agente {
+export interface Agent {
     id: number;
     nome_cognome: string;
     agente_padre: string | null;
@@ -23,7 +23,7 @@ export interface Agente {
     percentuale_provvigione_figlio: number | null;
 }
 
-export interface ConfigurazioneRegola {
+export interface RuleConfiguration {
     regola_id: number;
     regola_nome: string;
     scaglione_id: number;
@@ -32,13 +32,13 @@ export interface ConfigurazioneRegola {
     is_custom: boolean;
 }
 
-export interface ConfigurazioneResponse {
+export interface RuleConfigurationResponse {
     agente_id: number;
     nome_agente: string;
-    configurazione: ConfigurazioneRegola[];
+    configurazione: RuleConfiguration[];
 }
 
-export interface Liquidazione {
+export interface Settlement {
     id?: number;
     piano_provvigionale?: string;
     regola?: string;
@@ -73,7 +73,7 @@ export interface Liquidazione {
     competenza_liquidazione?: string; // Format: "YYYY-MM-DD" from Excel (MM/YYYY)
 }
 
-export interface StoricoInvito {
+export interface InvoiceRequest {
     id: number;
     agente_id: number;
     nome_agente: string;

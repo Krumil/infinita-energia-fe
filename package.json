@@ -6,10 +6,12 @@
     "scripts": {
         "dev": "vite",
         "build": "tsc -b && vite build",
-        "lint": "eslint .",
+        "lint": "npm run lint:anti-slop && npm run lint:eslint",
         "preview": "vite preview",
         "test": "vitest run",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "lint:anti-slop": "oxlint .",
+        "lint:eslint": "eslint ."
     },
     "dependencies": {
         "@hookform/resolvers": "^3.9.1",
@@ -21,6 +23,7 @@
         "@radix-ui/react-label": "^2.1.7",
         "@radix-ui/react-popover": "^1.1.15",
         "@radix-ui/react-progress": "^1.1.7",
+        "@radix-ui/react-radio-group": "^1.4.7",
         "@radix-ui/react-select": "^2.2.6",
         "@radix-ui/react-separator": "^1.1.7",
         "@radix-ui/react-slot": "^1.2.3",
@@ -31,6 +34,7 @@
         "agentation": "^2.2.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "cmdk": "^1.1.1",
         "date-fns": "^4.1.0",
         "jszip": "^3.10.1",
         "lucide-react": "^0.469.0",
@@ -45,6 +49,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.39.2",
+        "@oxlint/plugins": "1.83.0",
         "@types/react": "^19.2.7",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^4.3.4",
@@ -53,6 +58,7 @@
         "eslint-plugin-react-hooks": "^7.0.1",
         "eslint-plugin-react-refresh": "^0.4.25",
         "globals": "^16.5.0",
+        "oxlint": "1.83.0",
         "postcss": "^8.4.49",
         "tailwindcss": "^3.4.17",
         "typescript": "^5.7.3",

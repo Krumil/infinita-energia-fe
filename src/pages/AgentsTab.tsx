@@ -2,26 +2,26 @@ import { Users, RefreshCw, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, AgentDialog, AgentsTable } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Agente, Regola, ConfigurazioneRegola, CreateAgentRequest, Scaglione } from "@/types";
+import type { Agent, Rule, RuleConfiguration, CreateAgentRequest, Tier } from "@/types";
 
 interface AgentsTabProps {
-    agents: Agente[];
+    agents: Agent[];
     loading: boolean;
     dialogOpen: boolean;
     onDialogOpenChange: (open: boolean) => void;
-    editingAgent: Agente | null;
+    editingAgent: Agent | null;
     saving: boolean;
     deleting: boolean;
     onRefresh: () => void;
     onCreateClick: () => void;
-    onEdit: (agent: Agente) => void;
-    onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
-    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<unknown>;
-    onDeleteAgent: (agent: Agente) => void;
-    regole: Regola[];
-    configurazione: ConfigurazioneRegola[];
+    onEdit: (agent: Agent) => void;
+    onToggleStatistics: (agent: Agent, value: boolean) => Promise<void>;
+    onSave: (data: CreateAgentRequest, customValues?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<string | null>;
+    onDeleteAgent: (agent: Agent) => void;
+    rules: Rule[];
+    configuration: RuleConfiguration[];
     configLoading: boolean;
-    scaglioni: Scaglione[];
+    tiers: Tier[];
 }
 
 export function AgentsTab({
@@ -35,13 +35,13 @@ export function AgentsTab({
     onRefresh,
     onCreateClick,
     onEdit,
-    onToggleStatistiche,
+    onToggleStatistics,
     onSave,
     onDeleteAgent,
-    regole,
-    configurazione,
+    rules,
+    configuration,
     configLoading,
-    scaglioni,
+    tiers,
 }: AgentsTabProps) {
     const { t } = useTranslation();
 
@@ -75,7 +75,7 @@ export function AgentsTab({
                     <AgentsTable
                         data={agents}
                         onEdit={onEdit}
-                        onToggleStatistiche={onToggleStatistiche}
+                        onToggleStatistics={onToggleStatistics}
                     />
                 )}
             </div>
@@ -86,13 +86,13 @@ export function AgentsTab({
                 onOpenChange={onDialogOpenChange}
                 agent={editingAgent}
                 agents={agents}
-                regole={regole}
-                scaglioni={scaglioni}
+                rules={rules}
+                tiers={tiers}
                 onSave={onSave}
                 saving={saving}
                 onDelete={editingAgent ? () => onDeleteAgent(editingAgent) : undefined}
                 deleting={deleting}
-                configurazione={configurazione}
+                configuration={configuration}
                 configLoading={configLoading}
             />
         </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEuroNumber } from "./numbers";
+import { parseEuroNumber } from "@/lib/numbers";
 
 describe("parseEuroNumber", () => {
     it("returns finite numbers unchanged", () => {

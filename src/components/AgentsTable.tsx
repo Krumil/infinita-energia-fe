@@ -1,3 +1,4 @@
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useState, useMemo, useCallback } from "react";
 import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,12 +8,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useTranslation } from "@/hooks/useTranslation";
 import { SearchableSelect } from "./SearchableSelect";
 import type { AgentsTableProps } from "@/types/components";
-import type { Agente } from "@/types/domain";
+import type { Agent } from "@/types/domain";
 
-export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTableProps) {
+export function AgentsTable({ data, onEdit, onToggleStatistics }: AgentsTableProps) {
     const { t } = useTranslation();
 
-    const [sortKey, setSortKey] = useState<keyof Agente>("nome_cognome");
+    const [sortKey, setSortKey] = useState<keyof Agent>("nome_cognome");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
     const [filter, setFilter] = useState("");
     const [parentFilter, setParentFilter] = useState<string | undefined>(undefined);
@@ -51,10 +52,13 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
         return [...filtered].sort((a, b) => {
             const aVal = a[sortKey];
             const bVal = b[sortKey];
+
             if (aVal === null || aVal === undefined) return 1;
+
             if (bVal === null || bVal === undefined) return -1;
             const aStr = String(aVal);
             const bStr = String(bVal);
+
             return sortDir === "asc" ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
         });
     }, [filtered, sortKey, sortDir]);
@@ -62,13 +66,16 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
     const paginated = sorted.slice(page * pageSize, (page + 1) * pageSize);
     const totalPages = Math.ceil(sorted.length / pageSize);
 
-    const handleSort = useCallback((key: keyof Agente) => {
+    const handleSort = useCallback((key: keyof Agent) => {
         setSortKey((prev) => {
             if (prev === key) {
                 setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+
                 return prev;
             }
+
             setSortDir("asc");
+
             return key;
         });
     }, []);
@@ -119,35 +126,35 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
                 )}
             </div>
             <div className="border border-border/50 overflow-x-auto rounded-sm shadow-sm">
-                <table className="ledger-table w-full">
-                    <thead>
-                        <tr>
-                            <th className="cursor-pointer hover:text-foreground" onClick={() => handleSort("nome_cognome")}>
+                <Table appearance="plain" className="ledger-table w-full">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead aria-sort={sortKey === "nome_cognome" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-2">
+                                        <Button type="button" variant="unstyled" size="unstyled" className="flex justify-start whitespace-normal font-[inherit] font-normal text-[length:inherit] leading-[inherit] tracking-[inherit] uppercase hover:text-foreground [&_svg]:size-3" onClick={() => handleSort("nome_cognome")}>
                                             {t("agentName")} <ArrowUpDown className="h-3 w-3 shrink-0" />
-                                        </div>
+                                        </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>{t("agentNameTooltip")}</TooltipContent>
                                 </Tooltip>
-                            </th>
-                            <th className="cursor-pointer hover:text-foreground" onClick={() => handleSort("agente_padre")}>
+                            </TableHead>
+                            <TableHead aria-sort={sortKey === "agente_padre" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-2">
+                                        <Button type="button" variant="unstyled" size="unstyled" className="flex justify-start whitespace-normal font-[inherit] font-normal text-[length:inherit] leading-[inherit] tracking-[inherit] uppercase hover:text-foreground [&_svg]:size-3" onClick={() => handleSort("agente_padre")}>
                                             {t("parentAgent")} <ArrowUpDown className="h-3 w-3 shrink-0" />
-                                        </div>
+                                        </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>{t("parentAgentTooltip")}</TooltipContent>
                                 </Tooltip>
-                            </th>
-                            <th className="cursor-pointer hover:text-foreground" onClick={() => handleSort("mail")}>
-                                <div className="flex items-center gap-2">
+                            </TableHead>
+                            <TableHead aria-sort={sortKey === "mail" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                                <Button type="button" variant="unstyled" size="unstyled" className="flex justify-start whitespace-normal font-[inherit] font-normal text-[length:inherit] leading-[inherit] tracking-[inherit] uppercase hover:text-foreground [&_svg]:size-3" onClick={() => handleSort("mail")}>
                                     {t("email")} <ArrowUpDown className="h-3 w-3 shrink-0" />
-                                </div>
-                            </th>
-                            <th className="text-center">
+                                </Button>
+                            </TableHead>
+                            <TableHead className="text-center">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div className="flex items-center justify-center gap-2">
@@ -156,28 +163,28 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
                                     </TooltipTrigger>
                                     <TooltipContent>{t("statisticsTooltip")}</TooltipContent>
                                 </Tooltip>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                            </TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
                         {paginated.length === 0 ? (
-                            <tr>
-                                <td colSpan={4} className="text-center py-12 font-display italic text-muted-foreground">
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center py-12 font-display italic text-muted-foreground">
                                     {t("noDataFound")}
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         ) : (
                             paginated.map((row) => (
-                                <tr key={row.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onEdit(row)}>
-                                    <td className="font-body font-medium overflow-hidden">
+                                <TableRow key={row.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onEdit(row)}>
+                                    <TableCell className="font-body font-medium overflow-hidden">
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <span className="block line-clamp-2 leading-snug">{row.nome_cognome}</span>
                                             </TooltipTrigger>
                                             <TooltipContent>{row.nome_cognome}</TooltipContent>
                                         </Tooltip>
-                                    </td>
-                                    <td className="text-muted-foreground overflow-hidden">
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground overflow-hidden">
                                         {row.agente_padre ? (
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
@@ -188,11 +195,11 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
                                         ) : (
                                             "—"
                                         )}
-                                    </td>
-                                    <td className="text-muted-foreground">
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">
                                         {row.mail || "—"}
-                                    </td>
-                                    <td
+                                    </TableCell>
+                                    <TableCell
                                         className="text-center"
                                         onClick={(e) => e.stopPropagation()}
                                         onPointerDown={(e) => e.stopPropagation()}
@@ -200,16 +207,16 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
                                         <div className="flex items-center justify-center">
                                             <Checkbox
                                                 checked={row.statistiche ?? false}
-                                                onCheckedChange={(checked) => void onToggleStatistiche(row, checked === true)}
+                                                onCheckedChange={(checked) => void onToggleStatistics(row, checked === true)}
                                                 aria-label={`${t("statistics")} ${row.nome_cognome}`}
                                             />
                                         </div>
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             ))
                         )}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </div>
             {totalPages > 1 && (
                 <div className="flex items-center justify-between">

@@ -16,6 +16,7 @@ export async function apiLogin(data: LoginRequest): Promise<AuthResponse> {
         credentials: "include",
         body: JSON.stringify(data),
     });
+
     return handleResponse<AuthResponse>(res);
 }
 
@@ -24,6 +25,7 @@ export async function apiLogout(): Promise<AuthResponse> {
         method: "POST",
         credentials: "include",
     });
+
     return handleResponse<AuthResponse>(res);
 }
 
@@ -32,6 +34,7 @@ export async function checkAuthStatus(): Promise<boolean> {
         const res = await fetch(getApiUrl("/db-status"), {
             credentials: "include",
         });
+
         return res.ok;
     } catch {
         return false;

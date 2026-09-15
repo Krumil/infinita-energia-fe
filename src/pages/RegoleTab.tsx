@@ -1,48 +1,48 @@
 import { RefreshCw, Loader2, BookOpen, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EmptyState, RegoleTable, ScaglioniTable } from "@/components";
+import { EmptyState, RulesTable, TiersTable } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Regola, Scaglione } from "@/types";
+import type { Rule, Tier } from "@/types";
 
-interface RegoleTabProps {
-    regole: Regola[];
+interface RulesTabProps {
+    rules: Rule[];
     loading: boolean;
     importing: boolean;
     onRefresh: () => void;
-    onImportRegole: () => void;
-    onToggleUtilizzato: (regola: Regola, value: boolean) => Promise<void>;
-    onUpdateDefault: (regola: Regola, value: number) => Promise<void>;
-    onUpdateTipoUtenza: (regola: Regola, value: "residenziale" | "business" | null) => Promise<void>;
-    onUpdateTipoServizio: (regola: Regola, value: "gas" | "luce" | null) => Promise<void>;
-    scaglioni: Scaglione[];
-    scaglioniLoading: boolean;
-    scaglioniImporting: boolean;
-    onRefreshScaglioni: () => void;
-    onImportScaglioni: () => void;
-    onUpdateScaglioneTipoUtenza: (scaglione: Scaglione, value: "residenziale" | "business" | null) => Promise<void>;
-    onUpdateScaglioneTipoServizio: (scaglione: Scaglione, value: "gas" | "luce" | null) => Promise<void>;
+    onImportRules: () => void;
+    onToggleEnabled: (rule: Rule, value: boolean) => Promise<void>;
+    onUpdateDefault: (rule: Rule, value: number) => Promise<void>;
+    onUpdateCustomerType: (rule: Rule, value: "residenziale" | "business" | null) => Promise<void>;
+    onUpdateServiceType: (rule: Rule, value: "gas" | "luce" | null) => Promise<void>;
+    tiers: Tier[];
+    tiersLoading: boolean;
+    tiersImporting: boolean;
+    onRefreshTiers: () => void;
+    onImportTiers: () => void;
+    onUpdateTierCustomerType: (tier: Tier, value: "residenziale" | "business" | null) => Promise<void>;
+    onUpdateTierServiceType: (tier: Tier, value: "gas" | "luce" | null) => Promise<void>;
 }
 
-export function RegoleTab({
-    regole,
+export function RulesTab({
+    rules,
     loading,
     importing,
     onRefresh,
-    onImportRegole,
-    onToggleUtilizzato,
+    onImportRules,
+    onToggleEnabled,
     onUpdateDefault,
-    onUpdateTipoUtenza,
-    onUpdateTipoServizio,
-    scaglioni,
-    scaglioniLoading,
-    scaglioniImporting,
-    onRefreshScaglioni,
-    onImportScaglioni,
-    onUpdateScaglioneTipoUtenza,
-    onUpdateScaglioneTipoServizio,
-}: RegoleTabProps) {
+    onUpdateCustomerType,
+    onUpdateServiceType,
+    tiers,
+    tiersLoading,
+    tiersImporting,
+    onRefreshTiers,
+    onImportTiers,
+    onUpdateTierCustomerType,
+    onUpdateTierServiceType,
+}: RulesTabProps) {
     const { t } = useTranslation();
-    const activeCount = regole.filter((r) => r.utilizzato).length;
+    const activeCount = rules.filter((r) => r.utilizzato).length;
 
     return (
         <div className="space-y-10">
@@ -50,9 +50,9 @@ export function RegoleTab({
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <h2 className="font-display text-2xl">{t("regole")}</h2>
-                        {regole.length > 0 && (
+                        {rules.length > 0 && (
                             <span className="text-sm text-muted-foreground">
-                                {activeCount}/{regole.length} {t("ruleActive").toLowerCase()}
+                                {activeCount}/{rules.length} {t("ruleActive").toLowerCase()}
                             </span>
                         )}
                     </div>
@@ -60,7 +60,7 @@ export function RegoleTab({
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={onImportRegole}
+                            onClick={onImportRules}
                             disabled={loading || importing}
                             className="btn-ghost"
                         >
@@ -75,20 +75,20 @@ export function RegoleTab({
                 </div>
 
                 <div className="ledger-card p-6">
-                    {loading && regole.length === 0 ? (
+                    {loading && rules.length === 0 ? (
                         <div className="flex items-center justify-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
                         </div>
-                    ) : regole.length === 0 ? (
+                    ) : rules.length === 0 ? (
                         <EmptyState message={t("noRegoleYet")} icon={<BookOpen className="h-16 w-16" />} />
                     ) : (
-                        <RegoleTable
-                            regole={regole}
-                            scaglioni={scaglioni}
-                            onToggleUtilizzato={onToggleUtilizzato}
+                        <RulesTable
+                            rules={rules}
+                            tiers={tiers}
+                            onToggleEnabled={onToggleEnabled}
                             onUpdateDefault={onUpdateDefault}
-                            onUpdateTipoUtenza={onUpdateTipoUtenza}
-                            onUpdateTipoServizio={onUpdateTipoServizio}
+                            onUpdateCustomerType={onUpdateCustomerType}
+                            onUpdateServiceType={onUpdateServiceType}
                         />
                     )}
                 </div>
@@ -98,9 +98,9 @@ export function RegoleTab({
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <h2 className="font-display text-2xl">{t("scaglioni")}</h2>
-                        {scaglioni.length > 0 && (
+                        {tiers.length > 0 && (
                             <span className="text-sm text-muted-foreground">
-                                {scaglioni.length} {t("total").toLowerCase()}
+                                {tiers.length} {t("total").toLowerCase()}
                             </span>
                         )}
                     </div>
@@ -108,32 +108,32 @@ export function RegoleTab({
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={onImportScaglioni}
-                            disabled={scaglioniLoading || scaglioniImporting}
+                            onClick={onImportTiers}
+                            disabled={tiersLoading || tiersImporting}
                             className="btn-ghost"
                         >
-                            {scaglioniImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                            {tiersImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                             <span className="ml-2">{t("importScaglioni")}</span>
                         </Button>
-                        <Button variant="outline" size="sm" onClick={onRefreshScaglioni} disabled={scaglioniLoading} className="btn-ghost">
-                            {scaglioniLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        <Button variant="outline" size="sm" onClick={onRefreshTiers} disabled={tiersLoading} className="btn-ghost">
+                            {tiersLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                             <span className="ml-2">{t("refreshAgents")}</span>
                         </Button>
                     </div>
                 </div>
 
                 <div className="ledger-card p-6">
-                    {scaglioniLoading && scaglioni.length === 0 ? (
+                    {tiersLoading && tiers.length === 0 ? (
                         <div className="flex items-center justify-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
                         </div>
-                    ) : scaglioni.length === 0 ? (
+                    ) : tiers.length === 0 ? (
                         <EmptyState message={t("noScaglioniYet")} icon={<BookOpen className="h-16 w-16" />} />
                     ) : (
-                        <ScaglioniTable
-                            scaglioni={scaglioni}
-                            onUpdateTipoUtenza={onUpdateScaglioneTipoUtenza}
-                            onUpdateTipoServizio={onUpdateScaglioneTipoServizio}
+                        <TiersTable
+                            tiers={tiers}
+                            onUpdateCustomerType={onUpdateTierCustomerType}
+                            onUpdateServiceType={onUpdateTierServiceType}
                         />
                     )}
                 </div>

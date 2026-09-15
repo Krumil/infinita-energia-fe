@@ -60,5 +60,9 @@ ehthumbs.db
 claudedocs/
 .desloppify/
 scorecard.png
-
 .claude/
+.agents/
+tools/*
+!tools/oxlint/
+tools/oxlint/*
+!tools/oxlint/anti-slop/

@@ -326,7 +326,7 @@
 
     .ledger-card {
         @apply relative bg-card border border-border/60 rounded-sm;
-        @apply transition-all duration-300;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
         box-shadow: var(--ledger-card-shadow);
     }
 

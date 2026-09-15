@@ -11,11 +11,12 @@ import { Loader2 } from "lucide-react";
 
 export function DashboardTab() {
     const { t } = useTranslation();
+
     const { availableYears, availableAgents, selectedYear, selectedAgent, data, loading, changeYear, changeAgent } =
         useDashboard();
 
     // Show loading state while fetching initial data
-    if (loading && !data.contrattiTotali) {
+    if (loading && !data.totalContracts) {
         return (
             <div className="flex items-center justify-center py-20">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -51,8 +52,8 @@ export function DashboardTab() {
 
             {/* KPI Cards Section */}
             <DashboardKPISection
-                contrattiTotali={data.contrattiTotali}
-                provvigioniTotali={data.provvigioniTotali}
+                totalContracts={data.totalContracts}
+                totalCommissions={data.totalCommissions}
                 selectedYear={selectedYear ?? new Date().getFullYear()}
                 loading={loading}
             />
@@ -61,9 +62,9 @@ export function DashboardTab() {
             <div className="space-y-4">
                 <h2 className="text-lg font-display text-foreground">Andamento Annuale</h2>
                 <div className="grid gap-6 lg:grid-cols-2">
-                    <ContractsHistogram data={data.contrattiMensili} loading={loading} />
+                    <ContractsHistogram data={data.monthlyContracts} loading={loading} />
                     <CommissionsChart
-                        data={data.provvigioniMensili}
+                        data={data.monthlyCommissions}
                         selectedYear={selectedYear ?? new Date().getFullYear()}
                         loading={loading}
                     />
@@ -74,7 +75,7 @@ export function DashboardTab() {
             <div className="space-y-4">
                 <h2 className="text-lg font-display text-foreground">{t("contractsByProduct")}</h2>
                 <ProductsChart
-                    data={data.contrattiPerProdotto}
+                    data={data.contractsByProduct}
                     selectedYear={selectedYear ?? new Date().getFullYear()}
                     loading={loading}
                 />

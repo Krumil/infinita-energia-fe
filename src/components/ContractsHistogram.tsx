@@ -10,10 +10,10 @@ import {
 } from "@/components/ui/chart";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Loader2 } from "lucide-react";
-import type { DashboardContrattiMensili } from "@/types";
+import type { DashboardMonthlyContracts } from "@/types";
 
 interface ContractsHistogramProps {
-    data: DashboardContrattiMensili | null;
+    data: DashboardMonthlyContracts | null;
     loading?: boolean;
 }
 

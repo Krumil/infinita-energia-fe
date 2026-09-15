@@ -11,10 +11,13 @@ import {
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCurrency } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
-import type { DashboardProvvigioniMensili } from "@/types";
+import { z } from "zod";
+import type { DashboardMonthlyCommissions } from "@/types";
+
+const commissionSeriesSchema = z.enum(["commissions", "previousYearCommissions"]);
 
 interface CommissionsChartProps {
-    data: DashboardProvvigioniMensili | null;
+    data: DashboardMonthlyCommissions | null;
     selectedYear: number;
     loading?: boolean;
 }
@@ -68,7 +71,9 @@ export function CommissionsChart({ data, loading = false }: CommissionsChartProp
                                 content={
                                     <ChartTooltipContent
                                         formatter={(value, name) => {
-                                            const label = chartConfig[name as keyof typeof chartConfig]?.label || name;
+                                            const series = commissionSeriesSchema.safeParse(name);
+                                            const label = series.success ? chartConfig[series.data].label : name;
+
                                             return (
                                                 <div className="flex items-center justify-between gap-4">
                                                     <span className="text-muted-foreground">{label}</span>

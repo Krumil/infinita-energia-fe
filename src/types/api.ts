@@ -1,4 +1,4 @@
-import type { Regola } from "./domain";
+import type { Rule } from "./domain";
 
 export interface CreateAgentRequest {
     nome_cognome: string;
@@ -17,35 +17,35 @@ export interface AgentMessageResponse {
     message: string;
 }
 
-export interface UpdateRegolaRequest {
+export interface UpdateRuleRequest {
     utilizzato?: boolean;
     valore_default?: number;
     tipo_utenza?: "residenziale" | "business" | null;
     tipo_servizio?: "gas" | "luce" | null;
 }
 
-export interface UpdateRegolaResponse {
+export interface UpdateRuleResponse {
     success: boolean;
     message: string;
-    regola: Regola;
+    regola: Rule;
 }
 
-export interface ImportRegoleResponse {
+export interface ImportRulesResponse {
     success: boolean;
     message: string;
 }
 
-export interface UpdateScaglioneRequest {
+export interface UpdateTierRequest {
     tipo_utenza?: "residenziale" | "business" | null;
     tipo_servizio?: "gas" | "luce" | null;
 }
 
-export interface ImportScaglioniResponse {
+export interface ImportTiersResponse {
     success: boolean;
     message: string;
 }
 
-export interface SaveConfigurazioneRequest {
+export interface SaveRuleConfigurationRequest {
     valori: Array<{ regola_id: number; scaglione_id: number; valore: number }>;
 }
 
@@ -59,13 +59,13 @@ export interface ImportExcelResponse {
     };
 }
 
-export interface ImportLiquidazioniResponse {
+export interface ImportSettlementsResponse {
     success: boolean;
     message: string;
     error?: string;
 }
 
-export interface ProvvigioneData {
+export interface CommissionData {
     cf_piva: string;
     cliente: string;
     comp_al: string;
@@ -75,20 +75,20 @@ export interface ProvvigioneData {
     venditore: string;
 }
 
-export interface CalcoloVenditoreResult {
+export interface SellerCalculationResult {
     totale_provvigione: number;
-    dati_provvigione: ProvvigioneData[];
+    dati_provvigione: CommissionData[];
 }
 
-export interface CalcoloResult {
-    [venditoreName: string]: CalcoloVenditoreResult;
+export interface CalculationResult {
+    [sellerName: string]: SellerCalculationResult;
 }
 
-export type CalcoloNonPagatiResponse =
-    | { kind: "data"; totale_provvigione: number; dati_provvigione: ProvvigioneData[] }
+export type UnpaidCalculationResponse =
+    | { kind: "data"; totale_provvigione: number; dati_provvigione: CommissionData[] }
     | { kind: "empty"; message: string };
 
-export interface CalcoloInput {
+export interface CalculationInput {
     venditore: string;
     regola: string;
     scaglione_consumo: string;
@@ -101,6 +101,7 @@ export interface CalcoloInput {
 }
 
 export interface PendingOrder {
+    id_riga_ordine: string;
     id_ordine: number;
     data_firma: string | null;
     stato_firma: string | null;
@@ -122,14 +123,79 @@ export interface PendingOrdersResponse {
     data: PendingOrder[];
 }
 
-export interface DashboardContrattiTotali {
+export interface OrderExclusion {
+    id: number;
+    id_riga_ordine: string;
+    motivo: string;
+    data_esclusione: string | null;
+}
+
+export interface ExcludedOrder extends OrderExclusion {
+    ordine: PendingOrder | null;
+}
+
+export interface ExcludedOrdersResponse {
+    count: number;
+    data: ExcludedOrder[];
+}
+
+export interface InvoiceRequestDetailsRow {
+    id: number;
+    venditore: string | null;
+    comp_al: string | null;
+    regola: string | null;
+    importo_provvigione: number;
+    pod_pdr: string | null;
+    cliente: string | null;
+    cf_piva: string | null;
+}
+
+export interface InvoiceRequestDetailsResponse {
+    invito_id: number;
+    totale_invito: number;
+    count: number;
+    dati: InvoiceRequestDetailsRow[];
+}
+
+export type AttachmentStatus = "in_attesa" | "caricato" | "errore";
+
+export interface InvoiceRequestAttachment {
+    id: number;
+    storico_invito_id: number;
+    nome_file: string;
+    content_type: string;
+    chiave_oggetto: string;
+    dimensione_bytes: number | null;
+    stato: AttachmentStatus;
+    data_creazione: string | null;
+    data_caricamento: string | null;
+}
+
+export interface UploadUrlResponse {
+    allegato_id: number;
+    chiave_oggetto: string;
+    upload_url: string;
+    metodo: "PUT";
+    scadenza_secondi: number;
+    headers_richiesti: { "Content-Type": string };
+    stato: AttachmentStatus;
+}
+
+export interface DownloadUrlResponse {
+    download_url: string;
+    metodo: "GET";
+    scadenza_secondi: number;
+    nome_file: string;
+}
+
+export interface DashboardTotalContracts {
     anno_riferimento: number;
     totale_contratti_n: number;
     totale_contratti_n_1: number;
     variazione_percentuale: number;
 }
 
-export interface DashboardProvvigioniTotali {
+export interface DashboardTotalCommissions {
     anno_riferimento: number;
     totale_provvigioni_n: number;
     totale_provvigioni_n_1: number;
@@ -137,43 +203,43 @@ export interface DashboardProvvigioniTotali {
     valuta: string;
 }
 
-export interface DashboardMeseContratti {
+export interface DashboardContractMonth {
     mese_nome: string;
     mese_num: number;
     anno_n: number;
     anno_n_1: number;
 }
 
-export interface DashboardContrattiMensili {
+export interface DashboardMonthlyContracts {
     anno_riferimento: number;
-    dati: DashboardMeseContratti[];
+    dati: DashboardContractMonth[];
 }
 
-export interface DashboardMeseProvvigioni {
+export interface DashboardCommissionMonth {
     mese_nome: string;
     mese_num: number;
     provvigioni_n: number;
     provvigioni_n_1: number;
 }
 
-export interface DashboardProvvigioniMensili {
+export interface DashboardMonthlyCommissions {
     anno_riferimento: number;
     unita_misura: string;
-    dati: DashboardMeseProvvigioni[];
+    dati: DashboardCommissionMonth[];
 }
 
-export interface DashboardProdottoContratti {
+export interface DashboardProductContracts {
     prodotto: string;
     anno_n: number;
     anno_n_1: number;
 }
 
-export interface DashboardContrattiPerProdotto {
+export interface DashboardContractsByProduct {
     anno_riferimento: number;
-    dati: DashboardProdottoContratti[];
+    dati: DashboardProductContracts[];
 }
 
-export interface UpdateInvitoRequest {
+export interface UpdateInvoiceRequestPayload {
     stato?: "bozza" | "inviato" | "approvato";
     riferimento_fattura?: string;
     data_fattura?: string;
@@ -181,7 +247,7 @@ export interface UpdateInvitoRequest {
     data_pagamento?: string;
 }
 
-export interface CheckAgentiResponse {
+export interface CheckAgentsResponse {
     matches: string[];
     not_found: string[];
     stats: {

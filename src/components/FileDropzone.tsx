@@ -8,10 +8,12 @@ export function FileDropzone({ accept, maxSizeMB, multiple = false, onFiles, dis
     const [dragActive, setDragActive] = useState(false);
     const { toast } = useToast();
     const { t } = useTranslation();
+    const acceptedExtensions = accept.split(",").map((extension) => extension.trim().replace(".", ""));
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
+
         if (e.type === "dragenter" || e.type === "dragover") {
             setDragActive(true);
         } else if (e.type === "dragleave") {
@@ -31,18 +33,23 @@ export function FileDropzone({ accept, maxSizeMB, multiple = false, onFiles, dis
                     description: `${file.name} ${t("exceeds")} ${maxSizeMB}MB`,
                     variant: "destructive",
                 });
+
                 return;
             }
-            const ext = file.name.split(".").pop()?.toLowerCase();
-            const acceptedExts = accept.split(",").map((a) => a.trim().replace(".", ""));
-            if (ext && !acceptedExts.includes(ext)) {
+
+            const dot = file.name.lastIndexOf(".");
+            const ext = dot > 0 ? file.name.slice(dot + 1).toLowerCase() : "";
+
+            if (!ext || !acceptedExtensions.includes(ext)) {
                 toast({
                     title: t("invalidFileType"),
                     description: `${file.name} ${t("notAccepted")}`,
                     variant: "destructive",
                 });
+
                 return;
             }
+
             validFiles.push(file);
         });
 
@@ -53,15 +60,20 @@ export function FileDropzone({ accept, maxSizeMB, multiple = false, onFiles, dis
         e.preventDefault();
         e.stopPropagation();
         setDragActive(false);
+
         if (disabled) return;
         const files = validateFiles(e.dataTransfer.files);
+
         if (files.length > 0) onFiles(files);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         e.preventDefault();
+
         if (disabled) return;
         const files = validateFiles(e.target.files);
+        e.target.value = "";
+
         if (files.length > 0) onFiles(files);
     };
 
@@ -84,8 +96,8 @@ export function FileDropzone({ accept, maxSizeMB, multiple = false, onFiles, dis
                     {t("or")} {t("dragAndDrop")}
                 </span>
             </p>
-            <p className="font-mono text-xs text-muted-foreground/50 mt-2 uppercase tracking-wider pointer-events-none">
-                {accept} · {t("max")} {maxSizeMB}MB
+            <p className="font-mono text-xs text-muted-foreground/50 mt-2 uppercase tracking-wider break-words pointer-events-none">
+                {accept.split(",").join(", ")} · {t("max")} {maxSizeMB}MB
             </p>
             <input
                 type="file"
@@ -94,7 +106,7 @@ export function FileDropzone({ accept, maxSizeMB, multiple = false, onFiles, dis
                 onChange={handleChange}
                 disabled={disabled}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                aria-label="File upload"
+                aria-label={t("clickToUpload")}
             />
         </div>
     );

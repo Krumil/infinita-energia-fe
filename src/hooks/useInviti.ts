@@ -1,19 +1,50 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { getStoricoInviti, updateInvito as updateInvitoApi } from "@/api/inviti";
+import { useState, useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
+import { getInvoiceRequests, updateInvoiceRequest as updateInvoiceRequestApi } from "@/api/inviti";
 import { ApiError } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { StoricoInvito, UpdateInvitoRequest } from "@/types";
+import type { InvoiceRequest, UpdateInvoiceRequestPayload } from "@/types";
 
-function defaultDataInizio(): string {
+export interface UpdateInvoiceRequestSuccess {
+    ok: true;
+    invoiceRequest: InvoiceRequest;
+}
+
+export interface UpdateInvoiceRequestFailure {
+    ok: false;
+    error: string;
+}
+
+export type UpdateInvoiceRequestResult = UpdateInvoiceRequestSuccess | UpdateInvoiceRequestFailure;
+
+export interface UseInvoiceRequestsResult {
+    invoiceRequests: InvoiceRequest[];
+    loading: boolean;
+    updating: number | null;
+    filteredAgentId: number | undefined;
+    setFilteredAgentId: Dispatch<SetStateAction<number | undefined>>;
+    selectedStatus: string | undefined;
+    setSelectedStatus: Dispatch<SetStateAction<string | undefined>>;
+    selectedPaid: boolean | undefined;
+    setSelectedPaid: Dispatch<SetStateAction<boolean | undefined>>;
+    startDate: string;
+    setStartDate: Dispatch<SetStateAction<string>>;
+    endDate: string;
+    setEndDate: Dispatch<SetStateAction<string>>;
+    fetchInvoiceRequests: () => Promise<void>;
+    updateInvoiceRequest: (id: number, data: UpdateInvoiceRequestPayload) => Promise<UpdateInvoiceRequestResult>;
+}
+
+function defaultStartDate(): string {
     const d = new Date();
     d.setMonth(d.getMonth() - 12);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
+
     return `${yyyy}-${mm}`;
 }
 
-export function useInviti() {
+export function useInvoiceRequests(): UseInvoiceRequestsResult {
     const { toast } = useToast();
     const { t } = useTranslation();
     const toastRef = useRef(toast);
@@ -21,81 +52,91 @@ export function useInviti() {
     toastRef.current = toast;
     tRef.current = t;
 
-    const [inviti, setInviti] = useState<StoricoInvito[]>([]);
+    const [invoiceRequests, setInvoiceRequests] = useState<InvoiceRequest[]>([]);
     const [loading, setLoading] = useState(false);
     const [updating, setUpdating] = useState<number | null>(null);
 
-    const [selectedAgenteId, setSelectedAgenteId] = useState<number | undefined>();
-    const [selectedStato, setSelectedStato] = useState<string | undefined>();
-    const [selectedPagato, setSelectedPagato] = useState<boolean | undefined>();
-    const [dataInizio, setDataInizio] = useState(defaultDataInizio);
-    const [dataFine, setDataFine] = useState("");
+    const [filteredAgentId, setFilteredAgentId] = useState<number | undefined>();
+    const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
+    const [selectedPaid, setSelectedPaid] = useState<boolean | undefined>();
+    const [startDate, setStartDate] = useState(defaultStartDate);
+    const [endDate, setEndDate] = useState("");
 
-    const fetchInviti = useCallback(async () => {
+    const fetchInvoiceRequests = useCallback(async () => {
         setLoading(true);
-        try {
-            const params: Parameters<typeof getStoricoInviti>[0] = {};
-            if (selectedAgenteId) params.agente_id = selectedAgenteId;
-            if (selectedStato) params.stato = selectedStato;
-            if (selectedPagato !== undefined) params.pagato = selectedPagato;
-            if (dataInizio) params.data_inizio = `${dataInizio}-01`;
-            if (dataFine) params.data_fine = `${dataFine}-01`;
 
-            const data = await getStoricoInviti(params);
-            setInviti(data);
+        try {
+            const params: Parameters<typeof getInvoiceRequests>[0] = {};
+
+            if (filteredAgentId) params.agente_id = filteredAgentId;
+
+            if (selectedStatus) params.stato = selectedStatus;
+
+            if (selectedPaid !== undefined) params.pagato = selectedPaid;
+
+            if (startDate) params.data_inizio = `${startDate}-01`;
+
+            if (endDate) params.data_fine = `${endDate}-01`;
+
+            const data = await getInvoiceRequests(params);
+            setInvoiceRequests(data);
         } catch (err) {
             const errorMsg = err instanceof ApiError ? err.message : tRef.current("fetchError");
             toastRef.current({ title: tRef.current("error"), description: errorMsg, variant: "destructive" });
         } finally {
             setLoading(false);
         }
-    }, [selectedAgenteId, selectedStato, selectedPagato, dataInizio, dataFine]);
+    }, [filteredAgentId, selectedStatus, selectedPaid, startDate, endDate]);
 
     useEffect(() => {
-        fetchInviti();
-    }, [fetchInviti]);
+        fetchInvoiceRequests();
+    }, [fetchInvoiceRequests]);
 
-    const updateInvito = useCallback(
-        async (id: number, data: UpdateInvitoRequest) => {
+    const updateInvoiceRequest = useCallback(
+        async (id: number, data: UpdateInvoiceRequestPayload): Promise<UpdateInvoiceRequestResult> => {
             setUpdating(id);
-            const previous = inviti;
+            const previous = invoiceRequests;
 
-            setInviti((prev) =>
-                prev.map((inv) => (inv.id === id ? { ...inv, ...data } : inv)),
+            setInvoiceRequests((prev) =>
+                prev.map((invoiceRequest) => (invoiceRequest.id === id ? { ...invoiceRequest, ...data } : invoiceRequest)),
             );
 
             try {
-                const updated = await updateInvitoApi(id, data);
-                setInviti((prev) =>
-                    prev.map((inv) => (inv.id === id ? { ...inv, ...updated } : inv)),
+                const updated = await updateInvoiceRequestApi(id, data);
+                setInvoiceRequests((prev) =>
+                    prev.map((invoiceRequest) => (invoiceRequest.id === id ? { ...invoiceRequest, ...updated } : invoiceRequest)),
                 );
                 toastRef.current({ title: tRef.current("success"), description: tRef.current("invitationUpdated") });
+
+                return { ok: true, invoiceRequest: updated };
             } catch (err) {
-                setInviti(previous);
+                setInvoiceRequests(previous);
                 const errorMsg = err instanceof ApiError ? err.message : tRef.current("invitationUpdateFailed");
                 toastRef.current({ title: tRef.current("error"), description: errorMsg, variant: "destructive" });
+
+                return { ok: false, error: errorMsg };
             } finally {
                 setUpdating(null);
             }
         },
-        [inviti],
+        [invoiceRequests],
     );
 
     return {
-        inviti,
+        invoiceRequests,
         loading,
         updating,
-        selectedAgenteId,
-        setSelectedAgenteId,
-        selectedStato,
-        setSelectedStato,
-        selectedPagato,
-        setSelectedPagato,
-        dataInizio,
-        setDataInizio,
-        dataFine,
-        setDataFine,
-        fetchInviti,
-        updateInvito,
+        filteredAgentId,
+        setFilteredAgentId,
+        selectedStatus,
+        setSelectedStatus,
+        selectedPaid,
+        setSelectedPaid,
+        startDate,
+        setStartDate,
+        endDate,
+        setEndDate,
+        fetchInvoiceRequests,
+        updateInvoiceRequest,
     };
 }

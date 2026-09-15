@@ -1,6 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
     Calculator,
+    Paperclip,
+    Eye,
     FileText,
     Loader2,
     RefreshCw,
@@ -12,29 +14,27 @@ import {
     Check,
     Minus,
 } from "lucide-react";
+import { ATTACHMENT_ACCEPT, AttachmentValidationError, uploadAttachment } from "@/api/allegati";
+import { ApiError } from "@/api/client";
+import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/SearchableSelect";
-import { DatePicker, MonthPicker } from "@/components/DatePicker";
+import { MonthPicker } from "@/components/DatePicker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+import { InvoiceRequestDialog } from "@/components/InvitoDialog";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatDate } from "@/lib/utils";
-import { useInviti } from "@/hooks/useInviti";
-import { useInvitiNonLiquidati } from "@/hooks/useInvitiNonLiquidati";
-import type { Agente, StoricoInvito, UpdateInvitoRequest } from "@/types";
+import { useInvoiceRequests } from "@/hooks/useInviti";
+import { useUnpaidInvoiceRequests } from "@/hooks/useInvitiNonLiquidati";
+import type { Agent, InvoiceRequest, UpdateInvoiceRequestPayload } from "@/types";
 
-interface InvitiTabProps {
-    agents: Agente[];
+interface InvoiceRequestsTabProps {
+    agents: Agent[];
     agentsLoading: boolean;
 }
 
@@ -53,10 +53,12 @@ type SortDirection = "asc" | "desc";
 
 function formatMonth(isoDate: string): string {
     const date = new Date(isoDate);
+
     const monthNames = [
         "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
         "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
     ];
+
     return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 }
 
@@ -64,50 +66,49 @@ function formatCurrency(value: number): string {
     return value.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
 }
 
-function isEligibleInvito(invito: StoricoInvito): boolean {
-    return !invito.pagato && invito.stato !== "inviato";
+function isEligibleInvoiceRequest(invoiceRequest: InvoiceRequest): boolean {
+    return !invoiceRequest.pagato && invoiceRequest.stato !== "inviato";
 }
 
-function getStatoBadge(stato: string) {
-    const configs: Record<string, { bg: string; text: string }> = {
-        bozza: {
-            bg: "bg-amber-100 dark:bg-amber-900/40",
-            text: "text-amber-700 dark:text-amber-400",
-        },
-        inviato: {
-            bg: "bg-blue-100 dark:bg-blue-900/40",
-            text: "text-blue-700 dark:text-blue-400",
-        },
-        approvato: {
-            bg: "bg-emerald-100 dark:bg-emerald-900/40",
-            text: "text-emerald-700 dark:text-emerald-400",
-        },
-    };
-    const config = configs[stato] || {
-        bg: "bg-slate-100 dark:bg-slate-800",
-        text: "text-slate-600 dark:text-slate-400",
-    };
+interface BadgeClasses {
+    bg: string;
+    text: string;
+}
+
+const DEFAULT_BADGE_CLASSES: BadgeClasses = {
+    bg: "bg-slate-100 dark:bg-slate-800",
+    text: "text-slate-600 dark:text-slate-400",
+};
+
+const INVOICE_REQUEST_BADGE_CLASSES = new Map(Object.entries({
+    bozza: { bg: "bg-amber-100 dark:bg-amber-900/40", text: "text-amber-700 dark:text-amber-400" },
+    inviato: { bg: "bg-blue-100 dark:bg-blue-900/40", text: "text-blue-700 dark:text-blue-400" },
+    approvato: { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-700 dark:text-emerald-400" },
+}));
+
+function getStatusBadge(status: string) {
+    const config = INVOICE_REQUEST_BADGE_CLASSES.get(status) ?? DEFAULT_BADGE_CLASSES;
+
     return (
-        <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
-        >
-            {stato.charAt(0).toUpperCase() + stato.slice(1)}
-        </span>
+        <Badge variant="status" className={`${config.bg} ${config.text}`}>
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+        </Badge>
     );
 }
 
-function getPagatoBadge(pagato: boolean) {
-    if (pagato) {
+function getPaidBadge(paid: boolean) {
+    if (paid) {
         return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400">
+            <Badge variant="status" className="gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400">
                 <Check className="h-3 w-3" />
-            </span>
+            </Badge>
         );
     }
+
     return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+        <Badge variant="status" className="gap-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
             <Minus className="h-3 w-3" />
-        </span>
+        </Badge>
     );
 }
 
@@ -121,9 +122,12 @@ interface SortableHeaderProps {
 
 function SortableHeader({ label, field, currentField, direction, onSort }: SortableHeaderProps) {
     const isActive = currentField === field;
+
     return (
-        <button
-            className="flex items-center gap-1 hover:text-foreground transition-colors"
+        <Button
+            variant="ghost"
+            size="icon"
+            className="h-auto w-auto gap-1 rounded-none p-0 text-[length:inherit] [font-weight:inherit] hover:bg-transparent [&_svg]:!size-3"
             onClick={() => onSort(field)}
         >
             {label}
@@ -136,24 +140,25 @@ function SortableHeader({ label, field, currentField, direction, onSort }: Sorta
             ) : (
                 <ArrowUpDown className="h-3 w-3 opacity-40" />
             )}
-        </button>
+        </Button>
     );
 }
 
-function filterInviti(inviti: StoricoInvito[], query: string): StoricoInvito[] {
-    if (!query.trim()) return inviti;
+function filterInvoiceRequests(invoiceRequests: InvoiceRequest[], query: string): InvoiceRequest[] {
+    if (!query.trim()) return invoiceRequests;
     const lowerQuery = query.toLowerCase();
-    return inviti.filter(
-        (inv) =>
-            inv.nome_agente.toLowerCase().includes(lowerQuery) ||
-            inv.riferimento_fattura?.toLowerCase().includes(lowerQuery) ||
-            inv.stato.toLowerCase().includes(lowerQuery) ||
-            formatMonth(inv.mese_competenza).toLowerCase().includes(lowerQuery),
+
+    return invoiceRequests.filter(
+        (invoiceRequest) =>
+            invoiceRequest.nome_agente.toLowerCase().includes(lowerQuery) ||
+            invoiceRequest.riferimento_fattura?.toLowerCase().includes(lowerQuery) ||
+            invoiceRequest.stato.toLowerCase().includes(lowerQuery) ||
+            formatMonth(invoiceRequest.mese_competenza).toLowerCase().includes(lowerQuery),
     );
 }
 
-function sortInviti(inviti: StoricoInvito[], field: SortField, direction: SortDirection): StoricoInvito[] {
-    return [...inviti].sort((a, b) => {
+function sortInvoiceRequests(invoiceRequests: InvoiceRequest[], field: SortField, direction: SortDirection): InvoiceRequest[] {
+    return [...invoiceRequests].sort((a, b) => {
         let aVal: string | number | boolean | null;
         let bVal: string | number | boolean | null;
 
@@ -195,64 +200,93 @@ function sortInviti(inviti: StoricoInvito[], field: SortField, direction: SortDi
         }
 
         if (aVal < bVal) return direction === "asc" ? -1 : 1;
+
         if (aVal > bVal) return direction === "asc" ? 1 : -1;
+
         return 0;
     });
 }
 
-interface EditFormData {
-    stato: "bozza" | "inviato" | "approvato";
-    riferimento_fattura: string;
-    data_fattura: string;
-    pagato: boolean;
-    data_pagamento: string;
-}
-
-export function InvitiTab({ agents }: InvitiTabProps) {
+export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
     const { t } = useTranslation();
+
     const {
-        inviti,
+        invoiceRequests,
         loading,
         updating,
-        selectedAgenteId,
-        setSelectedAgenteId,
-        selectedStato,
-        setSelectedStato,
-        selectedPagato,
-        setSelectedPagato,
-        dataInizio,
-        setDataInizio,
-        dataFine,
-        setDataFine,
-        fetchInviti,
-        updateInvito,
-    } = useInviti();
+        filteredAgentId,
+        setFilteredAgentId,
+        selectedStatus,
+        setSelectedStatus,
+        selectedPaid,
+        setSelectedPaid,
+        startDate,
+        setStartDate,
+        endDate,
+        setEndDate,
+        fetchInvoiceRequests,
+        updateInvoiceRequest,
+    } = useInvoiceRequests();
 
     const {
         selectionMode,
         selectedAgentId,
-        selectedInvitoIds,
-        loading: nonLiqLoading,
-        nonLiquidatiInviti,
+        selectedInvoiceRequestIds,
+        loading: unpaidLoading,
+        unpaidInvoiceRequests,
         selectionLoading,
         enterSelectionMode,
         exitSelectionMode,
         selectAgent,
-        toggleInvito,
+        toggleInvoiceRequest,
         runCalculation,
-    } = useInvitiNonLiquidati();
+    } = useUnpaidInvoiceRequests();
 
     const [filterQuery, setFilterQuery] = useState("");
     const [sortField, setSortField] = useState<SortField>("mese_competenza");
     const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-    const [editingInvito, setEditingInvito] = useState<StoricoInvito | null>(null);
-    const [editForm, setEditForm] = useState<EditFormData>({
-        stato: "bozza",
-        riferimento_fattura: "",
-        data_fattura: "",
-        pagato: false,
-        data_pagamento: "",
-    });
+    const [editingInvoiceRequest, setEditingInvoiceRequest] = useState<InvoiceRequest | null>(null);
+
+    const [dialogInitialTab, setDialogInitialTab] = useState<"edit" | "attachments">("edit");
+    const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+    const attachmentTargetRef = useRef<InvoiceRequest | null>(null);
+    const uploadBusyRef = useRef(false);
+    const [uploadingId, setUploadingId] = useState<number | null>(null);
+
+    const uploadFiles = async (files: File[]): Promise<void> => {
+        const target = attachmentTargetRef.current;
+
+        if (!target || !files.length || uploadBusyRef.current) return;
+        uploadBusyRef.current = true;
+        setUploadingId(target.id);
+        const failures: string[] = [];
+
+        try {
+            for (const file of files) {
+                const result = await uploadAttachment(target.id, file);
+
+                if (result.ok) continue;
+
+                const message = result.error instanceof AttachmentValidationError
+                    ? t(result.error.reason === "size" ? "fileTooLarge" : "invalidFileType")
+                    : result.error instanceof ApiError ? result.error.message : t("attachmentUploadFailed");
+
+                const cleanup = result.cleanup === "failed" ? t("attachmentCleanupFailed")
+                    : result.cleanup === "unresolved" ? t("attachmentUnresolved") : "";
+
+                failures.push(`${file.name}: ${message} ${cleanup}`.trim());
+            }
+
+            toast({
+                title: `${target.nome_agente} · ${formatMonth(target.mese_competenza)}`,
+                description: failures.length ? failures.join("\n") : t("attachmentUploaded"),
+                variant: failures.length ? "destructive" : "default",
+            });
+        } finally {
+            uploadBusyRef.current = false;
+            setUploadingId(null);
+        }
+    };
 
     const handleSort = (field: SortField) => {
         if (field === sortField) {
@@ -263,111 +297,109 @@ export function InvitiTab({ agents }: InvitiTabProps) {
         }
     };
 
-    const processedInviti = useMemo(() => {
-        const filtered = filterInviti(inviti, filterQuery);
-        return sortInviti(filtered, sortField, sortDirection);
-    }, [inviti, filterQuery, sortField, sortDirection]);
+    const processedInvoiceRequests = useMemo(() => {
+        const filtered = filterInvoiceRequests(invoiceRequests, filterQuery);
 
-    const eligibleInviti = useMemo(
-        () => filterInviti(nonLiquidatiInviti, filterQuery).filter(isEligibleInvito),
-        [nonLiquidatiInviti, filterQuery],
+        return sortInvoiceRequests(filtered, sortField, sortDirection);
+    }, [invoiceRequests, filterQuery, sortField, sortDirection]);
+
+    const eligibleInvoiceRequests = useMemo(
+        () => filterInvoiceRequests(unpaidInvoiceRequests, filterQuery).filter(isEligibleInvoiceRequest),
+        [unpaidInvoiceRequests, filterQuery],
     );
 
     const agentGroups = useMemo(() => {
         const map = new Map<number, { id: number; name: string; count: number; total: number }>();
-        for (const inv of eligibleInviti) {
-            const existing = map.get(inv.agente_id);
+
+        for (const invoiceRequest of eligibleInvoiceRequests) {
+            const existing = map.get(invoiceRequest.agente_id);
+
             if (existing) {
                 existing.count += 1;
-                existing.total += inv.totale_invito;
+                existing.total += invoiceRequest.totale_invito;
             } else {
-                map.set(inv.agente_id, {
-                    id: inv.agente_id,
-                    name: inv.nome_agente,
+                map.set(invoiceRequest.agente_id, {
+                    id: invoiceRequest.agente_id,
+                    name: invoiceRequest.nome_agente,
                     count: 1,
-                    total: inv.totale_invito,
+                    total: invoiceRequest.totale_invito,
                 });
             }
         }
+
         return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "it"));
-    }, [eligibleInviti]);
+    }, [eligibleInvoiceRequests]);
 
     type RenderRow =
         | { kind: "group"; group: { id: number; name: string; count: number; total: number } }
-        | { kind: "detail"; invito: StoricoInvito };
+        | { kind: "detail"; invoiceRequest: InvoiceRequest };
 
     const renderRows = useMemo<RenderRow[]>(() => {
-        const byAgent = new Map<number, StoricoInvito[]>();
-        for (const inv of eligibleInviti) {
-            const list = byAgent.get(inv.agente_id);
-            if (list) list.push(inv);
-            else byAgent.set(inv.agente_id, [inv]);
+        const byAgent = new Map<number, InvoiceRequest[]>();
+
+        for (const invoiceRequest of eligibleInvoiceRequests) {
+            const list = byAgent.get(invoiceRequest.agente_id);
+
+            if (list) list.push(invoiceRequest);
+            else byAgent.set(invoiceRequest.agente_id, [invoiceRequest]);
         }
+
         const rows: RenderRow[] = [];
+
         for (const group of agentGroups) {
             rows.push({ kind: "group", group });
             const items = byAgent.get(group.id) ?? [];
+
             const sorted = [...items].sort((a, b) =>
                 b.mese_competenza.localeCompare(a.mese_competenza),
             );
-            for (const invito of sorted) {
-                rows.push({ kind: "detail", invito });
+
+            for (const invoiceRequest of sorted) {
+                rows.push({ kind: "detail", invoiceRequest });
             }
         }
+
         return rows;
-    }, [eligibleInviti, agentGroups]);
+    }, [eligibleInvoiceRequests, agentGroups]);
 
     const eligibleByAgent = useMemo(() => {
         const map = new Map<number, number[]>();
-        for (const inv of eligibleInviti) {
-            const list = map.get(inv.agente_id);
-            if (list) list.push(inv.id);
-            else map.set(inv.agente_id, [inv.id]);
+
+        for (const invoiceRequest of eligibleInvoiceRequests) {
+            const list = map.get(invoiceRequest.agente_id);
+
+            if (list) list.push(invoiceRequest.id);
+            else map.set(invoiceRequest.agente_id, [invoiceRequest.id]);
         }
+
         return map;
-    }, [eligibleInviti]);
+    }, [eligibleInvoiceRequests]);
 
     const handleSelectAgent = (agentId: number) => {
         if (agentId === selectedAgentId) return;
         selectAgent(agentId, eligibleByAgent.get(agentId) ?? []);
     };
 
-    const handleRowClick = (invito: StoricoInvito) => {
-        if (selectionMode) return;
-        setEditingInvito(invito);
-        setEditForm({
-            stato: invito.stato,
-            riferimento_fattura: invito.riferimento_fattura || "",
-            data_fattura: invito.data_fattura || "",
-            pagato: invito.pagato,
-            data_pagamento: invito.data_pagamento || "",
-        });
+    const handleRowClick = (invoiceRequest: InvoiceRequest) => {
+        if (selectionMode || uploadBusyRef.current) return;
+        setDialogInitialTab("edit");
+        setEditingInvoiceRequest(invoiceRequest);
     };
 
     const handleRunCalculation = () => {
         if (selectedAgentId == null) return;
         const group = agentGroups.find((g) => g.id === selectedAgentId);
+
         if (!group) return;
-        const mesi = eligibleInviti
-            .filter((inv) => inv.agente_id === selectedAgentId && selectedInvitoIds.has(inv.id))
-            .map((inv) => inv.mese_competenza);
-        void runCalculation({ id: group.id, name: group.name }, mesi);
+
+        const months = eligibleInvoiceRequests
+            .filter((invoiceRequest) => invoiceRequest.agente_id === selectedAgentId && selectedInvoiceRequestIds.has(invoiceRequest.id))
+            .map((invoiceRequest) => invoiceRequest.mese_competenza);
+
+        void runCalculation({ id: group.id, name: group.name }, months);
     };
 
-    const handleSave = async () => {
-        if (!editingInvito) return;
-
-        const data: UpdateInvitoRequest = {
-            stato: editForm.stato,
-            riferimento_fattura: editForm.riferimento_fattura || undefined,
-            data_fattura: editForm.data_fattura || undefined,
-            pagato: editForm.pagato,
-            data_pagamento: editForm.pagato ? editForm.data_pagamento || undefined : undefined,
-        };
-
-        await updateInvito(editingInvito.id, data);
-        setEditingInvito(null);
-    };
+    const handleSave = (id: number, data: UpdateInvoiceRequestPayload) => updateInvoiceRequest(id, data);
 
     const sortedAgentOptions = useMemo(
         () =>
@@ -378,28 +410,33 @@ export function InvitiTab({ agents }: InvitiTabProps) {
     );
 
     const handleAgentFilterChange = (value: string | undefined) => {
-        setSelectedAgenteId(value ? Number(value) : undefined);
+        setFilteredAgentId(value ? Number(value) : undefined);
     };
 
-    const handleStatoFilterChange = (value: string) => {
-        setSelectedStato(value === "all" ? undefined : value);
+    const handleStatusFilterChange = (value: string) => {
+        setSelectedStatus(value === "all" ? undefined : value);
     };
 
-    const handlePagatoFilterChange = (value: string) => {
+    const handlePaidFilterChange = (value: string) => {
         if (value === "paid") {
-            setSelectedPagato(true);
+            setSelectedPaid(true);
         } else if (value === "unpaid") {
-            setSelectedPagato(false);
+            setSelectedPaid(false);
         } else {
-            setSelectedPagato(undefined);
+            setSelectedPaid(undefined);
         }
     };
 
-    const pagatoFilterValue = selectedPagato === true ? "paid" : selectedPagato === false ? "unpaid" : "all";
+    const paidFilterValue = selectedPaid === true ? "paid" : selectedPaid === false ? "unpaid" : "all";
 
     return (
         <div className="flex flex-col gap-6 lg:h-[calc(100dvh-11.5rem)]">
-            {/* Two-row header: title row + filter strip */}
+            <input ref={attachmentInputRef} type="file" accept={ATTACHMENT_ACCEPT} multiple hidden
+                aria-label={t("attachmentAddFile")} onChange={(event) => {
+                    const files = Array.from(event.currentTarget.files ?? []);
+                    event.currentTarget.value = "";
+                    void uploadFiles(files);
+                }} />
             <div className="shrink-0 border border-border/50 rounded-sm overflow-hidden">
                 {/* Row 1: Title + count + refresh */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
@@ -407,14 +444,14 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                         <FileText className="h-5 w-5 text-energia-accent" />
                         <h2 className="font-display text-xl">
                             {t("invoiceInvitations")}
-                            {inviti.length > 0 && (
+                            {invoiceRequests.length > 0 && (
                                 <span className="ml-2 text-muted-foreground font-normal text-base">
-                                    ({inviti.length})
+                                    ({invoiceRequests.length})
                                 </span>
                             )}
                         </h2>
                     </div>
-                    <Button variant="outline" size="sm" onClick={fetchInviti} disabled={loading}>
+                    <Button variant="outline" size="sm" onClick={fetchInvoiceRequests} disabled={loading}>
                         {loading ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
@@ -428,7 +465,7 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                     {!selectionMode && (
                         <>
                             <SearchableSelect
-                                value={selectedAgenteId ? String(selectedAgenteId) : undefined}
+                                value={filteredAgentId ? String(filteredAgentId) : undefined}
                                 options={sortedAgentOptions}
                                 onValueChange={handleAgentFilterChange}
                                 placeholder={t("allAgents")}
@@ -442,15 +479,15 @@ export function InvitiTab({ agents }: InvitiTabProps) {
 
                             <div className="flex items-center gap-1.5">
                                 <MonthPicker
-                                    value={dataInizio}
-                                    onChange={setDataInizio}
+                                    value={startDate}
+                                    onChange={setStartDate}
                                     placeholder={t("fromMonth")}
                                     className="h-8 text-xs"
                                 />
                                 <span className="text-xs text-muted-foreground">&ndash;</span>
                                 <MonthPicker
-                                    value={dataFine}
-                                    onChange={setDataFine}
+                                    value={endDate}
+                                    onChange={setEndDate}
                                     placeholder={t("toMonth")}
                                     className="h-8 text-xs"
                                 />
@@ -459,8 +496,8 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                             <div className="h-4 w-px bg-border/50" />
 
                             <Select
-                                value={selectedStato || "all"}
-                                onValueChange={handleStatoFilterChange}
+                                value={selectedStatus || "all"}
+                                onValueChange={handleStatusFilterChange}
                             >
                                 <SelectTrigger className="h-8 w-32 text-xs">
                                     <SelectValue placeholder={t("allStatuses")} />
@@ -476,8 +513,8 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                             <div className="h-4 w-px bg-border/50" />
 
                             <Select
-                                value={pagatoFilterValue}
-                                onValueChange={handlePagatoFilterChange}
+                                value={paidFilterValue}
+                                onValueChange={handlePaidFilterChange}
                             >
                                 <SelectTrigger className="h-8 w-36 text-xs">
                                     <SelectValue placeholder={t("allPaymentStatuses")} />
@@ -502,12 +539,15 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                             className="pl-8 h-8 w-48 text-xs"
                         />
                         {filterQuery && (
-                            <button
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-2.5 top-1/2 h-auto w-auto -translate-y-1/2 p-0 text-[length:inherit] [font-weight:inherit] text-muted-foreground hover:bg-transparent hover:text-foreground [&_svg]:!size-[0.875rem]"
                                 onClick={() => setFilterQuery("")}
+                                aria-label={t("clearFilter")}
                             >
                                 <X className="h-3.5 w-3.5" />
-                            </button>
+                            </Button>
                         )}
                     </div>
                 </div>
@@ -520,6 +560,12 @@ export function InvitiTab({ agents }: InvitiTabProps) {
             ) : selectionMode ? (
                 <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
                     <div className="min-h-0 flex-1 overflow-auto">
+                        <RadioGroup
+                            value={selectedAgentId == null ? "" : String(selectedAgentId)}
+                            onValueChange={(value) => handleSelectAgent(Number(value))}
+                            aria-label={t("agent")}
+                            className="contents"
+                        >
                         <Table>
                             <TableHeader className="sticky top-0 bg-secondary/90 backdrop-blur-sm">
                                 <TableRow>
@@ -539,6 +585,7 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                                     renderRows.map((row) => {
                                         if (row.kind === "group") {
                                             const isSelected = selectedAgentId === row.group.id;
+
                                             return (
                                                 <TableRow
                                                     key={`group-${row.group.id}`}
@@ -548,20 +595,16 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                                                     onClick={() => handleSelectAgent(row.group.id)}
                                                 >
                                                     <TableCell>
-                                                        <span
-                                                            role="radio"
-                                                            aria-checked={isSelected}
+                                                        <RadioGroupItem
+                                                            value={String(row.group.id)}
                                                             aria-label={row.group.name}
                                                             className={`inline-flex h-5 w-5 items-center justify-center rounded-full border-2 ${
                                                                 isSelected ? "border-primary" : "border-primary/70"
                                                             }`}
-                                                        >
-                                                            {isSelected && (
-                                                                <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-                                                            )}
-                                                        </span>
+                                                            onClick={(event) => event.stopPropagation()}
+                                                        />
                                                     </TableCell>
-                                                    <TableCell colSpan={8} className="font-semibold">
+                                                    <TableCell colSpan={9} className="font-semibold">
                                                         {row.group.name}
                                                         <span className="ml-2 text-muted-foreground font-normal text-xs">
                                                             {t("unpaidCalcGroupSummary")
@@ -575,40 +618,42 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                                                 </TableRow>
                                             );
                                         }
-                                        const { invito } = row;
-                                        const inSelectedAgent = invito.agente_id === selectedAgentId;
+
+                                        const { invoiceRequest } = row;
+                                        const inSelectedAgent = invoiceRequest.agente_id === selectedAgentId;
+
                                         return (
                                             <TableRow
-                                                key={`detail-${invito.id}`}
+                                                key={`detail-${invoiceRequest.id}`}
                                                 className={inSelectedAgent ? "" : "opacity-60"}
                                             >
                                                 <TableCell>
                                                     {inSelectedAgent && (
                                                         <Checkbox
-                                                            checked={selectedInvitoIds.has(invito.id)}
-                                                            onCheckedChange={() => toggleInvito(invito.id)}
-                                                            aria-label={formatMonth(invito.mese_competenza)}
+                                                            checked={selectedInvoiceRequestIds.has(invoiceRequest.id)}
+                                                            onCheckedChange={() => toggleInvoiceRequest(invoiceRequest.id)}
+                                                            aria-label={formatMonth(invoiceRequest.mese_competenza)}
                                                             className="h-4 w-4 border-2 border-primary/70 data-[state=checked]:border-primary"
                                                         />
                                                     )}
                                                 </TableCell>
                                                 <TableCell />
                                                 <TableCell className="text-muted-foreground">
-                                                    {formatMonth(invito.mese_competenza)}
+                                                    {formatMonth(invoiceRequest.mese_competenza)}
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono text-xs">
-                                                    {formatCurrency(invito.totale_invito)}
+                                                    {formatCurrency(invoiceRequest.totale_invito)}
                                                 </TableCell>
-                                                <TableCell>{getStatoBadge(invito.stato)}</TableCell>
+                                                <TableCell>{getStatusBadge(invoiceRequest.stato)}</TableCell>
                                                 <TableCell className="font-mono text-xs">
-                                                    {invito.riferimento_fattura || "—"}
+                                                    {invoiceRequest.riferimento_fattura || "—"}
                                                 </TableCell>
                                                 <TableCell className="font-mono text-xs text-muted-foreground">
-                                                    {formatDate(invito.data_fattura)}
+                                                    {formatDate(invoiceRequest.data_fattura)}
                                                 </TableCell>
-                                                <TableCell>{getPagatoBadge(invito.pagato)}</TableCell>
+                                                <TableCell>{getPaidBadge(invoiceRequest.pagato)}</TableCell>
                                                 <TableCell className="font-mono text-xs text-muted-foreground">
-                                                    {formatDate(invito.data_pagamento)}
+                                                    {formatDate(invoiceRequest.data_pagamento)}
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -622,13 +667,14 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                                 )}
                             </TableBody>
                         </Table>
+                        </RadioGroup>
                     </div>
                 </div>
-            ) : loading && inviti.length === 0 ? (
+            ) : loading && invoiceRequests.length === 0 ? (
                 <div className="ledger-card flex flex-1 items-center justify-center py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
                 </div>
-            ) : inviti.length === 0 ? (
+            ) : invoiceRequests.length === 0 ? (
                 <div className="ledger-card flex flex-1 flex-col items-center justify-center py-16 text-center">
                     <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
                     <p className="font-display text-lg text-muted-foreground">{t("noInvitiFound")}</p>
@@ -712,39 +758,65 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                                             onSort={handleSort}
                                         />
                                     </TableHead>
+                                    <TableHead className="w-[112px] text-right">{t("attachmentTitle")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {processedInviti.length > 0 ? (
-                                    processedInviti.map((invito) => (
+                                {processedInvoiceRequests.length > 0 ? (
+                                    processedInvoiceRequests.map((invoiceRequest) => (
                                         <TableRow
-                                            key={invito.id}
+                                            key={invoiceRequest.id}
                                             className="hover:bg-secondary/30 cursor-pointer"
-                                            onClick={() => handleRowClick(invito)}
+                                            onClick={() => handleRowClick(invoiceRequest)}
                                         >
-                                            <TableCell className="font-medium">{invito.nome_agente}</TableCell>
+                                            <TableCell className="font-medium"><Button type="button" variant="unstyled" size="unstyled" className="justify-start whitespace-normal text-left text-[length:inherit] leading-[inherit] underline-offset-4 hover:underline" onClick={(event) => { event.stopPropagation(); handleRowClick(invoiceRequest); }}>{invoiceRequest.nome_agente}</Button></TableCell>
                                             <TableCell className="text-muted-foreground">
-                                                {formatMonth(invito.mese_competenza)}
+                                                {formatMonth(invoiceRequest.mese_competenza)}
                                             </TableCell>
                                             <TableCell className="text-right font-mono text-xs">
-                                                {formatCurrency(invito.totale_invito)}
+                                                {formatCurrency(invoiceRequest.totale_invito)}
                                             </TableCell>
-                                            <TableCell>{getStatoBadge(invito.stato)}</TableCell>
+                                            <TableCell>{getStatusBadge(invoiceRequest.stato)}</TableCell>
                                             <TableCell className="font-mono text-xs">
-                                                {invito.riferimento_fattura || "\u2014"}
+                                                {invoiceRequest.riferimento_fattura || "\u2014"}
                                             </TableCell>
                                             <TableCell className="font-mono text-xs text-muted-foreground">
-                                                {formatDate(invito.data_fattura)}
+                                                {formatDate(invoiceRequest.data_fattura)}
                                             </TableCell>
-                                            <TableCell>{getPagatoBadge(invito.pagato)}</TableCell>
+                                            <TableCell>{getPaidBadge(invoiceRequest.pagato)}</TableCell>
                                             <TableCell className="font-mono text-xs text-muted-foreground">
-                                                {formatDate(invito.data_pagamento)}
+                                                {formatDate(invoiceRequest.data_pagamento)}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    <Button type="button" variant="unstyled" size="icon" className="h-11 w-11 text-muted-foreground/70 [&_svg]:size-3.5"
+                                                        disabled={uploadingId !== null}
+                                                        title={t("attachmentAddFile")}
+                                                        aria-label={`${t("attachmentAddFile")}: ${invoiceRequest.nome_agente}, ${formatMonth(invoiceRequest.mese_competenza)}`}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            attachmentTargetRef.current = invoiceRequest;
+                                                            attachmentInputRef.current?.click();
+                                                        }}>
+                                                        {uploadingId === invoiceRequest.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                                                    </Button>
+                                                    <Button type="button" variant="unstyled" size="icon" className="h-11 w-11 text-muted-foreground/70 [&_svg]:size-3.5"
+                                                        disabled={uploadingId !== null} title={t("attachmentView")}
+                                                        aria-label={`${t("attachmentView")}: ${invoiceRequest.nome_agente}, ${formatMonth(invoiceRequest.mese_competenza)}`}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            setDialogInitialTab("attachments");
+                                                            setEditingInvoiceRequest(invoiceRequest);
+                                                        }}>
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                                             {t("noDataFound")}
                                         </TableCell>
                                     </TableRow>
@@ -762,7 +834,7 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                             variant="outline"
                             size="sm"
                             onClick={exitSelectionMode}
-                            disabled={nonLiqLoading}
+                            disabled={unpaidLoading}
                         >
                             {t("unpaidCalcCancel")}
                         </Button>
@@ -770,15 +842,15 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                             size="sm"
                             className="btn-primary"
                             onClick={handleRunCalculation}
-                            disabled={nonLiqLoading || selectedAgentId == null || selectedInvitoIds.size === 0}
+                            disabled={unpaidLoading || selectedAgentId == null || selectedInvoiceRequestIds.size === 0}
                         >
-                            {nonLiqLoading ? (
+                            {unpaidLoading ? (
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             ) : (
                                 <Calculator className="h-4 w-4 mr-2" />
                             )}
                             {t("unpaidCalcRun")}
-                            {selectedInvitoIds.size > 0 && ` (${selectedInvitoIds.size})`}
+                            {selectedInvoiceRequestIds.size > 0 && ` (${selectedInvoiceRequestIds.size})`}
                         </Button>
                     </>
                 ) : (
@@ -794,128 +866,14 @@ export function InvitiTab({ agents }: InvitiTabProps) {
                 )}
             </div>
 
-            <Dialog open={!!editingInvito} onOpenChange={(open) => !open && setEditingInvito(null)}>
-                <DialogContent className="sm:max-w-[480px]">
-                    <DialogHeader>
-                        <DialogTitle className="font-display">{t("editInvitation")}</DialogTitle>
-                        <DialogDescription>{t("editInvitationDesc")}</DialogDescription>
-                    </DialogHeader>
-
-                    {editingInvito && (
-                        <div className="space-y-4 py-2">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">{t("agent")}</span>
-                                <span className="font-medium">{editingInvito.nome_agente}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">{t("competenceMonth")}</span>
-                                <span className="font-medium">{formatMonth(editingInvito.mese_competenza)}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">{t("invitationTotal")}</span>
-                                <span className="font-medium font-mono">
-                                    {formatCurrency(editingInvito.totale_invito)}
-                                </span>
-                            </div>
-
-                            <hr className="border-border/50" />
-
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">{t("status")}</label>
-                                <Select
-                                    value={editForm.stato}
-                                    onValueChange={(v) =>
-                                        setEditForm((prev) => ({
-                                            ...prev,
-                                            stato: v as EditFormData["stato"],
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="bozza">{t("draft")}</SelectItem>
-                                        <SelectItem value="inviato">{t("sent")}</SelectItem>
-                                        <SelectItem value="approvato">{t("approved")}</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">{t("invoiceReference")}</label>
-                                <Input
-                                    value={editForm.riferimento_fattura}
-                                    onChange={(e) =>
-                                        setEditForm((prev) => ({
-                                            ...prev,
-                                            riferimento_fattura: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="FT-2024/001"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium">{t("invoiceDate")}</label>
-                                <DatePicker
-                                    value={editForm.data_fattura}
-                                    onChange={(v) =>
-                                        setEditForm((prev) => ({ ...prev, data_fattura: v }))
-                                    }
-                                    className="w-full"
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <Checkbox
-                                    id="pagato"
-                                    checked={editForm.pagato}
-                                    onCheckedChange={(checked) =>
-                                        setEditForm((prev) => ({
-                                            ...prev,
-                                            pagato: !!checked,
-                                            data_pagamento: checked ? prev.data_pagamento : "",
-                                        }))
-                                    }
-                                />
-                                <label htmlFor="pagato" className="text-sm font-medium cursor-pointer">
-                                    {t("paid")}
-                                </label>
-                            </div>
-
-                            {editForm.pagato && (
-                                <div className="space-y-1">
-                                    <label className="text-sm font-medium">{t("paymentDate")}</label>
-                                    <DatePicker
-                                        value={editForm.data_pagamento}
-                                        onChange={(v) =>
-                                            setEditForm((prev) => ({ ...prev, data_pagamento: v }))
-                                        }
-                                        className="w-full"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingInvito(null)}>
-                            {t("cancel")}
-                        </Button>
-                        <Button
-                            onClick={handleSave}
-                            disabled={updating === editingInvito?.id}
-                            className="btn-primary"
-                        >
-                            {updating === editingInvito?.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : null}
-                            {t("save")}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <InvoiceRequestDialog
+                key={editingInvoiceRequest?.id ?? "closed"}
+                invoiceRequest={editingInvoiceRequest}
+                initialTab={dialogInitialTab}
+                saving={updating === editingInvoiceRequest?.id}
+                onSave={handleSave}
+                onClose={() => setEditingInvoiceRequest(null)}
+            />
         </div>
     );
 }

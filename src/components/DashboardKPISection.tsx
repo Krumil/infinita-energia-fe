@@ -2,11 +2,11 @@ import { TrendingUp, TrendingDown, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCurrency } from "@/lib/utils";
-import type { DashboardContrattiTotali, DashboardProvvigioniTotali } from "@/types";
+import type { DashboardTotalContracts, DashboardTotalCommissions } from "@/types";
 
 interface DashboardKPISectionProps {
-    contrattiTotali: DashboardContrattiTotali | null;
-    provvigioniTotali: DashboardProvvigioniTotali | null;
+    totalContracts: DashboardTotalContracts | null;
+    totalCommissions: DashboardTotalCommissions | null;
     selectedYear: number;
     loading?: boolean;
 }
@@ -67,8 +67,8 @@ function KPICard({ title, value, subtitle, change, delay = 0, loading = false }:
 }
 
 export function DashboardKPISection({
-    contrattiTotali,
-    provvigioniTotali,
+    totalContracts,
+    totalCommissions,
     selectedYear,
     loading = false,
 }: DashboardKPISectionProps) {
@@ -78,19 +78,19 @@ export function DashboardKPISection({
         <div className="grid gap-4 sm:grid-cols-2">
             <KPICard
                 title={`${t("contracts")} ${selectedYear}`}
-                value={contrattiTotali?.totale_contratti_n ?? 0}
-                subtitle={`${t("vsLastYear")}: ${contrattiTotali?.totale_contratti_n_1 ?? 0}`}
-                change={contrattiTotali?.variazione_percentuale}
+                value={totalContracts?.totale_contratti_n ?? 0}
+                subtitle={`${t("vsLastYear")}: ${totalContracts?.totale_contratti_n_1 ?? 0}`}
+                change={totalContracts?.variazione_percentuale}
                 delay={0}
-                loading={loading && !contrattiTotali}
+                loading={loading && !totalContracts}
             />
             <KPICard
                 title={t("commissionsCollected")}
-                value={formatCurrency(provvigioniTotali?.totale_provvigioni_n ?? 0)}
-                subtitle={`${t("vsLastYear")}: ${formatCurrency(provvigioniTotali?.totale_provvigioni_n_1 ?? 0)}`}
-                change={provvigioniTotali?.variazione_percentuale}
+                value={formatCurrency(totalCommissions?.totale_provvigioni_n ?? 0)}
+                subtitle={`${t("vsLastYear")}: ${formatCurrency(totalCommissions?.totale_provvigioni_n_1 ?? 0)}`}
+                change={totalCommissions?.variazione_percentuale}
                 delay={50}
-                loading={loading && !provvigioniTotali}
+                loading={loading && !totalCommissions}
             />
         </div>
     );

@@ -1,4 +1,4 @@
-import type { CalcoloInput, Liquidazione } from "@/types";
+import type { CalculationInput, Settlement } from "@/types";
 import { parseEuroNumber } from "@/lib/numbers";
 import { parseExcelFile } from "./excel";
 
@@ -8,46 +8,51 @@ function parseAndFormatDate(dateStr: string | number | undefined): string | unde
     }
 
     const str = String(dateStr).trim();
+
     if (!str) return undefined;
 
     const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
     if (slashMatch) {
         const [, day, month, year] = slashMatch;
+
         return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     }
 
     const dashMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+
     if (dashMatch) {
         const [, day, month, year] = dashMatch;
+
         return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     }
 
     const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+
     if (isoMatch) {
         const [, year, month, day] = isoMatch;
+
         return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     }
 
     return str;
 }
 
-export function convertToCalcoloInput(liquidazioni: Liquidazione[]): CalcoloInput[] {
-    return liquidazioni.map((liq) => ({
-        venditore: liq.venditore || "",
-        regola: liq.regola || "",
-        scaglione_consumo: liq.scaglione_consumo || "",
-        importo_euro: liq.importo_euro || 0,
-        pod_pdr: liq.pod_pdr || "",
-        cliente: liq.cliente || "",
-        cf_piva: liq.cf_piva || "",
-        comp_al: liq.comp_al || "",
+export function convertToCalculationInput(settlements: Settlement[]): CalculationInput[] {
+    return settlements.map((settlement) => ({
+        venditore: settlement.venditore || "",
+        regola: settlement.regola || "",
+        scaglione_consumo: settlement.scaglione_consumo || "",
+        importo_euro: settlement.importo_euro || 0,
+        pod_pdr: settlement.pod_pdr || "",
+        cliente: settlement.cliente || "",
+        cf_piva: settlement.cf_piva || "",
+        comp_al: settlement.comp_al || "",
     }));
 }
 
-export async function parseLiquidazioniExcel(file: File): Promise<Liquidazione[]> {
+export async function parseSettlementsExcel(file: File): Promise<Settlement[]> {
     const rawData = await parseExcelFile<Record<string, string | number>>(file);
-
-    const dateFields = ["comp_dal", "comp_al", "inizio_forn", "fine_forn", "data_firma", "data_prima_accettazione"];
 
     const columnKeysLower =
         rawData.length > 0
@@ -55,22 +60,25 @@ export async function parseLiquidazioniExcel(file: File): Promise<Liquidazione[]
             : new Map<string, string>();
 
     return rawData.map((row) => {
-        const liquidazione: Liquidazione = {};
+        const settlement: Settlement = {};
 
         const findValue = (alternatives: string[]): string | number | undefined => {
             for (const alt of alternatives) {
                 if (row[alt] !== undefined && row[alt] !== "") {
                     return row[alt];
                 }
+
                 const actualKey = columnKeysLower.get(alt.toLowerCase());
+
                 if (actualKey && row[actualKey] !== undefined && row[actualKey] !== "") {
                     return row[actualKey];
                 }
             }
+
             return undefined;
         };
 
-        const mappings: Array<[keyof Liquidazione, string[]]> = [
+        const mappings: Array<[keyof Settlement, string[]]> = [
             ["piano_provvigionale", ["piano_provvigionale", "Piano Provvigionale"]],
             ["regola", ["regola", "Regola"]],
             ["consumo", ["consumo", "Consumo"]],
@@ -111,33 +119,36 @@ export async function parseLiquidazioniExcel(file: File): Promise<Liquidazione[]
 
         for (const [key, alternatives] of mappings) {
             const value = findValue(alternatives);
+
             if (value !== undefined) {
-                if (["consumo", "quantita", "prezzo", "importo_euro", "scaglione_anno", "id_ordine"].includes(key)) {
-                    (liquidazione as Record<string, unknown>)[key] = parseEuroNumber(value);
+                if (key === "consumo" || key === "quantita" || key === "prezzo" || key === "importo_euro" || key === "scaglione_anno" || key === "id_ordine" || key === "id") {
+                    settlement[key] = parseEuroNumber(value);
                 } else if (key === "competenza_liquidazione") {
                     const str = String(value).trim();
                     const mmYYYYMatch = str.match(/^(\d{1,2})\/(\d{4})$/);
+
                     if (mmYYYYMatch) {
                         const [, month, year] = mmYYYYMatch;
-                        (liquidazione as Record<string, unknown>)[key] = `${year}-${month.padStart(2, "0")}-01`;
+                        settlement[key] = `${year}-${month.padStart(2, "0")}-01`;
                     } else {
                         const isoMatch = str.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/);
+
                         if (isoMatch) {
                             const [, year, month, day] = isoMatch;
-                            (liquidazione as Record<string, unknown>)[key] =
+                            settlement[key] =
                                 `${year}-${month.padStart(2, "0")}-${(day || "01").padStart(2, "0")}`;
                         } else {
-                            (liquidazione as Record<string, unknown>)[key] = str;
+                            settlement[key] = str;
                         }
                     }
-                } else if (dateFields.includes(key)) {
-                    (liquidazione as Record<string, unknown>)[key] = parseAndFormatDate(value);
+                } else if (key === "comp_dal" || key === "comp_al" || key === "inizio_forn" || key === "fine_forn" || key === "data_firma" || key === "data_prima_accettazione") {
+                    settlement[key] = parseAndFormatDate(value);
                 } else {
-                    (liquidazione as Record<string, unknown>)[key] = String(value);
+                    settlement[key] = String(value);
                 }
             }
         }
 
-        return liquidazione;
+        return settlement;
     });
 }

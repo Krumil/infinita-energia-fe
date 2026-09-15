@@ -2,10 +2,10 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell, Tooltip } from "recha
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Loader2 } from "lucide-react";
-import type { DashboardContrattiPerProdotto } from "@/types";
+import type { DashboardContractsByProduct } from "@/types";
 
 interface ProductsChartProps {
-    data: DashboardContrattiPerProdotto | null;
+    data: DashboardContractsByProduct | null;
     selectedYear: number;
     loading?: boolean;
 }
@@ -26,6 +26,7 @@ function getProductColor(index: number): string {
 function getProductColorLight(index: number): string {
     // Return a lighter/more transparent version for previous year
     const baseColor = PRODUCT_COLORS[index % PRODUCT_COLORS.length];
+
     return `${baseColor}66`; // Add 40% opacity (66 in hex)
 }
 
@@ -100,6 +101,7 @@ export function ProductsChart({ data, selectedYear, loading = false }: ProductsC
                                         if (!active || !payload?.length) return null;
                                         const current = payload.find((p) => p.dataKey === "currentYear");
                                         const previous = payload.find((p) => p.dataKey === "previousYear");
+
                                         return (
                                             <div className="bg-popover border rounded-lg shadow-lg p-3 text-sm">
                                                 <p className="font-semibold mb-2">{label}</p>

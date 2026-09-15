@@ -5,16 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
-import type { CalcoloResultsProps } from "@/types/components";
-import type { ProvvigioneData } from "@/types";
+import type { CalculationResultsProps } from "@/types/components";
+import type { CommissionData } from "@/types";
 
-function sortByCliente(items: ProvvigioneData[]): ProvvigioneData[] {
+function sortByCustomer(items: CommissionData[]): CommissionData[] {
     return [...items].sort((a, b) => a.cliente.localeCompare(b.cliente, "it"));
 }
 
-function filterItems(items: ProvvigioneData[], query: string): ProvvigioneData[] {
+function filterItems(items: CommissionData[], query: string): CommissionData[] {
     if (!query.trim()) return items;
     const lowerQuery = query.toLowerCase();
+
     return items.filter(
         (item) =>
             item.cliente.toLowerCase().includes(lowerQuery) ||
@@ -23,7 +24,7 @@ function filterItems(items: ProvvigioneData[], query: string): ProvvigioneData[]
     );
 }
 
-export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
+export function CalculationResults({ data, periodStart }: CalculationResultsProps) {
     const { t, language } = useTranslation();
     const [expandedSeller, setExpandedSeller] = useState<string | null>(null);
     const [filterQuery, setFilterQuery] = useState<string>("");
@@ -35,24 +36,27 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
 
     useEffect(() => {
         import("@/lib/exportUtils").then(({ formatPeriodDisplay }) => {
-            setPeriodDisplay(formatPeriodDisplay(compDal, language));
+            setPeriodDisplay(formatPeriodDisplay(periodStart, language));
         });
-    }, [compDal, language]);
+    }, [periodStart, language]);
 
     // Reset filter when changing seller
     const handleExpandSeller = (sellerName: string) => {
         if (expandedSeller !== sellerName) {
             setFilterQuery("");
         }
+
         setExpandedSeller(expandedSeller === sellerName ? null : sellerName);
     };
 
     const handleDownloadZip = async () => {
         setIsGeneratingZip(true);
+
         try {
-            const { extractPeriodFromCompDal, generateCommissionsZip, downloadBlob } =
+            const { extractPeriodFromPeriodStart, generateCommissionsZip, downloadBlob } =
                 await import("@/lib/exportUtils");
-            const periodFolder = extractPeriodFromCompDal(compDal);
+
+            const periodFolder = extractPeriodFromPeriodStart(periodStart);
             const blob = await generateCommissionsZip(data, periodFolder);
             downloadBlob(blob, `provvigioni-${periodFolder}.zip`);
         } catch (error) {
@@ -133,8 +137,9 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
                                     </TableRow>
                                     {expandedSeller === sellerName &&
                                         (() => {
-                                            const sortedItems = sortByCliente(sellerData.dati_provvigione);
+                                            const sortedItems = sortByCustomer(sellerData.dati_provvigione);
                                             const filteredItems = filterItems(sortedItems, filterQuery);
+
                                             return (
                                                 <TableRow key={`${sellerName}-details`}>
                                                     <TableCell colSpan={4} className="p-0 bg-secondary/10">
@@ -149,7 +154,7 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 />
                                                                 {filterQuery && (
-                                                                    <button
+                                                                    <Button type="button" variant="unstyled" size="unstyled" aria-label={t("clearFilter")}
                                                                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
@@ -157,7 +162,7 @@ export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
                                                                         }}
                                                                     >
                                                                         <X className="h-4 w-4" />
-                                                                    </button>
+                                                                    </Button>
                                                                 )}
                                                             </div>
 

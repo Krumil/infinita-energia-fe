@@ -1,69 +1,76 @@
 import type {
-    CalcoloInput,
-    CalcoloNonPagatiResponse,
-    CalcoloResult,
-    CheckAgentiResponse,
-    ProvvigioneData,
+    CalculationInput,
+    UnpaidCalculationResponse,
+    CalculationResult,
+    CheckAgentsResponse,
 } from "@/types";
+import { z } from "zod";
 import {
-    ApiError,
     authFetch,
     getApiUrl,
     handleResponse,
+    handleEmptyResponse,
     handleResponseWithSanitization,
 } from "./client";
 
-export async function calcolaProvvigioni(data: CalcoloInput[]): Promise<CalcoloResult> {
+const commissionDataSchema = z.object({
+    cf_piva: z.string(),
+    cliente: z.string(),
+    comp_al: z.string(),
+    importo_provvigione: z.number().nullable(),
+    pod_pdr: z.string(),
+    regola: z.string(),
+    venditore: z.string(),
+});
+
+const calculationResultSchema = z.record(z.object({
+    totale_provvigione: z.number(),
+    dati_provvigione: z.array(commissionDataSchema),
+}));
+
+const unpaidResponseSchema = z.object({
+    totale_provvigione: z.number().nullish(),
+    dati_provvigione: z.array(commissionDataSchema).nullish(),
+    message: z.string().optional(),
+    data: z.object({}).passthrough().optional(),
+    error: z.string().optional(),
+});
+
+export async function calculateCommissions(data: CalculationInput[]): Promise<CalculationResult> {
     const res = await authFetch(getApiUrl("/calcolo"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
-    return handleResponseWithSanitization<CalcoloResult>(res);
+
+    return handleResponseWithSanitization(res, calculationResultSchema);
 }
 
-export async function checkAgenti(nomi: string[]): Promise<CheckAgentiResponse> {
+export async function checkAgents(names: string[]): Promise<CheckAgentsResponse> {
     const res = await authFetch(getApiUrl("/check-agenti"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nomi }),
+        body: JSON.stringify({ nomi: names }),
     });
-    return handleResponse<CheckAgentiResponse>(res);
+
+    return handleResponse<CheckAgentsResponse>(res);
 }
 
-interface NonPagatiBody {
-    totale_provvigione?: number;
-    dati_provvigione?: ProvvigioneData[];
-    message?: string;
-    data?: Record<string, unknown>;
-    error?: string;
-}
-
-export async function getCalcoloNonPagati(
-    agenteId: number,
-    mesi: string[],
-): Promise<CalcoloNonPagatiResponse> {
+export async function getUnpaidCalculation(
+    agentId: number,
+    months: string[],
+): Promise<UnpaidCalculationResponse> {
     const res = await authFetch(getApiUrl("/non-pagati"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agente_id: agenteId, mesi_competenza: mesi }),
+        body: JSON.stringify({ agente_id: agentId, mesi_competenza: months }),
     });
 
-    if (!res.ok) {
-        let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
-        try {
-            const errorData = (await res.json()) as NonPagatiBody;
-            if (errorData.error) {
-                errorMessage = errorData.error;
-            }
-        } catch {
-            // Ignore JSON parsing errors
-        }
-        throw new ApiError(res.status, errorMessage);
-    }
+    await handleEmptyResponse(res);
 
-    const body = (await res.json()) as NonPagatiBody;
-    const emptyData = body.data && typeof body.data === "object" && Object.keys(body.data).length === 0;
+    const body = unpaidResponseSchema.parse(await res.json());
+    const emptyData = body.data && Object.keys(body.data).length === 0;
+
     if (emptyData && body.message) {
         return { kind: "empty", message: body.message };
     }

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { Agente, Regola, Scaglione, ConfigurazioneRegola } from "./domain";
-import type { CreateAgentRequest, CalcoloResult } from "./api";
+import type { Agent, Rule, Tier, RuleConfiguration } from "./domain";
+import type { CreateAgentRequest, CalculationResult } from "./api";
 
 export interface FileDropzoneProps {
     accept: string;
@@ -26,34 +26,34 @@ export interface EmptyStateProps {
 export interface AgentDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    agent: Agente | null;
-    agents: Agente[];
-    regole: Regola[];
-    scaglioni: Scaglione[];
-    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<unknown>;
+    agent: Agent | null;
+    agents: Agent[];
+    rules: Rule[];
+    tiers: Tier[];
+    onSave: (data: CreateAgentRequest, customValues?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<string | null>;
     saving: boolean;
     onDelete?: () => void;
     deleting?: boolean;
-    configurazione: ConfigurazioneRegola[];
+    configuration: RuleConfiguration[];
     configLoading: boolean;
 }
 
 export interface AgentsTableProps {
-    data: Agente[];
-    onEdit: (agent: Agente) => void;
-    onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
+    data: Agent[];
+    onEdit: (agent: Agent) => void;
+    onToggleStatistics: (agent: Agent, value: boolean) => Promise<void>;
 }
 
-export interface RegoleTableProps {
-    regole: Regola[];
-    scaglioni: Scaglione[];
-    onToggleUtilizzato: (regola: Regola, value: boolean) => Promise<void>;
-    onUpdateDefault: (regola: Regola, value: number) => Promise<void>;
-    onUpdateTipoUtenza: (regola: Regola, value: "residenziale" | "business" | null) => Promise<void>;
-    onUpdateTipoServizio: (regola: Regola, value: "gas" | "luce" | null) => Promise<void>;
+export interface RulesTableProps {
+    rules: Rule[];
+    tiers: Tier[];
+    onToggleEnabled: (rule: Rule, value: boolean) => Promise<void>;
+    onUpdateDefault: (rule: Rule, value: number) => Promise<void>;
+    onUpdateCustomerType: (rule: Rule, value: "residenziale" | "business" | null) => Promise<void>;
+    onUpdateServiceType: (rule: Rule, value: "gas" | "luce" | null) => Promise<void>;
 }
 
-export interface CalcoloResultsProps {
-    data: CalcoloResult;
-    compDal?: string;
+export interface CalculationResultsProps {
+    data: CalculationResult;
+    periodStart?: string;
 }

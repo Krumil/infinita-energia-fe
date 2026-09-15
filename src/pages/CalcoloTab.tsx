@@ -1,3 +1,4 @@
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useState } from "react";
 import { Calculator, AlertTriangle, Loader2, Upload, FileSpreadsheet, Users, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,14 +15,14 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { FileDropzone, EmptyState, CalcoloResults } from "@/components";
+import { FileDropzone, EmptyState, CalculationResults } from "@/components";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Liquidazione, CalcoloResult } from "@/types";
+import type { Settlement, CalculationResult } from "@/types";
 import type { UnmatchedAgent } from "@/hooks/useCalcolo";
 
-interface CalcoloTabProps {
-    data: Liquidazione[];
-    result: CalcoloResult | null;
+interface CalculationTabProps {
+    data: Settlement[];
+    result: CalculationResult | null;
     loading: boolean;
     unmatchedAgents: UnmatchedAgent[];
     onUpload: (files: File[]) => void;
@@ -29,7 +30,7 @@ interface CalcoloTabProps {
     onNavigate?: (tab: string) => void;
 }
 
-export function CalcoloTab({
+export function CalculationTab({
     data,
     result,
     loading,
@@ -37,7 +38,7 @@ export function CalcoloTab({
     onUpload,
     onCalculate,
     onNavigate,
-}: CalcoloTabProps) {
+}: CalculationTabProps) {
     const { t } = useTranslation();
     const [showDropzone, setShowDropzone] = useState(true);
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -157,36 +158,36 @@ export function CalcoloTab({
 
                                             {/* Agents List */}
                                             <div className="max-h-40 overflow-y-auto border rounded-md bg-secondary/20">
-                                                <table className="w-full text-sm">
-                                                    <thead className="bg-secondary/50 sticky top-0">
-                                                        <tr>
-                                                            <th className="text-left py-2 px-3 font-medium text-xs uppercase tracking-wider">
+                                                <Table appearance="plain" className="w-full text-sm">
+                                                    <TableHeader className="bg-secondary/50 sticky top-0">
+                                                        <TableRow>
+                                                            <TableHead className="text-left py-2 px-3 font-medium text-xs uppercase tracking-wider">
                                                                 {t("seller")}
-                                                            </th>
-                                                            <th className="text-right py-2 px-3 font-medium text-xs uppercase tracking-wider">
+                                                            </TableHead>
+                                                            <TableHead className="text-right py-2 px-3 font-medium text-xs uppercase tracking-wider">
                                                                 {t("records")}
-                                                            </th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="font-mono text-xs">
+                                                            </TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody className="font-mono text-xs">
                                                         {unmatchedAgents.map((agent, idx) => (
-                                                            <tr
+                                                            <TableRow
                                                                 key={idx}
                                                                 className="border-t border-border/50 hover:bg-secondary/30"
                                                             >
-                                                                <td
+                                                                <TableCell
                                                                     className="py-2 px-3 truncate max-w-[220px]"
                                                                     title={agent.name}
                                                                 >
                                                                     {agent.name}
-                                                                </td>
-                                                                <td className="text-right py-2 px-3 tabular-nums">
+                                                                </TableCell>
+                                                                <TableCell className="text-right py-2 px-3 tabular-nums">
                                                                     {agent.count}
-                                                                </td>
-                                                            </tr>
+                                                                </TableCell>
+                                                            </TableRow>
                                                         ))}
-                                                    </tbody>
-                                                </table>
+                                                    </TableBody>
+                                                </Table>
                                             </div>
 
                                             <Separator />
@@ -238,7 +239,7 @@ export function CalcoloTab({
 
             {/* Results Section */}
             {!loading && result && Object.keys(result).length > 0 ? (
-                <CalcoloResults data={result} compDal={data[0]?.comp_dal} />
+                <CalculationResults data={result} periodStart={data[0]?.comp_dal} />
             ) : (
                 !loading &&
                 !hasData && <EmptyState message={t("noCalculationYet")} icon={<Calculator className="h-16 w-16" />} />
@@ -256,24 +257,24 @@ export function CalcoloTab({
                             <div className="space-y-3">
                                 <p>{t("unmatchedAgentsDesc")}</p>
                                 <div className="max-h-48 overflow-y-auto border rounded-md bg-secondary/30">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-secondary/50 sticky top-0">
-                                            <tr>
-                                                <th className="text-left py-2 px-3 font-medium">{t("seller")}</th>
-                                                <th className="text-right py-2 px-3 font-medium">
+                                    <Table appearance="plain" className="w-full text-sm">
+                                        <TableHeader className="bg-secondary/50 sticky top-0">
+                                            <TableRow>
+                                                <TableHead className="text-left py-2 px-3 font-medium">{t("seller")}</TableHead>
+                                                <TableHead className="text-right py-2 px-3 font-medium">
                                                     {t("recordsAffected")}
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="font-mono text-xs">
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody className="font-mono text-xs">
                                             {unmatchedAgents.map((agent, idx) => (
-                                                <tr key={idx} className="border-t">
-                                                    <td className="py-2 px-3">{agent.name}</td>
-                                                    <td className="text-right py-2 px-3">{agent.count}</td>
-                                                </tr>
+                                                <TableRow key={idx} className="border-t">
+                                                    <TableCell className="py-2 px-3">{agent.name}</TableCell>
+                                                    <TableCell className="text-right py-2 px-3">{agent.count}</TableCell>
+                                                </TableRow>
                                             ))}
-                                        </tbody>
-                                    </table>
+                                        </TableBody>
+                                    </Table>
                                 </div>
                                 <p className="text-amber-600 dark:text-amber-400 font-medium">
                                     {totalAffectedRecords} {t("recordsWillBeSkipped")}

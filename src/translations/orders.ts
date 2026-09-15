@@ -1,0 +1,33 @@
+export const ordersEn = {
+    pendingOrdersView: "Pending",
+    excludedOrdersView: "Excluded ({count})",
+    excludeOrder: "Exclude",
+    excludeOrderTitle: "Exclude order",
+    excludeOrderDescription: "Explain why this order should be excluded from pending orders.",
+    exclusionReason: "Reason",
+    exclusionReasonPlaceholder: "Enter a reason",
+    exclusionReasonRequired: "A reason is required.",
+    excludedOrders: "Excluded orders",
+    excludedOn: "Excluded on",
+    restoreOrder: "Restore",
+    noExcludedOrders: "No excluded orders found.",
+    unavailableOrder: "Order details are no longer available",
+    pendingOrdersEmptyDescription: "There are no orders matching the selected filters.",
+} as const;
+
+export const ordersIt = {
+    pendingOrdersView: "In attesa",
+    excludedOrdersView: "Esclusi ({count})",
+    excludeOrder: "Escludi",
+    excludeOrderTitle: "Escludi ordine",
+    excludeOrderDescription: "Indica perché questo ordine deve essere escluso dagli ordini inevasi.",
+    exclusionReason: "Motivo",
+    exclusionReasonPlaceholder: "Inserisci un motivo",
+    exclusionReasonRequired: "Il motivo è obbligatorio.",
+    excludedOrders: "Ordini esclusi",
+    excludedOn: "Escluso il",
+    restoreOrder: "Ripristina",
+    noExcludedOrders: "Nessun ordine escluso trovato.",
+    unavailableOrder: "I dettagli dell'ordine non sono più disponibili",
+    pendingOrdersEmptyDescription: "Non ci sono ordini corrispondenti ai filtri selezionati.",
+} as const;

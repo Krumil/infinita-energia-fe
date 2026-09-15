@@ -1,49 +1,54 @@
 import type {
-    DashboardContrattiTotali,
-    DashboardProvvigioniTotali,
-    DashboardContrattiMensili,
-    DashboardProvvigioniMensili,
-    DashboardContrattiPerProdotto,
+    DashboardTotalContracts,
+    DashboardTotalCommissions,
+    DashboardMonthlyContracts,
+    DashboardMonthlyCommissions,
+    DashboardContractsByProduct,
 } from "@/types";
 import { authFetch, createApiUrl, handleResponse } from "./client";
 
-export async function getDashboardAnniDisponibili(): Promise<number[]> {
+export async function getDashboardAvailableYears(): Promise<number[]> {
     const res = await authFetch(createApiUrl("/dashboard/anni-disponibili"));
+
     return handleResponse<number[]>(res);
 }
 
-export async function getDashboardAgentiFiltro(): Promise<string[]> {
+export async function getDashboardAgentFilter(): Promise<string[]> {
     const res = await authFetch(createApiUrl("/dashboard/agenti-filtro"));
+
     return handleResponse<string[]>(res);
 }
 
-async function getDashboardData<T>(endpoint: string, anno?: number, agente?: string): Promise<T> {
+async function getDashboardData<T>(endpoint: string, year?: number, agent?: string): Promise<T> {
     const url = createApiUrl(`/dashboard/${endpoint}`);
-    if (anno) url.searchParams.set("anno", String(anno));
-    if (agente) url.searchParams.set("agente", agente);
+
+    if (year) url.searchParams.set("anno", String(year));
+
+    if (agent) url.searchParams.set("agente", agent);
     const res = await authFetch(url);
+
     return handleResponse<T>(res);
 }
 
-export function getDashboardContrattiTotali(anno?: number, agente?: string): Promise<DashboardContrattiTotali> {
-    return getDashboardData("contratti-totali", anno, agente);
+export function getDashboardTotalContracts(year?: number, agent?: string): Promise<DashboardTotalContracts> {
+    return getDashboardData("contratti-totali", year, agent);
 }
 
-export function getDashboardProvvigioniTotali(anno?: number, agente?: string): Promise<DashboardProvvigioniTotali> {
-    return getDashboardData("provvigioni-totali", anno, agente);
+export function getDashboardTotalCommissions(year?: number, agent?: string): Promise<DashboardTotalCommissions> {
+    return getDashboardData("provvigioni-totali", year, agent);
 }
 
-export function getDashboardContrattiMensili(anno?: number, agente?: string): Promise<DashboardContrattiMensili> {
-    return getDashboardData("contratti-mensili", anno, agente);
+export function getDashboardMonthlyContracts(year?: number, agent?: string): Promise<DashboardMonthlyContracts> {
+    return getDashboardData("contratti-mensili", year, agent);
 }
 
-export function getDashboardProvvigioniMensili(anno?: number, agente?: string): Promise<DashboardProvvigioniMensili> {
-    return getDashboardData("provvigioni-mensili", anno, agente);
+export function getDashboardMonthlyCommissions(year?: number, agent?: string): Promise<DashboardMonthlyCommissions> {
+    return getDashboardData("provvigioni-mensili", year, agent);
 }
 
-export function getDashboardContrattiPerProdotto(
-    anno?: number,
-    agente?: string,
-): Promise<DashboardContrattiPerProdotto> {
-    return getDashboardData("contratti-per-prodotto", anno, agente);
+export function getDashboardContractsByProduct(
+    year?: number,
+    agent?: string,
+): Promise<DashboardContractsByProduct> {
+    return getDashboardData("contratti-per-prodotto", year, agent);
 }

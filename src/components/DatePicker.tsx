@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 interface DatePickerProps {
+    id?: string;
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
@@ -18,6 +19,7 @@ interface DatePickerProps {
 function parseDate(value: string): Date | undefined {
     if (!value) return undefined;
     const d = new Date(value + "T00:00:00");
+
     return isNaN(d.getTime()) ? undefined : d;
 }
 
@@ -25,16 +27,18 @@ function toIsoDate(date: Date): string {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
     const d = String(date.getDate()).padStart(2, "0");
+
     return `${y}-${m}-${d}`;
 }
 
-export function DatePicker({ value, onChange, placeholder = "Seleziona data", className, disabled }: DatePickerProps) {
+export function DatePicker({ id, value, onChange, placeholder = "Seleziona data", className, disabled }: DatePickerProps) {
     const selected = parseDate(value);
 
     return (
         <Popover>
             <PopoverTrigger asChild>
                 <Button
+                    id={id}
                     variant="outline"
                     disabled={disabled}
                     className={cn(
@@ -71,12 +75,14 @@ interface MonthPickerProps {
 function parseMonth(value: string): Date | undefined {
     if (!value) return undefined;
     const d = new Date(value + "-01T00:00:00");
+
     return isNaN(d.getTime()) ? undefined : d;
 }
 
 function toMonthString(date: Date): string {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
+
     return `${y}-${m}`;
 }
 
@@ -133,6 +139,7 @@ export function MonthPicker({ value, onChange, placeholder = "Seleziona mese", c
                 <div className="grid grid-cols-3 gap-1.5">
                     {MONTH_LABELS.map((label, i) => {
                         const isSelected = viewYear === selectedYear && i === selectedMonth;
+
                         return (
                             <Button
                                 key={i}

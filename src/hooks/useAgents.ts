@@ -1,37 +1,38 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
-    getAgenti,
-    createAgente,
-    updateAgente,
-    deleteAgente,
-    getConfigurazioneRegole,
-    saveConfigurazioneRegole,
+    getAgents,
+    createAgent,
+    updateAgent,
+    deleteAgent as deleteAgentApi,
+    getRuleConfiguration,
+    saveRuleConfiguration,
 } from "@/api/agents";
 import { ApiError } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Agente, ConfigurazioneRegola, CreateAgentRequest } from "@/types";
+import type { Agent, RuleConfiguration, CreateAgentRequest } from "@/types";
 
 export function useAgents() {
     const { toast } = useToast();
     const { t } = useTranslation();
 
-    const [agents, setAgents] = useState<Agente[]>([]);
+    const [agents, setAgents] = useState<Agent[]>([]);
     const [loading, setLoading] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingAgent, setEditingAgent] = useState<Agente | null>(null);
+    const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
-    const [configurazione, setConfigurazione] = useState<ConfigurazioneRegola[]>([]);
+    const [configuration, setConfiguration] = useState<RuleConfiguration[]>([]);
     const [configLoading, setConfigLoading] = useState(false);
 
     const initialLoadDone = useRef(false);
 
     const loadAgents = useCallback(async () => {
         setLoading(true);
+
         try {
-            const data = await getAgenti();
+            const data = await getAgents();
             setAgents(data);
         } catch (error) {
             const errorMsg = error instanceof ApiError ? error.message : t("error");
@@ -49,50 +50,57 @@ export function useAgents() {
 
     const openCreateDialog = useCallback(() => {
         setEditingAgent(null);
-        setConfigurazione([]);
+        setConfiguration([]);
         setDialogOpen(true);
     }, []);
 
-    const openEditDialog = useCallback(async (agent: Agente) => {
+    const openEditDialog = useCallback(async (agent: Agent) => {
         setEditingAgent(agent);
-        setConfigurazione([]);
+        setConfiguration([]);
         setDialogOpen(true);
         setConfigLoading(true);
+
         try {
-            const response = await getConfigurazioneRegole(agent.id);
-            setConfigurazione(response.configurazione);
+            const response = await getRuleConfiguration(agent.id);
+            setConfiguration(response.configurazione);
         } catch (error) {
             const errorMsg = error instanceof ApiError ? error.message : t("error");
             toast({ title: t("error"), description: errorMsg, variant: "destructive" });
-            setConfigurazione([]);
+            setConfiguration([]);
         } finally {
             setConfigLoading(false);
         }
     }, [toast, t]);
 
     const saveAgent = useCallback(
-        async (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>): Promise<string | null> => {
+        async (data: CreateAgentRequest, customValues?: Array<{ regola_id: number; scaglione_id: number; valore: number }>): Promise<string | null> => {
             setSaving(true);
+
             try {
                 if (editingAgent) {
-                    await updateAgente(editingAgent.id, data);
-                    if (customValori && customValori.length > 0) {
-                        await saveConfigurazioneRegole(editingAgent.id, { valori: customValori });
+                    await updateAgent(editingAgent.id, data);
+
+                    if (customValues && customValues.length > 0) {
+                        await saveRuleConfiguration(editingAgent.id, { valori: customValues });
                     }
+
                     toast({ title: t("success"), description: t("agentUpdated") });
                     setDialogOpen(false);
                     await loadAgents();
+
                     return t("agentUpdated");
                 } else {
-                    await createAgente(data);
+                    await createAgent(data);
                     toast({ title: t("success"), description: t("agentCreated") });
                     setDialogOpen(false);
                     await loadAgents();
+
                     return t("agentCreated");
                 }
             } catch (error) {
                 const errorMsg = error instanceof ApiError ? error.message : t("error");
                 toast({ title: t("error"), description: errorMsg, variant: "destructive" });
+
                 return null;
             } finally {
                 setSaving(false);
@@ -102,17 +110,20 @@ export function useAgents() {
     );
 
     const deleteAgent = useCallback(
-        async (agent: Agente): Promise<string | null> => {
+        async (agent: Agent): Promise<string | null> => {
             setDeleting(true);
+
             try {
-                await deleteAgente(agent.id);
+                await deleteAgentApi(agent.id);
                 toast({ title: t("success"), description: t("agentDeleted") });
                 setDialogOpen(false);
                 await loadAgents();
+
                 return t("agentDeleted");
             } catch (error) {
                 const errorMsg = error instanceof ApiError ? error.message : t("error");
                 toast({ title: t("error"), description: errorMsg, variant: "destructive" });
+
                 return null;
             } finally {
                 setDeleting(false);
@@ -121,12 +132,12 @@ export function useAgents() {
         [loadAgents, toast, t],
     );
 
-    const toggleStatistiche = useCallback(
-        async (agent: Agente, value: boolean): Promise<void> => {
+    const toggleStatistics = useCallback(
+        async (agent: Agent, value: boolean): Promise<void> => {
             setAgents((prev) => prev.map((current) => (current.id === agent.id ? { ...current, statistiche: value } : current)));
 
             try {
-                await updateAgente(agent.id, { statistiche: value });
+                await updateAgent(agent.id, { statistiche: value });
             } catch (error) {
                 setAgents((prev) =>
                     prev.map((current) => (current.id === agent.id ? { ...current, statistiche: agent.statistiche } : current)),
@@ -151,8 +162,8 @@ export function useAgents() {
         openEditDialog,
         saveAgent,
         deleteAgent,
-        toggleStatistiche,
-        configurazione,
+        toggleStatistics,
+        configuration,
         configLoading,
     };
 }

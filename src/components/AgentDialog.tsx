@@ -1,3 +1,4 @@
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Loader2, CheckCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,12 +44,12 @@ export function AgentDialog({
     onOpenChange,
     agent,
     agents,
-    regole,
+    rules,
     onSave,
     saving,
     onDelete,
     deleting,
-    configurazione,
+    configuration,
     configLoading,
 }: AgentDialogProps) {
     const { t } = useTranslation();
@@ -57,6 +58,7 @@ export function AgentDialog({
     const [formData, setFormData] = useState<CreateAgentRequest>(() => createInitialFormData(agent));
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [editedValues, setEditedValues] = useState<Map<string, string>>(new Map());
+
     const [percentageInput, setPercentageInput] = useState<string>(
         agent?.percentuale_provvigione_figlio != null ? String(agent.percentuale_provvigione_figlio) : "",
     );
@@ -75,15 +77,17 @@ export function AgentDialog({
         );
     }, [agent, open]);
 
-    const handleValueChange = useCallback((regolaId: number, scaglioneId: number, value: string) => {
-        const key = `${regolaId}_${scaglioneId}`;
+    const handleValueChange = useCallback((ruleId: number, tierId: number, value: string) => {
+        const key = `${ruleId}_${tierId}`;
         setEditedValues((prev) => {
             const next = new Map(prev);
+
             if (value === "") {
                 next.delete(key);
             } else {
                 next.set(key, value);
             }
+
             return next;
         });
     }, []);
@@ -95,16 +99,21 @@ export function AgentDialog({
 
     const parsedPercentage = useMemo(() => {
         const trimmed = percentageInput.trim();
+
         if (trimmed === "") {
             return { kind: "empty" } as const;
         }
+
         if (!/^\d+$/.test(trimmed)) {
             return { kind: "invalid" } as const;
         }
+
         const value = parseInt(trimmed, 10);
+
         if (value < 0 || value > 100) {
             return { kind: "invalid" } as const;
         }
+
         return { kind: "valid", value } as const;
     }, [percentageInput]);
 
@@ -117,13 +126,14 @@ export function AgentDialog({
             return;
         }
 
-        const valori =
-            isEdit && configurazione.length > 0
-                ? configurazione.map((item) => {
+        const values =
+            isEdit && configuration.length > 0
+                ? configuration.map((item) => {
                       const key = `${item.regola_id}_${item.scaglione_id}`;
                       const edited = editedValues.get(key);
-                      const valore = edited !== undefined ? (parseEuroNumber(edited) as number) : item.valore;
-                      return { regola_id: item.regola_id, scaglione_id: item.scaglione_id, valore };
+                      const value = edited !== undefined ? parseEuroNumber(edited) ?? item.valore : item.valore;
+
+                      return { regola_id: item.regola_id, scaglione_id: item.scaglione_id, valore: value };
                   })
                 : undefined;
 
@@ -132,7 +142,7 @@ export function AgentDialog({
             percentuale_provvigione_figlio: parsedPercentage.kind === "valid" ? parsedPercentage.value : undefined,
         };
 
-        await onSave(body, valori);
+        await onSave(body, values);
     };
 
     const availableParents = useMemo(
@@ -208,22 +218,22 @@ export function AgentDialog({
                                     >
                                         {t("childCommissionPercent")}
                                     </Label>
-                                    <div
-                                        className="flex h-10 w-28 items-center rounded-md border border-input bg-background pl-3 pr-3 text-base ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 md:text-sm"
+                                    <InputGroup
+                                        className="w-28"
                                         aria-invalid={isPercentageInvalid}
                                     >
-                                        <input
+                                        <InputGroupInput
                                             id="percentuale_provvigione_figlio"
                                             type="text"
                                             inputMode="numeric"
                                             value={percentageInput}
                                             onChange={(e) => setPercentageInput(e.target.value)}
                                             placeholder="100"
-                                            className="font-body w-full min-w-0 bg-transparent text-right outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="font-body pr-0 text-right"
                                             aria-invalid={isPercentageInvalid}
                                         />
-                                        <span className="ml-1 select-none text-sm text-muted-foreground">%</span>
-                                    </div>
+                                        <InputGroupAddon align="inline-end" className="ml-1">%</InputGroupAddon>
+                                    </InputGroup>
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label htmlFor="mail" className="editorial-caps text-muted-foreground">
@@ -264,8 +274,8 @@ export function AgentDialog({
                             <>
                                 <div className="mt-4" />
                                 <RuleValuesEditor
-                                    configurazione={configurazione}
-                                    regole={regole}
+                                    configuration={configuration}
+                                    rules={rules}
                                     loading={configLoading}
                                     editedValues={editedValues}
                                     onValueChange={handleValueChange}

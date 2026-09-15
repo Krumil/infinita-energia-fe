@@ -1,10 +1,11 @@
+import { Button } from "@/components/ui/button";
 import { Settings as SettingsIcon, LayoutDashboard, Users, BookOpen, Receipt, Calculator, FileText, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 interface AppHeaderProps {
@@ -64,12 +65,14 @@ export function AppHeader({
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = activeTab === item.id;
+
                             return (
-                                <button
+                                <Button type="button" variant="unstyled" size="unstyled"
                                     key={item.id}
                                     onClick={() => onTabChange(item.id)}
+                                    aria-label={t(item.labelKey)}
                                     aria-current={isActive ? "page" : undefined}
-                                    className={cn("header-nav-item", isActive && "is-active")}
+                                    className={cn("header-nav-item gap-2.5 text-[13px] leading-[1.65] font-normal", isActive && "is-active")}
                                 >
                                     <Icon
                                         className={`h-4 w-4 ${isActive ? "text-energia-accent" : "text-current"}`}
@@ -84,7 +87,7 @@ export function AppHeader({
                                     {isActive && (
                                         <span className="header-tab-indicator absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" />
                                     )}
-                                </button>
+                                </Button>
                             );
                         })}
 
@@ -96,15 +99,15 @@ export function AppHeader({
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <SheetTrigger asChild>
-                                        <button
-                                            className="header-utility-btn group"
+                                        <Button type="button" variant="unstyled" size="unstyled"
+                                            className="header-utility-btn group text-[length:inherit] font-normal leading-[inherit] [&_svg]:size-[18px]"
                                             aria-label={t("settings")}
                                         >
                                             <SettingsIcon
                                                 className="h-[18px] w-[18px] transition-transform duration-300 group-hover:rotate-45"
                                                 strokeWidth={1.75}
                                             />
-                                        </button>
+                                        </Button>
                                     </SheetTrigger>
                                 </TooltipTrigger>
                                 <TooltipContent side="bottom" sideOffset={8}>
@@ -128,13 +131,13 @@ export function AppHeader({
                         {/* Logout */}
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <button
+                                <Button type="button" variant="unstyled" size="unstyled"
                                     onClick={logout}
-                                    className="header-utility-btn header-utility-btn-danger"
+                                    className="header-utility-btn header-utility-btn-danger text-[length:inherit] font-normal leading-[inherit] [&_svg]:size-[18px]"
                                     aria-label={t("logout")}
                                 >
                                     <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />
-                                </button>
+                                </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" sideOffset={8}>
                                 <p>

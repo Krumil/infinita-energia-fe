@@ -1,43 +1,59 @@
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Scaglione } from "@/types/domain";
+import type { Tier } from "@/types/domain";
+import { z } from "zod";
 
-interface ScaglioniTableProps {
-    scaglioni: Scaglione[];
-    onUpdateTipoUtenza: (scaglione: Scaglione, value: "residenziale" | "business" | null) => Promise<void>;
-    onUpdateTipoServizio: (scaglione: Scaglione, value: "gas" | "luce" | null) => Promise<void>;
+const customerTypeSchema = z.enum(["residenziale", "business"]);
+
+const serviceTypeSchema = z.enum(["gas", "luce"]);
+
+interface TiersTableProps {
+    tiers: Tier[];
+    onUpdateCustomerType: (tier: Tier, value: "residenziale" | "business" | null) => Promise<void>;
+    onUpdateServiceType: (tier: Tier, value: "gas" | "luce" | null) => Promise<void>;
 }
 
-export function ScaglioniTable({ scaglioni, onUpdateTipoUtenza, onUpdateTipoServizio }: ScaglioniTableProps) {
+export function TiersTable({ tiers, onUpdateCustomerType, onUpdateServiceType }: TiersTableProps) {
     const { t } = useTranslation();
 
     return (
         <div className="border border-border/50 overflow-x-auto rounded-sm shadow-sm">
-            <table className="ledger-table w-full">
-                <thead>
-                    <tr>
-                        <th className="font-medium text-sm normal-case tracking-normal">{t("ruleDescription")}</th>
-                        <th className="w-40 font-medium text-sm normal-case tracking-normal">{t("tipoUtenza")}</th>
-                        <th className="w-40 font-medium text-sm normal-case tracking-normal">{t("tipoServizio")}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {scaglioni.length === 0 ? (
-                        <tr>
-                            <td colSpan={3} className="text-center py-12 font-display italic text-muted-foreground">
+            <Table appearance="plain" className="ledger-table w-full">
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="font-medium text-sm normal-case tracking-normal">{t("ruleDescription")}</TableHead>
+                        <TableHead className="w-40 font-medium text-sm normal-case tracking-normal">{t("tipoUtenza")}</TableHead>
+                        <TableHead className="w-40 font-medium text-sm normal-case tracking-normal">{t("tipoServizio")}</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {tiers.length === 0 ? (
+                        <TableRow>
+                            <TableCell colSpan={3} className="text-center py-12 font-display italic text-muted-foreground">
                                 {t("noScaglioniYet")}
-                            </td>
-                        </tr>
+                            </TableCell>
+                        </TableRow>
                     ) : (
-                        scaglioni.map((scaglione) => (
-                            <tr key={scaglione.id}>
-                                <td className="font-body font-medium">{scaglione.descrizione}</td>
-                                <td>
+                        tiers.map((tier) => (
+                            <TableRow key={tier.id}>
+                                <TableCell className="font-body font-medium">{tier.descrizione}</TableCell>
+                                <TableCell>
                                     <Select
-                                        value={scaglione.tipo_utenza ?? "__none__"}
-                                        onValueChange={(value) =>
-                                            onUpdateTipoUtenza(scaglione, value === "__none__" ? null : value as "residenziale" | "business")
-                                        }
+                                        value={tier.tipo_utenza ?? "__none__"}
+                                        onValueChange={(value) => {
+                                            if (value === "__none__") {
+                                                void onUpdateCustomerType(tier, null);
+
+                                                return;
+                                            }
+
+                                            const parsedValue = customerTypeSchema.safeParse(value);
+
+                                            if (parsedValue.success) {
+                                                void onUpdateCustomerType(tier, parsedValue.data);
+                                            }
+                                        }}
                                     >
                                         <SelectTrigger className="h-8 text-sm">
                                             <SelectValue placeholder="—" />
@@ -48,13 +64,23 @@ export function ScaglioniTable({ scaglioni, onUpdateTipoUtenza, onUpdateTipoServ
                                             <SelectItem value="business">{t("business")}</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                </td>
-                                <td>
+                                </TableCell>
+                                <TableCell>
                                     <Select
-                                        value={scaglione.tipo_servizio ?? "__none__"}
-                                        onValueChange={(value) =>
-                                            onUpdateTipoServizio(scaglione, value === "__none__" ? null : value as "gas" | "luce")
-                                        }
+                                        value={tier.tipo_servizio ?? "__none__"}
+                                        onValueChange={(value) => {
+                                            if (value === "__none__") {
+                                                void onUpdateServiceType(tier, null);
+
+                                                return;
+                                            }
+
+                                            const parsedValue = serviceTypeSchema.safeParse(value);
+
+                                            if (parsedValue.success) {
+                                                void onUpdateServiceType(tier, parsedValue.data);
+                                            }
+                                        }}
                                     >
                                         <SelectTrigger className="h-8 text-sm">
                                             <SelectValue placeholder="—" />
@@ -65,12 +91,12 @@ export function ScaglioniTable({ scaglioni, onUpdateTipoUtenza, onUpdateTipoServ
                                             <SelectItem value="luce">{t("luce")}</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         ))
                     )}
-                </tbody>
-            </table>
+                </TableBody>
+            </Table>
         </div>
     );
 }

@@ -400,8 +400,8 @@ The application includes several custom-built components:
 
 ### Data Display
 - `AgentsTable` - Sortable table with inline editing and actions
-- `RegoleTable` - Rules management with toggle and value editing
-- `CalcoloResults` - Commission calculation results display
+- `RulesTable` - Rules management with toggle and value editing
+- `CalculationResults` - Commission calculation results display
 - `KPICard` - Dashboard metric cards with trend indicators
 - `DashboardKPISection` - Grouped KPI display
 

@@ -1,30 +1,30 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-    getDashboardAnniDisponibili,
-    getDashboardAgentiFiltro,
-    getDashboardContrattiTotali,
-    getDashboardProvvigioniTotali,
-    getDashboardContrattiMensili,
-    getDashboardProvvigioniMensili,
-    getDashboardContrattiPerProdotto,
+    getDashboardAvailableYears,
+    getDashboardAgentFilter,
+    getDashboardTotalContracts,
+    getDashboardTotalCommissions,
+    getDashboardMonthlyContracts,
+    getDashboardMonthlyCommissions,
+    getDashboardContractsByProduct,
 } from "@/api/dashboard";
 import { ApiError } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type {
-    DashboardContrattiTotali,
-    DashboardProvvigioniTotali,
-    DashboardContrattiMensili,
-    DashboardProvvigioniMensili,
-    DashboardContrattiPerProdotto,
+    DashboardTotalContracts,
+    DashboardTotalCommissions,
+    DashboardMonthlyContracts,
+    DashboardMonthlyCommissions,
+    DashboardContractsByProduct,
 } from "@/types";
 
 export interface DashboardData {
-    contrattiTotali: DashboardContrattiTotali | null;
-    provvigioniTotali: DashboardProvvigioniTotali | null;
-    contrattiMensili: DashboardContrattiMensili | null;
-    provvigioniMensili: DashboardProvvigioniMensili | null;
-    contrattiPerProdotto: DashboardContrattiPerProdotto | null;
+    totalContracts: DashboardTotalContracts | null;
+    totalCommissions: DashboardTotalCommissions | null;
+    monthlyContracts: DashboardMonthlyContracts | null;
+    monthlyCommissions: DashboardMonthlyCommissions | null;
+    contractsByProduct: DashboardContractsByProduct | null;
 }
 
 export function useDashboard() {
@@ -48,13 +48,15 @@ export function useDashboard() {
     const [availableAgents, setAvailableAgents] = useState<string[]>([]);
     const [selectedYear, setSelectedYear] = useState<number | null>(null);
     const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+
     const [data, setData] = useState<DashboardData>({
-        contrattiTotali: null,
-        provvigioniTotali: null,
-        contrattiMensili: null,
-        provvigioniMensili: null,
-        contrattiPerProdotto: null,
+        totalContracts: null,
+        totalCommissions: null,
+        monthlyContracts: null,
+        monthlyCommissions: null,
+        contractsByProduct: null,
     });
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -64,10 +66,12 @@ export function useDashboard() {
 
         async function fetchInitialData() {
             try {
-                const [years, agents] = await Promise.all([getDashboardAnniDisponibili(), getDashboardAgentiFiltro()]);
+                const [years, agents] = await Promise.all([getDashboardAvailableYears(), getDashboardAgentFilter()]);
+
                 if (!isMounted) return;
                 setAvailableYears(years);
                 setAvailableAgents(agents);
+
                 if (years.length > 0) {
                     setSelectedYear(years[0]);
                 } else {
@@ -108,23 +112,23 @@ export function useDashboard() {
             setError(null);
 
             try {
-                const [contrattiTotali, provvigioniTotali, contrattiMensili, provvigioniMensili, contrattiPerProdotto] =
+                const [totalContracts, totalCommissions, monthlyContracts, monthlyCommissions, contractsByProduct] =
                     await Promise.all([
-                        getDashboardContrattiTotali(year, agent),
-                        getDashboardProvvigioniTotali(year, agent),
-                        getDashboardContrattiMensili(year, agent),
-                        getDashboardProvvigioniMensili(year, agent),
-                        getDashboardContrattiPerProdotto(year, agent),
+                        getDashboardTotalContracts(year, agent),
+                        getDashboardTotalCommissions(year, agent),
+                        getDashboardMonthlyContracts(year, agent),
+                        getDashboardMonthlyCommissions(year, agent),
+                        getDashboardContractsByProduct(year, agent),
                     ]);
 
                 if (!isMounted) return;
 
                 setData({
-                    contrattiTotali,
-                    provvigioniTotali,
-                    contrattiMensili,
-                    provvigioniMensili,
-                    contrattiPerProdotto,
+                    totalContracts,
+                    totalCommissions,
+                    monthlyContracts,
+                    monthlyCommissions,
+                    contractsByProduct,
                 });
             } catch (err) {
                 if (!isMounted) return;

@@ -1,6 +1,13 @@
+import { ordersEn, ordersIt } from "./translations/orders";
+import { invoiceRequestsEn, invoiceRequestsIt } from "./translations/inviti";
+import { attachmentsEn, attachmentsIt } from "./translations/allegati";
+
 export type Language = "en" | "it";
 
 const en = {
+    ...ordersEn,
+    ...invoiceRequestsEn,
+    ...attachmentsEn,
     // Header
     appTitle: "Commission Calculator",
     settings: "Settings",
@@ -203,6 +210,7 @@ const en = {
     // Tables
     showing: "Showing",
     of: "of",
+    clearFilter: "Clear filter",
     filterPlaceholder: "Filter...",
     noDataFound: "No data found",
 
@@ -323,6 +331,9 @@ export type TranslationKey = keyof typeof en;
 type TranslationTable = Record<TranslationKey, string>;
 
 const it: TranslationTable = {
+    ...ordersIt,
+    ...invoiceRequestsIt,
+    ...attachmentsIt,
     // Header
     appTitle: "Calcolo Provvigioni",
     settings: "Impostazioni",
@@ -528,6 +539,7 @@ const it: TranslationTable = {
     // Tables
     showing: "Visualizzazione",
     of: "di",
+    clearFilter: "Cancella filtro",
     filterPlaceholder: "Filtra...",
     noDataFound: "Nessun dato trovato",
 

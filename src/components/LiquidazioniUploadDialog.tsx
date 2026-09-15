@@ -13,11 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileDropzone } from "@/components/FileDropzone";
 import { useTranslation } from "@/hooks/useTranslation";
 
-interface LiquidazioniUploadDialogProps {
+interface SettlementsUploadDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     importing: boolean;
-    onUpload: (files: File[], meseRiferimento: string) => void;
+    onUpload: (files: File[], referenceMonth: string) => void;
 }
 
 const MONTHS_IT = [
@@ -37,13 +37,14 @@ const MONTHS_IT = [
 
 function getDefaultPeriod() {
     const now = new Date();
+
     return {
         month: now.getMonth() + 1,
         year: now.getFullYear(),
     };
 }
 
-export function LiquidazioniUploadDialog({ open, onOpenChange, importing, onUpload }: LiquidazioniUploadDialogProps) {
+export function SettlementsUploadDialog({ open, onOpenChange, importing, onUpload }: SettlementsUploadDialogProps) {
     const { t } = useTranslation();
 
     const defaultPeriod = useMemo(() => getDefaultPeriod(), []);
@@ -55,6 +56,7 @@ export function LiquidazioniUploadDialog({ open, onOpenChange, importing, onUplo
     // Generate year options: current year - 2 to current year + 1
     const yearOptions = useMemo(() => {
         const currentYear = defaultPeriod.year;
+
         return [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
     }, [defaultPeriod.year]);
 
@@ -67,8 +69,8 @@ export function LiquidazioniUploadDialog({ open, onOpenChange, importing, onUplo
     const handleImport = () => {
         if (!selectedFile) return;
 
-        const meseRiferimento = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
-        onUpload([selectedFile], meseRiferimento);
+        const referenceMonth = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
+        onUpload([selectedFile], referenceMonth);
     };
 
     const handleOpenChange = (newOpen: boolean) => {
@@ -78,6 +80,7 @@ export function LiquidazioniUploadDialog({ open, onOpenChange, importing, onUplo
             setSelectedMonth(defaultPeriod.month);
             setSelectedYear(defaultPeriod.year);
         }
+
         onOpenChange(newOpen);
     };
 

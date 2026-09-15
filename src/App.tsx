@@ -8,21 +8,21 @@ import { Toaster } from "@/components/ui/toaster";
 import { AppHeader } from "@/components";
 
 // Page components
-import { DashboardTab, AgentsTab, RegoleTab, OrdiniTab, CalcoloTab, InvitiTab } from "@/pages";
+import { DashboardTab, AgentsTab, RulesTab, OrdersTab, CalculationTab, InvoiceRequestsTab } from "@/pages";
 
 // Custom hooks
 import {
     useAgents,
-    useRegole,
-    useScaglioni,
+    useRules,
+    useTiers,
     useOrders,
-    useLiquidazioni,
-    useCalcolo,
+    useSettlements,
+    useCalculation,
     usePendingOrders,
     useToast,
     useTranslation,
 } from "@/hooks";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function App() {
     const { isAuthenticated } = useAuth();
@@ -42,62 +42,67 @@ function AuthenticatedApp() {
 
     const [settingsOpen, setSettingsOpen] = useState(false);
     const agents = useAgents();
-    const regole = useRegole();
-    const scaglioni = useScaglioni();
+    const rules = useRules();
+    const tiers = useTiers();
     const orders = useOrders();
-    const liquidazioni = useLiquidazioni();
-    const calcolo = useCalcolo();
+    const settlements = useSettlements();
+    const calculation = useCalculation();
     const pendingOrders = usePendingOrders();
 
     const incompleteRulesCount = useMemo(
         () =>
-            regole.regole.filter((r) => r.tipo_utenza === null).length +
-            scaglioni.scaglioni.filter((s) => s.tipo_utenza === null).length,
-        [regole.regole, scaglioni.scaglioni],
+            rules.rules.filter((r) => r.tipo_utenza === null).length +
+            tiers.tiers.filter((s) => s.tipo_utenza === null).length,
+        [rules.rules, tiers.tiers],
     );
 
     useEffect(() => {
         const hash = window.location.hash.replace("#", "") || "dashboard";
         setActiveTab(hash);
+
         if (hash === "ordini") {
-            pendingOrders.fetchPendingOrders();
+            pendingOrders.refreshOrders();
         }
 
         const handleHashChange = () => {
             const newHash = window.location.hash.replace("#", "") || "dashboard";
             setActiveTab(newHash);
+
             if (newHash === "ordini") {
-                pendingOrders.fetchPendingOrders();
+                pendingOrders.refreshOrders();
             }
         };
 
         window.addEventListener("hashchange", handleHashChange);
+
         return () => window.removeEventListener("hashchange", handleHashChange);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleTabChange = (value: string) => {
         setActiveTab(value);
-        window.location.hash = value;
-        if (value === "ordini") {
-            pendingOrders.fetchPendingOrders();
-        }
+
+        if (window.location.hash !== `#${value}`) window.location.hash = value;
     };
 
     const handleOrdersUpload = async (files: File[]) => {
         const action = await orders.handleUpload(files);
+
         if (action) {
-            await pendingOrders.fetchPendingOrders();
+            await pendingOrders.refreshOrders();
         }
     };
 
-    const handleLiquidazioniUpload = async (files: File[], competenzaPeriod: string) => {
-        const result = await liquidazioni.handleUpload(files, competenzaPeriod);
+    const handleSettlementsUpload = async (files: File[], referencePeriod: string) => {
+        const result = await settlements.handleUpload(files, referencePeriod);
+
         if (result) {
-            const refreshes: Promise<void>[] = [pendingOrders.fetchPendingOrders()];
+            const refreshes: Promise<void>[] = [pendingOrders.refreshOrders()];
+
             if (result.hasNewRules) {
-                refreshes.push(regole.loadRegole());
+                refreshes.push(rules.loadRules());
             }
+
             await Promise.all(refreshes);
 
             if (result.hasNewRules) {
@@ -139,49 +144,58 @@ function AuthenticatedApp() {
                                 onRefresh={agents.loadAgents}
                                 onCreateClick={agents.openCreateDialog}
                                 onEdit={agents.openEditDialog}
-                                onToggleStatistiche={agents.toggleStatistiche}
+                                onToggleStatistics={agents.toggleStatistics}
                                 onSave={agents.saveAgent}
                                 onDeleteAgent={agents.deleteAgent}
-                                regole={regole.regole}
-                                configurazione={agents.configurazione}
+                                rules={rules.rules}
+                                configuration={agents.configuration}
                                 configLoading={agents.configLoading}
-                                scaglioni={scaglioni.scaglioni}
+                                tiers={tiers.tiers}
                             />
                         </TabsContent>
 
                         <TabsContent value="regole">
-                            <RegoleTab
-                                regole={regole.regole}
-                                loading={regole.loading}
-                                importing={regole.importing}
-                                onRefresh={regole.loadRegole}
-                                onImportRegole={regole.importRegole}
-                                onToggleUtilizzato={regole.toggleUtilizzato}
-                                onUpdateDefault={regole.updateDefault}
-                                onUpdateTipoUtenza={regole.updateTipoUtenza}
-                                onUpdateTipoServizio={regole.updateTipoServizio}
-                                scaglioni={scaglioni.scaglioni}
-                                scaglioniLoading={scaglioni.loading}
-                                scaglioniImporting={scaglioni.importing}
-                                onRefreshScaglioni={scaglioni.loadScaglioni}
-                                onImportScaglioni={scaglioni.importScaglioni}
-                                onUpdateScaglioneTipoUtenza={scaglioni.updateTipoUtenza}
-                                onUpdateScaglioneTipoServizio={scaglioni.updateTipoServizio}
+                            <RulesTab
+                                rules={rules.rules}
+                                loading={rules.loading}
+                                importing={rules.importing}
+                                onRefresh={rules.loadRules}
+                                onImportRules={rules.importRules}
+                                onToggleEnabled={rules.toggleEnabled}
+                                onUpdateDefault={rules.updateDefault}
+                                onUpdateCustomerType={rules.updateCustomerType}
+                                onUpdateServiceType={rules.updateServiceType}
+                                tiers={tiers.tiers}
+                                tiersLoading={tiers.loading}
+                                tiersImporting={tiers.importing}
+                                onRefreshTiers={tiers.loadTiers}
+                                onImportTiers={tiers.importTiers}
+                                onUpdateTierCustomerType={tiers.updateCustomerType}
+                                onUpdateTierServiceType={tiers.updateServiceType}
                             />
                         </TabsContent>
 
                         <TabsContent value="ordini">
-                            <OrdiniTab
+                            <OrdersTab
                                 ordersImporting={orders.importing}
                                 ordersProgress={orders.progress}
                                 ordersResult={orders.result}
                                 onOrdersUpload={handleOrdersUpload}
-                                liquidazioniImporting={liquidazioni.importing}
-                                liquidazioniResult={liquidazioni.result}
-                                onLiquidazioniUpload={handleLiquidazioniUpload}
+                                settlementsImporting={settlements.importing}
+                                settlementsResult={settlements.result}
+                                onSettlementsUpload={handleSettlementsUpload}
                                 pendingOrders={pendingOrders.orders}
                                 pendingOrdersLoading={pendingOrders.loading}
-                                onRefreshPendingOrders={pendingOrders.fetchPendingOrders}
+                                pendingOrdersError={pendingOrders.error}
+                                excludedOrders={pendingOrders.excludedOrders}
+                                excludedOrdersCount={pendingOrders.excludedCount}
+                                excludedOrdersLoading={pendingOrders.excludedLoading}
+                                excludedOrdersError={pendingOrders.excludedError}
+                                mutatingRowId={pendingOrders.mutatingRowId}
+                                mutationError={pendingOrders.mutationError}
+                                onRefreshOrders={pendingOrders.refreshOrders}
+                                onExcludeOrder={pendingOrders.excludeOrder}
+                                onRestoreOrder={pendingOrders.restoreOrder}
                                 startDate={pendingOrders.startDate}
                                 endDate={pendingOrders.endDate}
                                 onStartDateChange={pendingOrders.setStartDate}
@@ -190,19 +204,19 @@ function AuthenticatedApp() {
                         </TabsContent>
 
                         <TabsContent value="provvigioni">
-                            <CalcoloTab
-                                data={calcolo.data}
-                                result={calcolo.result}
-                                loading={calcolo.loading}
-                                unmatchedAgents={calcolo.unmatchedAgents}
-                                onUpload={calcolo.handleUpload}
-                                onCalculate={calcolo.calculate}
+                            <CalculationTab
+                                data={calculation.data}
+                                result={calculation.result}
+                                loading={calculation.loading}
+                                unmatchedAgents={calculation.unmatchedAgents}
+                                onUpload={calculation.handleUpload}
+                                onCalculate={calculation.calculate}
                                 onNavigate={handleTabChange}
                             />
                         </TabsContent>
 
                         <TabsContent value="inviti">
-                            <InvitiTab
+                            <InvoiceRequestsTab
                                 agents={agents.agents}
                                 agentsLoading={agents.loading}
                             />
