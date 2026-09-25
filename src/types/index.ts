@@ -1,6 +1,20 @@
 export type { Agent, Rule, Tier, Settlement, RuleConfiguration, RuleConfigurationResponse, InvoiceRequest } from "./domain";
 
 export type {
+    DeleteSettlementsResponse,
+    PreviewRequest,
+    CalculationDetail,
+    PreviewAgent,
+    UnmatchedSettlement,
+    PreviewResponse,
+    ConfirmationDetail,
+    ConfirmationAgent,
+    ConfirmationRequest,
+    SavedConfirmationResult,
+    SkippedConfirmationResult,
+    ConfirmationResult,
+    ConfirmationResponse,
+    UnpaidCalculationRequest,
     OrderExclusion,
     ExcludedOrder,
     ExcludedOrdersResponse,

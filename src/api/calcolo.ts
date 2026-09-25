@@ -1,10 +1,17 @@
 import type {
+    PreviewRequest,
+    PreviewResponse,
+    ConfirmationRequest,
+    ConfirmationResponse,
+    UnpaidCalculationRequest,
     CalculationInput,
     UnpaidCalculationResponse,
     CalculationResult,
     CheckAgentsResponse,
 } from "@/types";
 import { z } from "zod";
+import { monthToStartDate } from "@/lib/competenceDates";
+import { previewResponseSchema, confirmationRequestSchema, confirmationResponseSchema } from "./calculationSchemas";
 import {
     authFetch,
     getApiUrl,
@@ -60,10 +67,12 @@ export async function getUnpaidCalculation(
     agentId: number,
     months: string[],
 ): Promise<UnpaidCalculationResponse> {
+    const payload: UnpaidCalculationRequest = { agente_id: agentId, mesi_competenza: months.map(monthToStartDate) };
+
     const res = await authFetch(getApiUrl("/non-pagati"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agente_id: agentId, mesi_competenza: months }),
+        body: JSON.stringify(payload),
     });
 
     await handleEmptyResponse(res);
@@ -80,4 +89,31 @@ export async function getUnpaidCalculation(
         totale_provvigione: body.totale_provvigione ?? 0,
         dati_provvigione: body.dati_provvigione ?? [],
     };
+}
+
+export async function previewCommissions(month: string): Promise<PreviewResponse> {
+    const payload: PreviewRequest = { competenza_liquidazione: monthToStartDate(month) };
+
+    const res = await authFetch(getApiUrl("/calcolo/anteprima"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    return handleResponseWithSanitization(res, previewResponseSchema);
+}
+
+export async function confirmCommissions(data: ConfirmationRequest): Promise<ConfirmationResponse> {
+    const payload = confirmationRequestSchema.parse({
+        ...data,
+        mese_competenza: monthToStartDate(data.mese_competenza),
+    });
+
+    const res = await authFetch(getApiUrl("/calcolo/conferma"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    return handleResponseWithSanitization(res, confirmationResponseSchema);
 }

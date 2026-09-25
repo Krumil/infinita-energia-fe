@@ -1,163 +1,96 @@
-import { useState, useCallback } from "react";
-import { calculateCommissions, checkAgents } from "@/api/calcolo";
+import { useCallback, useRef, useState } from "react";
+import { previewCommissions } from "@/api/calcolo";
 import { ApiError } from "@/api/client";
-import { parseSettlementsExcel, convertToCalculationInput } from "@/importers/liquidazioni";
-import { useToast } from "@/hooks/use-toast";
-import { useTranslation } from "@/hooks/useTranslation";
-import type { Settlement, CalculationResult } from "@/types";
+import { currentMonth } from "@/lib/competenceDates";
+import type { PreviewResponse } from "@/types";
 
-export interface UnmatchedAgent {
-    name: string;
-    count: number;
+export type PreviewState =
+    | { status: "idle" }
+    | { status: "loading"; month: string; previous: PreviewResponse | null }
+    | { status: "ready"; month: string; data: PreviewResponse; stale: boolean }
+    | { status: "error"; month: string; reason: "setup" | "request"; message: string | null };
+
+interface PendingPreview {
+    month: string;
+    invalidated: boolean;
 }
 
-export function useCalculation() {
-    const { toast } = useToast();
-    const { t } = useTranslation();
+export interface UseCalculationResult {
+    month: string;
+    preview: PreviewState;
+    selectMonth: (month: string) => void;
+    requestPreview: () => void;
+    invalidateMonth: (month: string) => void;
+}
 
-    const [data, setData] = useState<Settlement[]>([]);
-    const [result, setResult] = useState<CalculationResult | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [unmatchedAgents, setUnmatchedAgents] = useState<UnmatchedAgent[]>([]);
-    const [matchedNames, setMatchedNames] = useState<Set<string> | null>(null);
+export function useCalculation(): UseCalculationResult {
+    const [month, setMonth] = useState(currentMonth);
+    const [preview, setPreview] = useState<PreviewState>({ status: "idle" });
+    // Only the latest request may update the preview; month changes and newer requests replace it.
+    const latestRequest = useRef<PendingPreview | null>(null);
 
-    const handleUpload = useCallback(
-        async (files: File[]) => {
-            const file = files[0];
+    const selectMonth = useCallback(
+        (nextMonth: string): void => {
+            if (nextMonth === month) return;
+            latestRequest.current = null;
+            setMonth(nextMonth);
+            setPreview({ status: "idle" });
+        },
+        [month],
+    );
 
-            if (!file) return;
+    const requestPreview = useCallback((): void => {
+        if (!month) return;
 
+        const request: PendingPreview = { month, invalidated: false };
+        latestRequest.current = request;
+
+        setPreview((current) => {
+            const previous =
+                current.status === "ready" && current.month === month
+                    ? current.data
+                    : current.status === "loading" && current.month === month
+                      ? current.previous
+                      : null;
+
+            return { status: "loading", month, previous };
+        });
+
+        const run = async (): Promise<void> => {
             try {
-                const parsed = await parseSettlementsExcel(file);
-                setData(parsed);
-                setResult(null);
-                setMatchedNames(null);
+                const data = await previewCommissions(month);
 
-                const uniqueSellers = [
-                    ...new Set(
-                        parsed
-                            .map((r) => r.venditore?.trim())
-                            .filter((v): v is string => !!v),
-                    ),
-                ];
+                if (latestRequest.current !== request) return;
+                latestRequest.current = null;
+                setPreview({ status: "ready", month, data, stale: request.invalidated });
+            } catch (error) {
+                if (latestRequest.current !== request) return;
+                latestRequest.current = null;
 
-                if (uniqueSellers.length === 0) {
-                    setUnmatchedAgents([]);
-                    toast({
-                        title: t("uploadSuccessful"),
-                        description: `${t("parsedRecords")}: ${parsed.length}.`,
-                    });
+                if (error instanceof ApiError) {
+                    // The preview endpoint only answers 404 when the commission configuration is missing.
+                    const reason = error.status === 404 ? "setup" : "request";
+                    setPreview({ status: "error", month, reason, message: error.message });
 
                     return;
                 }
 
-                const checkResult = await checkAgents(uniqueSellers);
-                const matched = new Set(checkResult.matches);
-                setMatchedNames(matched);
-
-                const sellerCounts = new Map<string, number>();
-
-                for (const record of parsed) {
-                    const v = record.venditore?.trim() || "";
-
-                    if (v) sellerCounts.set(v, (sellerCounts.get(v) || 0) + 1);
-                }
-
-                const unmatched: UnmatchedAgent[] = checkResult.not_found
-                    .map((name) => ({
-                        name,
-                        count: sellerCounts.get(name) || 0,
-                    }))
-                    .sort((a, b) => b.count - a.count);
-
-                setUnmatchedAgents(unmatched);
-
-                if (unmatched.length > 0) {
-                    toast({
-                        title: t("unmatchedAgentsWarning"),
-                        description: `${unmatched.length} ${t("unmatchedAgentsCount")}`,
-                        variant: "destructive",
-                    });
-                } else {
-                    toast({
-                        title: t("uploadSuccessful"),
-                        description: `${t("parsedRecords")}: ${parsed.length}. ${t("allAgentsMatched")}`,
-                    });
-                }
-            } catch (error) {
-                const errorMsg = error instanceof Error ? error.message : t("error");
-                toast({
-                    title: t("uploadFailed"),
-                    description: errorMsg,
-                    variant: "destructive",
-                });
+                console.error("Preview request failed", { month, error });
+                setPreview({ status: "error", month, reason: "request", message: null });
             }
-        },
-        [toast, t],
-    );
+        };
 
-    const calculate = useCallback(async (): Promise<string | null> => {
-        if (data.length === 0) return null;
+        void run();
+    }, [month]);
 
-        setLoading(true);
-        setResult(null);
+    const invalidateMonth = useCallback((changedMonth: string): void => {
+        // A response already in flight may have been computed from the old source rows.
+        if (latestRequest.current?.month === changedMonth) latestRequest.current.invalidated = true;
 
-        try {
-            if (!matchedNames || matchedNames.size === 0) {
-                toast({
-                    title: t("error"),
-                    description: t("noMatchedRecordsToCalculate"),
-                    variant: "destructive",
-                });
+        setPreview((current) =>
+            current.status === "ready" && current.month === changedMonth ? { ...current, stale: true } : current,
+        );
+    }, []);
 
-                return null;
-            }
-
-            const matchedData = data.filter((record) => {
-                const v = record.venditore?.trim() || "";
-
-                return v !== "" && matchedNames.has(v);
-            });
-
-            if (matchedData.length === 0) {
-                toast({
-                    title: t("error"),
-                    description: t("noMatchedRecordsToCalculate"),
-                    variant: "destructive",
-                });
-
-                return null;
-            }
-
-            const inputData = convertToCalculationInput(matchedData);
-            const calcResult = await calculateCommissions(inputData);
-            setResult(calcResult);
-            toast({
-                title: t("success"),
-                description: t("calculationResults"),
-            });
-
-            return t("calculateCommissions");
-        } catch (error) {
-            const errorMsg = error instanceof ApiError ? error.message : t("error");
-            toast({
-                title: t("error"),
-                description: errorMsg,
-                variant: "destructive",
-            });
-
-            return null;
-        } finally {
-            setLoading(false);
-        }
-    }, [matchedNames, data, toast, t]);
-
-    return {
-        data,
-        result,
-        loading,
-        unmatchedAgents,
-        handleUpload,
-        calculate,
-    };
+    return { month, preview, selectMonth, requestPreview, invalidateMonth };
 }

@@ -45,9 +45,24 @@ function AuthenticatedApp() {
     const rules = useRules();
     const tiers = useTiers();
     const orders = useOrders();
-    const settlements = useSettlements();
     const calculation = useCalculation();
     const pendingOrders = usePendingOrders();
+
+    const settlements = useSettlements({
+        onSourceChanged: (month) => {
+            calculation.invalidateMonth(month);
+            void pendingOrders.refreshOrders().catch(() => {
+                toast({ title: t("error"), description: t("fetchError"), variant: "destructive" });
+            });
+        },
+        onImported: (hasNewRules) => {
+            if (!hasNewRules) return;
+            void rules.loadRules().catch(() => {
+                toast({ title: t("error"), description: t("fetchError"), variant: "destructive" });
+            });
+            toast({ title: t("newRulesCreated"), description: t("newRulesCreatedDesc") });
+        },
+    });
 
     const incompleteRulesCount = useMemo(
         () =>
@@ -90,27 +105,6 @@ function AuthenticatedApp() {
 
         if (action) {
             await pendingOrders.refreshOrders();
-        }
-    };
-
-    const handleSettlementsUpload = async (files: File[], referencePeriod: string) => {
-        const result = await settlements.handleUpload(files, referencePeriod);
-
-        if (result) {
-            const refreshes: Promise<void>[] = [pendingOrders.refreshOrders()];
-
-            if (result.hasNewRules) {
-                refreshes.push(rules.loadRules());
-            }
-
-            await Promise.all(refreshes);
-
-            if (result.hasNewRules) {
-                toast({
-                    title: t("newRulesCreated"),
-                    description: t("newRulesCreatedDesc"),
-                });
-            }
         }
     };
 
@@ -181,9 +175,7 @@ function AuthenticatedApp() {
                                 ordersProgress={orders.progress}
                                 ordersResult={orders.result}
                                 onOrdersUpload={handleOrdersUpload}
-                                settlementsImporting={settlements.importing}
-                                settlementsResult={settlements.result}
-                                onSettlementsUpload={handleSettlementsUpload}
+                                settlements={settlements}
                                 pendingOrders={pendingOrders.orders}
                                 pendingOrdersLoading={pendingOrders.loading}
                                 pendingOrdersError={pendingOrders.error}
@@ -205,12 +197,11 @@ function AuthenticatedApp() {
 
                         <TabsContent value="provvigioni">
                             <CalculationTab
-                                data={calculation.data}
-                                result={calculation.result}
-                                loading={calculation.loading}
-                                unmatchedAgents={calculation.unmatchedAgents}
-                                onUpload={calculation.handleUpload}
-                                onCalculate={calculation.calculate}
+                                month={calculation.month}
+                                preview={calculation.preview}
+                                agents={agents.agents}
+                                onMonthChange={calculation.selectMonth}
+                                onPreview={calculation.requestPreview}
                                 onNavigate={handleTabChange}
                             />
                         </TabsContent>

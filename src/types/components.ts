@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Agent, Rule, Tier, RuleConfiguration } from "./domain";
-import type { CreateAgentRequest, CalculationResult } from "./api";
+import type { CreateAgentRequest, PreviewResponse } from "./api";
 
 export interface FileDropzoneProps {
     accept: string;
@@ -54,6 +54,7 @@ export interface RulesTableProps {
 }
 
 export interface CalculationResultsProps {
-    data: CalculationResult;
-    periodStart?: string;
+    month: string;
+    preview: PreviewResponse;
+    agents: Agent[];
 }

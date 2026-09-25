@@ -4,6 +4,11 @@ const BASE_API = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 
 type UnauthorizedCallback = () => void;
 
+const apiErrorResponseSchema = z.object({
+    error: z.string().optional().catch(undefined),
+    message: z.string().optional().catch(undefined),
+});
+
 let onUnauthorized: UnauthorizedCallback | null = null;
 
 export function setUnauthorizedCallback(callback: UnauthorizedCallback | null): void {
@@ -43,17 +48,30 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
 
 async function throwIfNotOk(res: Response): Promise<void> {
     if (!res.ok) {
-        let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+        throw new ApiError(res.status, await getErrorMessage(res));
+    }
+}
 
-        try {
-            const errorData = apiErrorResponseSchema.safeParse(await res.json());
+function firstNonblankString(...values: Array<string | undefined>): string | null {
+    for (const value of values) {
+        if (value?.trim()) return value;
+    }
 
-            if (errorData.success) errorMessage = errorData.data.error;
-        } catch {
-            // Ignore JSON parsing errors
-        }
+    return null;
+}
 
-        throw new ApiError(res.status, errorMessage);
+async function getErrorMessage(res: Response): Promise<string> {
+    const fallback = `HTTP ${res.status}: ${res.statusText}`;
+
+    try {
+        const body: unknown = await res.json();
+        const parsed = apiErrorResponseSchema.safeParse(body);
+
+        if (!parsed.success) return fallback;
+
+        return firstNonblankString(parsed.data.error, parsed.data.message) ?? fallback;
+    } catch {
+        return fallback;
     }
 }
 
@@ -83,5 +101,3 @@ export async function handleResponseWithSanitization<T>(res: Response, schema: z
 
     return schema.parse(payload);
 }
-
-const apiErrorResponseSchema = z.object({ error: z.string() }).passthrough();

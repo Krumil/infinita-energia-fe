@@ -1,125 +1,77 @@
-import { useState, useCallback } from "react";
-import { importSettlements } from "@/api/liquidazioni";
-import { ApiError } from "@/api/client";
-import { parseSettlementsExcel } from "@/importers/liquidazioni";
-import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useLayoutEffect, useState } from "react";
+import { deleteSettlements, importSettlements } from "@/api/liquidazioni";
+import { parseSettlementsExcel } from "@/importers/liquidazioni";
+import {
+    createSettlementWorkflow,
+    type SettlementImportResult,
+    type SettlementWorkflowController,
+    type SettlementWorkflowState,
+} from "@/lib/settlementWorkflow";
 
-interface SettlementsResult {
-    success: boolean;
-    message: string;
-    count: number;
-    hasNewRules: boolean;
+export interface UseSettlementsOptions {
+    onSourceChanged: (month: string) => void | Promise<void>;
+    onImported: (hasNewRules: boolean) => void | Promise<void>;
 }
 
-function extractNewRulesCount(message: string): number {
-    const match = message.match(/Aggiunte\s+(\d+)\s+nuove regole/i);
-
-    return match ? Number(match[1]) : 0;
+export interface UseSettlementsResult {
+    importing: boolean;
+    result: SettlementImportResult | null;
+    state: SettlementWorkflowState;
+    preparedMonth: string | null;
+    preparedFileName: string | null;
+    handleUpload: SettlementWorkflowController["handleUpload"];
+    retryImport: SettlementWorkflowController["retryImport"];
+    confirmDeletion: SettlementWorkflowController["confirmDeletion"];
+    resetAttempt: SettlementWorkflowController["resetAttempt"];
 }
 
-export function useSettlements() {
-    const { toast } = useToast();
+export function useSettlements(options: UseSettlementsOptions): UseSettlementsResult {
     const { t } = useTranslation();
-
     const [importing, setImporting] = useState(false);
-    const [result, setResult] = useState<SettlementsResult | null>(null);
+    const [result, setResult] = useState<SettlementImportResult | null>(null);
 
-    const handleUpload = useCallback(
-        async (files: File[], referencePeriod?: string): Promise<{ action: string; hasNewRules: boolean } | null> => {
-            const file = files[0];
+    const [state, setState] = useState<SettlementWorkflowState>({
+        status: "idle",
+        preparedMonth: null,
+        cleared: false,
+        deletedCount: null,
+    });
 
-            if (!file) return null;
+    const [preparedFileName, setPreparedFileName] = useState<string | null>(null);
 
-            setImporting(true);
-            setResult(null);
+    const [controller] = useState(() => {
+        const workflow = createSettlementWorkflow({
+            getMessage: t,
+            parseSettlementsExcel,
+            importSettlements,
+            deleteSettlements,
+            onSourceChanged: options.onSourceChanged,
+            onImported: options.onImported,
+            onStateChanged: (nextState) => {
+                setImporting(workflow.importing);
+                setResult(workflow.result);
+                setState(nextState);
+                setPreparedFileName(workflow.preparedFileName);
+            },
+        });
 
-            try {
-                const parsedData = await parseSettlementsExcel(file);
+        return workflow;
+    });
 
-                // Override competenza period with user selection
-                if (referencePeriod) {
-                    const [year, month] = referencePeriod.split("-").map(Number);
-
-                    // Format for backend: MM/YYYY (required by pandas conversion)
-                    const settlementPeriod = `${String(month).padStart(2, "0")}/${year}`;
-
-                    // Format for comp_dal/comp_al: YYYY-MM-DD
-                    const periodDate = `${referencePeriod}-01`;
-                    const lastDay = new Date(year, month, 0).getDate();
-                    const periodEndDate = `${referencePeriod}-${String(lastDay).padStart(2, "0")}`;
-
-                    for (const record of parsedData) {
-                        // Set competenza_liquidazione in MM/YYYY format for backend
-                        record.competenza_liquidazione = settlementPeriod;
-                        record.comp_dal = periodDate;
-                        record.comp_al = periodEndDate;
-                    }
-                }
-
-                if (parsedData.length === 0) {
-                    toast({
-                        title: t("error"),
-                        description: t("noDataFound"),
-                        variant: "destructive",
-                    });
-                    setImporting(false);
-
-                    return null;
-                }
-
-                const importResult = await importSettlements(parsedData);
-
-                if (importResult.success) {
-                    const newRulesCount = extractNewRulesCount(importResult.message);
-
-                    const resultData = {
-                        success: true,
-                        message: importResult.message,
-                        count: parsedData.length,
-                        hasNewRules: newRulesCount > 0,
-                    };
-
-                    setResult(resultData);
-                    toast({
-                        title: t("success"),
-                        description: importResult.message,
-                    });
-
-                    return {
-                        action: `${t("liquidationsImported")}: ${parsedData.length}`,
-                        hasNewRules: resultData.hasNewRules,
-                    };
-                } else {
-                    toast({
-                        title: t("error"),
-                        description: importResult.error || importResult.message,
-                        variant: "destructive",
-                    });
-
-                    return null;
-                }
-            } catch (error) {
-                const errorMsg =
-                    error instanceof ApiError ? error.message : error instanceof Error ? error.message : t("error");
-
-                toast({
-                    title: t("uploadFailed"),
-                    description: errorMsg,
-                    variant: "destructive",
-                });
-
-                return null;
-            } finally {
-                setImporting(false);
-            }
-        },
-        [toast, t],
-    );
+    useLayoutEffect(() => {
+        controller.updateCallbacks({ ...options, getMessage: t });
+    }, [controller, options, t]);
 
     return {
         importing,
         result,
-        handleUpload,
+        state,
+        preparedMonth: state.preparedMonth,
+        preparedFileName,
+        handleUpload: controller.handleUpload,
+        retryImport: controller.retryImport,
+        confirmDeletion: controller.confirmDeletion,
+        resetAttempt: controller.resetAttempt,
     };
 }

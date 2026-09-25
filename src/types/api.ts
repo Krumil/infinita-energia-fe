@@ -256,3 +256,93 @@ export interface CheckAgentsResponse {
         not_found_count: number;
     };
 }
+
+export interface DeleteSettlementsResponse {
+    success: boolean;
+    competenza_liquidazione: string;
+    righe_eliminate: number;
+}
+
+export interface PreviewRequest {
+    competenza_liquidazione: string;
+}
+
+export interface CalculationDetail {
+    venditore: string | null;
+    comp_al: string | null;
+    regola: string | null;
+    importo_provvigione: number;
+    pod_pdr: string | null;
+    cliente: string | null;
+    cf_piva: string | null;
+}
+
+export interface PreviewAgent {
+    agente_id: number;
+    nome_agente: string | null;
+    totale_provvigione: number;
+    dettaglio: CalculationDetail[];
+}
+
+export interface UnmatchedSettlement {
+    venditore: string | null;
+    comp_al: string | null;
+    regola: string | null;
+    scaglione_consumo: string | null;
+    importo_euro: number | null;
+    pod_pdr: string | null;
+    cliente: string | null;
+    cf_piva: string | null;
+}
+
+export interface PreviewResponse {
+    competenza_liquidazione: string;
+    agenti: PreviewAgent[];
+    non_associati: UnmatchedSettlement[];
+}
+
+export interface ConfirmationDetail {
+    importo_provvigione: number;
+    venditore?: string | null;
+    comp_al?: string | null;
+    regola?: string | null;
+    pod_pdr?: string | null;
+    cliente?: string | null;
+    cf_piva?: string | null;
+}
+
+export interface ConfirmationAgent {
+    agente_id: number;
+    dettaglio: ConfirmationDetail[];
+}
+
+export interface ConfirmationRequest {
+    mese_competenza: string;
+    agenti: ConfirmationAgent[];
+}
+
+export interface SavedConfirmationResult {
+    salvato: true;
+    agente_id: number;
+    invito_id: number;
+    totale_invito: number;
+}
+
+export interface SkippedConfirmationResult {
+    salvato: false;
+    agente_id: number;
+    invito_id: number;
+    motivo: string;
+}
+
+export type ConfirmationResult = SavedConfirmationResult | SkippedConfirmationResult;
+
+export interface ConfirmationResponse {
+    mese_competenza: string;
+    risultati: ConfirmationResult[];
+}
+
+export interface UnpaidCalculationRequest {
+    agente_id: number;
+    mesi_competenza: string[];
+}

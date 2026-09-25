@@ -1,13 +1,17 @@
+import { settlementsEn, settlementsIt } from "./translations/settlements";
 import { ordersEn, ordersIt } from "./translations/orders";
 import { invoiceRequestsEn, invoiceRequestsIt } from "./translations/inviti";
 import { attachmentsEn, attachmentsIt } from "./translations/allegati";
+import { previewEn, previewIt } from "./translations/preview";
 
 export type Language = "en" | "it";
 
 const en = {
+    ...settlementsEn,
     ...ordersEn,
     ...invoiceRequestsEn,
     ...attachmentsEn,
+    ...previewEn,
     // Header
     appTitle: "Commission Calculator",
     settings: "Settings",
@@ -161,7 +165,7 @@ const en = {
 
     // Calculation Tab
     calculateCommissionsTitle: "Commissions",
-    calculateCommissionsDesc: "Upload liquidation data to calculate agent commissions",
+    calculateCommissionsDesc: "Preview agent commissions from the liquidations imported for a month",
     uploadForCalculation: "Upload Liquidation File",
     calculationResults: "Calculation Results",
     noCalculationYet: "No calculation performed yet. Upload a liquidation file to calculate commissions.",
@@ -331,9 +335,11 @@ export type TranslationKey = keyof typeof en;
 type TranslationTable = Record<TranslationKey, string>;
 
 const it: TranslationTable = {
+    ...settlementsIt,
     ...ordersIt,
     ...invoiceRequestsIt,
     ...attachmentsIt,
+    ...previewIt,
     // Header
     appTitle: "Calcolo Provvigioni",
     settings: "Impostazioni",
@@ -490,7 +496,7 @@ const it: TranslationTable = {
 
     // Calculation Tab
     calculateCommissionsTitle: "Provvigioni",
-    calculateCommissionsDesc: "Carica i dati delle liquidazioni per calcolare le provvigioni degli agenti",
+    calculateCommissionsDesc: "Anteprima delle provvigioni degli agenti dalle liquidazioni importate per una competenza",
     uploadForCalculation: "Carica File Liquidazioni",
     calculationResults: "Risultati Calcolo",
     noCalculationYet: "Nessun calcolo effettuato. Carica un file di liquidazioni per calcolare le provvigioni.",

@@ -1,59 +1,41 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState, type ReactElement } from "react";
 import {
-    CheckCircle,
+    ArrowDown,
+    ArrowUp,
+    ArrowUpDown,
+    Calendar,
+    Download,
+    FileSpreadsheet,
     Loader2,
+    Package,
     RefreshCw,
     Search,
     X,
-    Package,
-    FileSpreadsheet,
-    Calendar,
-    ArrowUpDown,
-    ArrowUp,
-    ArrowDown,
-    Download,
 } from "lucide-react";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileDropzone } from "@/components";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/DatePicker";
+import { OrdersImportDialog } from "@/components/OrdersImportDialog";
+import { SettlementsDialog } from "@/components/SettlementsDialog";
 import { useTranslation } from "@/hooks/useTranslation";
+import type { UseSettlementsResult } from "@/hooks/useLiquidazioni";
 import { exportPendingOrdersExcel } from "@/lib/exportUtils";
 import { formatDate } from "@/lib/utils";
 import type { ImportExcelResponse, ExcludedOrder, PendingOrder } from "@/types";
 import { z } from "zod";
-
-interface SettlementsResult {
-    success: boolean;
-    message: string;
-    count: number;
-}
 
 interface OrdersTabProps {
     ordersImporting: boolean;
     ordersProgress: number;
     ordersResult: ImportExcelResponse | null;
     onOrdersUpload: (files: File[]) => void;
-    settlementsImporting: boolean;
-    settlementsResult: SettlementsResult | null;
-    onSettlementsUpload: (files: File[], referencePeriod: string) => void;
+    settlements: UseSettlementsResult;
     pendingOrders: PendingOrder[];
     pendingOrdersLoading: boolean;
     pendingOrdersError: string | null;
@@ -84,40 +66,7 @@ type SortField =
 
 type SortDirection = "asc" | "desc";
 
-// Generate period options for the last 24 months
-function generatePeriodOptions(): { value: string; label: string }[] {
-    const options: { value: string; label: string }[] = [];
-    const now = new Date();
-
-    const monthNames = [
-        "Gennaio",
-        "Febbraio",
-        "Marzo",
-        "Aprile",
-        "Maggio",
-        "Giugno",
-        "Luglio",
-        "Agosto",
-        "Settembre",
-        "Ottobre",
-        "Novembre",
-        "Dicembre",
-    ];
-
-    for (let i = 0; i < 24; i++) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const value = `${year}-${String(month + 1).padStart(2, "0")}`;
-        const label = `${monthNames[month]} ${year}`;
-        options.push({ value, label });
-    }
-
-    return options;
-}
-
-const PERIOD_OPTIONS = generatePeriodOptions();
-
+const ALL_STATUSES = "all";
 
 function filterOrders(orders: PendingOrder[], query: string): PendingOrder[] {
     if (!query.trim()) return orders;
@@ -234,7 +183,13 @@ const ORDER_BADGE_CLASSES = new Map(Object.entries({
 
 const ordersViewSchema = z.enum(["pending", "excluded"]);
 
-function getStatusBadge(status: string | null) {
+const TAB_TRIGGER_CLASSES = "gap-2 px-3 py-2 data-[state=active]:bg-secondary data-[state=active]:shadow-none";
+
+const COUNT_PILL_CLASSES = "rounded bg-background/60 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground";
+
+const PANEL_CLASSES = "rounded-md border bg-card";
+
+function getStatusBadge(status: string | null): ReactElement {
     const config = ORDER_BADGE_CLASSES.get(status ?? "") ?? DEFAULT_BADGE_CLASSES;
 
     return (
@@ -252,7 +207,7 @@ interface SortableHeaderProps {
     onSort: (field: SortField) => void;
 }
 
-function SortableHeader({ label, field, currentField, direction, onSort }: SortableHeaderProps) {
+function SortableHeader({ label, field, currentField, direction, onSort }: SortableHeaderProps): ReactElement {
     const isActive = currentField === field;
 
     return (
@@ -281,9 +236,7 @@ export function OrdersTab({
     ordersProgress,
     ordersResult,
     onOrdersUpload,
-    settlementsImporting,
-    settlementsResult,
-    onSettlementsUpload,
+    settlements,
     pendingOrders,
     pendingOrdersLoading,
     pendingOrdersError,
@@ -300,24 +253,59 @@ export function OrdersTab({
     endDate,
     onStartDateChange,
     onEndDateChange,
-}: OrdersTabProps) {
+}: OrdersTabProps): ReactElement {
     const { t } = useTranslation();
     const [filterQuery, setFilterQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState(ALL_STATUSES);
     const [sortField, setSortField] = useState<SortField>("cliente_nome");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-    const [selectedPeriod, setSelectedPeriod] = useState<string>(PERIOD_OPTIONS[0]?.value || "");
-    const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
     const [ordersView, setOrdersView] = useState<"pending" | "excluded">("pending");
+    const [importOpen, setImportOpen] = useState(false);
+    const [settlementsOpen, setSettlementsOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<PendingOrder | null>(null);
     const [exclusionReason, setExclusionReason] = useState("");
     const [exclusionReasonError, setExclusionReasonError] = useState<string | null>(null);
 
-    const handleRefreshWithDates = () => {
+    const isPending = ordersView === "pending";
+    const loading = isPending ? pendingOrdersLoading : excludedOrdersLoading;
+
+    const statuses = useMemo(
+        () =>
+            [...new Set(pendingOrders.map((order) => order.stato).filter((status): status is string => Boolean(status)))]
+                .sort((a, b) => a.localeCompare(b, "it")),
+        [pendingOrders],
+    );
+
+    // A refresh can drop the filtered status from the data; fall back to all rather than showing an empty select.
+    const effectiveStatus = statuses.includes(statusFilter) ? statusFilter : ALL_STATUSES;
+    const hasFilters = Boolean(filterQuery || startDate || endDate || effectiveStatus !== ALL_STATUSES);
+
+    const handleRefreshWithDates = (): void => {
         void onRefreshOrders(startDate || undefined, endDate || undefined);
     };
 
-    // Handle sort
-    const handleSort = (field: SortField) => {
+    const changeStartDate = (value: string): void => {
+        onStartDateChange(value);
+        void onRefreshOrders(value || undefined, endDate || undefined);
+    };
+
+    const changeEndDate = (value: string): void => {
+        onEndDateChange(value);
+        void onRefreshOrders(startDate || undefined, value || undefined);
+    };
+
+    const resetFilters = (): void => {
+        setFilterQuery("");
+        setStatusFilter(ALL_STATUSES);
+
+        if (startDate || endDate) {
+            onStartDateChange("");
+            onEndDateChange("");
+            void onRefreshOrders();
+        }
+    };
+
+    const handleSort = (field: SortField): void => {
         if (field === sortField) {
             setSortDirection(sortDirection === "asc" ? "desc" : "asc");
         } else {
@@ -326,12 +314,17 @@ export function OrdersTab({
         }
     };
 
-    // Process orders: filter then sort
-    const processedOrders = useMemo(() => {
-        const filtered = filterOrders(pendingOrders, filterQuery);
+    const ariaSort = (field: SortField): "ascending" | "descending" | undefined => {
+        if (sortField !== field) return undefined;
 
-        return sortOrders(filtered, sortField, sortDirection);
-    }, [pendingOrders, filterQuery, sortField, sortDirection]);
+        return sortDirection === "asc" ? "ascending" : "descending";
+    };
+
+    const processedOrders = useMemo(() => {
+        const byStatus = effectiveStatus === ALL_STATUSES ? pendingOrders : pendingOrders.filter((order) => order.stato === effectiveStatus);
+
+        return sortOrders(filterOrders(byStatus, filterQuery), sortField, sortDirection);
+    }, [pendingOrders, effectiveStatus, filterQuery, sortField, sortDirection]);
 
     const processedExcludedOrders = useMemo(
         () => sortExcludedOrders(filterExcludedOrders(excludedOrders, filterQuery)),
@@ -364,309 +357,229 @@ export function OrdersTab({
         }
     };
 
-    const handleSettlementsFiles = (files: File[]) => {
-        if (files.length > 0 && selectedPeriod) {
-            setPendingFiles(files);
-        }
-    };
+    const sortableHead = (label: string, field: SortField, className?: string): ReactElement => (
+        <TableHead className={className} aria-sort={ariaSort(field)}>
+            <SortableHeader label={label} field={field} currentField={sortField} direction={sortDirection} onSort={handleSort} />
+        </TableHead>
+    );
 
-    const confirmUpload = () => {
-        if (pendingFiles && selectedPeriod) {
-            onSettlementsUpload(pendingFiles, selectedPeriod);
-            setPendingFiles(null);
-        }
-    };
+    const footer = isPending
+        ? t("pendingOrdersFooter").replace("{shown}", String(processedOrders.length)).replace("{total}", String(pendingOrders.length))
+        : t("excludedOrdersFooter").replace("{shown}", String(processedExcludedOrders.length)).replace("{total}", String(excludedOrdersCount));
+
+    const isEmpty = isPending ? pendingOrders.length === 0 : excludedOrders.length === 0;
+    const emptyError = isPending ? pendingOrdersError : excludedOrdersError;
 
     return (
         <div className="flex flex-col gap-6 lg:h-[calc(100dvh-11.5rem)]">
-            <section className="grid shrink-0 gap-3 md:grid-cols-2">
-                <div className="ledger-card p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                        <FileSpreadsheet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span className="text-sm font-medium">{t("importOrdersTitle")}</span>
+            <header className="flex shrink-0 flex-wrap items-center justify-between gap-4">
+                <h2 className="font-display text-2xl leading-tight">{t("ordini")}</h2>
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                        <FileSpreadsheet className="h-4 w-4" />
+                        {t("importOrders")}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setSettlementsOpen(true)}>
+                        <Calendar className="h-4 w-4" />
+                        {t("settlementsAction")}
+                    </Button>
+                </div>
+            </header>
+
+            <section className="flex min-h-0 flex-1 flex-col gap-4">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+                    <Tabs value={ordersView} onValueChange={(value) => {
+                        const parsedView = ordersViewSchema.safeParse(value);
+
+                        if (parsedView.success) {
+                            setOrdersView(parsedView.data);
+                        }
+                    }}>
+                        <TabsList className="h-auto gap-1 bg-transparent p-0">
+                            <TabsTrigger value="pending" className={TAB_TRIGGER_CLASSES}>
+                                {t("pendingOrdersView")}
+                                <span className={COUNT_PILL_CLASSES}>{pendingOrders.length}</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="excluded" className={TAB_TRIGGER_CLASSES}>
+                                {t("excludedOrdersView")}
+                                <span className={COUNT_PILL_CLASSES}>{excludedOrdersCount}</span>
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                    <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={handleRefreshWithDates} disabled={loading} aria-label={t("refresh")}>
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        </Button>
+                        {isPending && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => exportPendingOrdersExcel(processedOrders)}
+                                disabled={pendingOrdersLoading || processedOrders.length === 0}
+                            >
+                                <Download className="h-4 w-4" />
+                                {t("exportOrders")}
+                            </Button>
+                        )}
                     </div>
-                    <div className="dropzone-compact">
-                        <FileDropzone
-                            accept=".xlsx,.xls"
-                            maxSizeMB={50}
-                            onFiles={onOrdersUpload}
-                            disabled={ordersImporting}
-                        />
-                    </div>
-                    {ordersImporting && (
-                        <div className="flex items-center gap-2">
-                            <Progress value={ordersProgress} className="h-1 flex-1 bg-secondary [&>div]:bg-blue-600 [&>div]:duration-300" />
-                            <span className="text-xs font-mono text-muted-foreground">{ordersProgress}%</span>
-                        </div>
-                    )}
-                    {ordersResult && (
-                        <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle className="h-3 w-3" />
-                            <span>
-                                +{ordersResult.details.ordini.nuovi} {t("orders").toLowerCase()}
-                            </span>
-                        </div>
-                    )}
                 </div>
 
-                <div className="ledger-card p-3 space-y-2">
-                    <div className="flex items-center gap-2 w-full justify-between">
-                        <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                            <span className="text-sm font-medium">{t("importLiquidationsTitle")}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                {t("competenzaPeriodLabel")}
-                            </label>
-                            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                                <SelectTrigger className="h-8 text-sm">
-                                    <SelectValue placeholder={t("selectPeriod")} />
+                <div className="flex shrink-0 flex-wrap items-center gap-3">
+                    <div className="relative w-full sm:w-auto">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            className="h-9 w-full pl-9 pr-9 sm:w-80"
+                            placeholder={isPending ? t("searchPendingOrdersPlaceholder") : t("searchExcludedOrdersPlaceholder")}
+                            value={filterQuery}
+                            onChange={(event) => setFilterQuery(event.target.value)}
+                        />
+                        {filterQuery && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-3 top-1/2 h-auto w-auto -translate-y-1/2 p-0 text-muted-foreground hover:bg-transparent hover:text-foreground [&_svg]:!size-4"
+                                onClick={() => setFilterQuery("")}
+                                aria-label={t("clearFilter")}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
+                    {isPending && (
+                        <>
+                            <Select value={effectiveStatus} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="h-9 w-[150px]" aria-label={t("filterByStatus")}>
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {PERIOD_OPTIONS.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
+                                    <SelectItem value={ALL_STATUSES}>{t("allStatuses")}</SelectItem>
+                                    {statuses.map((status) => (
+                                        <SelectItem key={status} value={status}>{status}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </div>
-                    </div>
-
-                    <div className="dropzone-compact">
-                        <FileDropzone
-                            accept=".xlsx,.xls"
-                            maxSizeMB={50}
-                            onFiles={handleSettlementsFiles}
-                            disabled={settlementsImporting || !selectedPeriod}
-                        />
-                    </div>
-                    {settlementsImporting && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
-                            {t("processing")}...
-                        </div>
-                    )}
-                    {settlementsResult && (
-                        <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle className="h-3 w-3" />
-                            <span>
-                                {settlementsResult.count} {t("recordsProcessed").toLowerCase()}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            <section className="flex min-h-0 flex-1 flex-col">
-                <Tabs value={ordersView} onValueChange={(value) => {
-                    const parsedView = ordersViewSchema.safeParse(value);
-
-                    if (parsedView.success) {
-                        setOrdersView(parsedView.data);
-                    }
-                }} className="flex min-h-0 flex-1 flex-col">
-                <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <Package className="h-5 w-5 text-energia-accent" />
-                        <h2 className="font-display text-xl">
-                            {ordersView === "pending" ? t("pendingOrders") : t("excludedOrders")}
-                            {(ordersView === "pending" ? processedOrders.length : processedExcludedOrders.length) > 0 && (
-                                <span className="ml-2 text-muted-foreground font-normal text-base">
-                                    ({ordersView === "pending" ? processedOrders.length : processedExcludedOrders.length})
-                                </span>
-                            )}
-                        </h2>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        {ordersView === "pending" && <>
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs text-muted-foreground whitespace-nowrap">{t("startDate")}</label>
-                                <DatePicker value={startDate} onChange={onStartDateChange} placeholder={t("startDate")} className="h-9" />
+                            <div className="flex flex-wrap items-center gap-2 sm:ml-2" role="group" aria-label={t("signaturePeriod")}>
+                                <span className="mr-1 text-xs text-muted-foreground">{t("signatureDate")}</span>
+                                <DatePicker value={startDate} onChange={changeStartDate} placeholder={t("startDate")} className="h-9" />
+                                <DatePicker value={endDate} onChange={changeEndDate} placeholder={t("endDate")} className="h-9" />
                             </div>
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs text-muted-foreground whitespace-nowrap">{t("endDate")}</label>
-                                <DatePicker value={endDate} onChange={onEndDateChange} placeholder={t("endDate")} className="h-9" />
-                            </div>
-                        </>}
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                            <Input
-                                placeholder={t("filterPlaceholder")}
-                                value={filterQuery}
-                                onChange={(e) => setFilterQuery(e.target.value)}
-                                className="pl-9 pr-9 h-9 w-64"
-                            />
-                            {filterQuery && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-3 top-1/2 h-auto w-auto -translate-y-1/2 p-0 text-[length:inherit] [font-weight:inherit] text-muted-foreground hover:bg-transparent hover:text-foreground [&_svg]:!size-4"
-                                    onClick={() => setFilterQuery("")}
-                                    aria-label={t("clearFilter")}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleRefreshWithDates}
-                            disabled={ordersView === "pending" ? pendingOrdersLoading : excludedOrdersLoading}
-                        >
-                            {(ordersView === "pending" ? pendingOrdersLoading : excludedOrdersLoading) ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <RefreshCw className="h-4 w-4" />
-                            )}
+                        </>
+                    )}
+                    {hasFilters && (
+                        <Button variant="ghost" size="sm" onClick={resetFilters}>
+                            {t("resetFilters")}
+                            <X className="h-3 w-3" />
                         </Button>
-                        {ordersView === "pending" && <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => exportPendingOrdersExcel(processedOrders)}
-                            disabled={pendingOrdersLoading || processedOrders.length === 0}
-                        >
-                            <Download className="h-4 w-4" />
-                        </Button>}
-                    </div>
+                    )}
                 </div>
 
-                <TabsList className="mb-4 w-fit">
-                    <TabsTrigger value="pending">{t("pendingOrdersView")}</TabsTrigger>
-                    <TabsTrigger value="excluded">{t("excludedOrdersView").replace("{count}", String(excludedOrdersCount))}</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="pending" className="mt-0 flex min-h-0 flex-1 flex-col">
-                {pendingOrdersLoading ? (
-                    <div className="ledger-card flex flex-1 items-center justify-center py-16">
+                {loading ? (
+                    <div className={`${PANEL_CLASSES} flex flex-1 items-center justify-center py-16`}>
                         <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
                     </div>
-                ) : pendingOrders.length === 0 ? (
-                    <div className="ledger-card flex flex-1 flex-col items-center justify-center py-16 text-center">
-                        <Package className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                        <p className="font-display text-lg text-muted-foreground">{pendingOrdersError ? t("error") : t("noPendingOrders")}</p>
-                        <p className="text-sm text-muted-foreground/70 mt-1">{pendingOrdersError || t("pendingOrdersEmptyDescription")}</p>
+                ) : isEmpty ? (
+                    <div className={`${PANEL_CLASSES} flex flex-1 flex-col items-center justify-center py-16 text-center`}>
+                        <Package className="mb-4 h-12 w-12 text-muted-foreground/30" />
+                        <p className="font-display text-lg text-muted-foreground">
+                            {emptyError ? t("error") : isPending ? t("noPendingOrders") : t("noExcludedOrders")}
+                        </p>
+                        {emptyError ? (
+                            <p className="mt-1 text-sm text-destructive">{emptyError}</p>
+                        ) : isPending && (
+                            <p className="mt-1 text-sm text-muted-foreground/70">{t("pendingOrdersEmptyDescription")}</p>
+                        )}
                     </div>
                 ) : (
-                    <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
-                        <div className="min-h-0 flex-1 overflow-auto">
-                            <Table>
-                                <TableHeader className="sticky top-0 bg-secondary/90 backdrop-blur-sm">
-                                    <TableRow>
-                                        <TableHead className="w-[70px]">
-                                            <SortableHeader
-                                                label={t("orderId")}
-                                                field="id_ordine"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="min-w-[180px]">
-                                            <SortableHeader
-                                                label={t("customerName")}
-                                                field="cliente_nome"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[160px]">
-                                            <SortableHeader
-                                                label={t("podPdr")}
-                                                field="pod_pdr"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[100px]">
-                                            <SortableHeader
-                                                label={t("product")}
-                                                field="prodotto"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[140px]">
-                                            <SortableHeader
-                                                label={t("agent")}
-                                                field="agente"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[130px]">
-                                            <SortableHeader
-                                                label={t("orderStatus")}
-                                                field="stato"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[100px]">
-                                            <SortableHeader
-                                                label={t("signatureDate")}
-                                                field="data_firma"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[90px]">
-                                            <SortableHeader
-                                                label={t("paymentMethod")}
-                                                field="metodo_pagam"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[100px]">{t("actions")}</TableHead>
-                                    </TableRow>
+                    <>
+                        <div className={`${PANEL_CLASSES} flex min-h-0 flex-1 flex-col overflow-hidden [&>div]:min-h-0 [&>div]:flex-1`}>
+                            <Table className="[&_td]:px-3 [&_td]:py-2 [&_th]:h-9 [&_th]:px-3">
+                                <TableHeader className="sticky top-0 z-10 bg-secondary/90 backdrop-blur-sm">
+                                    {isPending ? (
+                                        <TableRow>
+                                            {sortableHead(t("orderId"), "id_ordine", "w-[90px]")}
+                                            {sortableHead(t("customerName"), "cliente_nome", "min-w-[180px]")}
+                                            {sortableHead(t("podPdr"), "pod_pdr")}
+                                            {sortableHead(t("product"), "prodotto")}
+                                            {sortableHead(t("agent"), "agente")}
+                                            {sortableHead(t("orderStatus"), "stato")}
+                                            {sortableHead(t("signatureDate"), "data_firma")}
+                                            {sortableHead(t("paymentMethod"), "metodo_pagam")}
+                                            <TableHead className="w-[100px]">{t("actions")}</TableHead>
+                                        </TableRow>
+                                    ) : (
+                                        <TableRow>
+                                            <TableHead className="min-w-[240px]">{t("exclusionReason")}</TableHead>
+                                            <TableHead className="w-[120px]">{t("excludedOn")}</TableHead>
+                                            <TableHead className="min-w-[240px]">{t("orders")}</TableHead>
+                                            <TableHead className="w-[110px]">{t("actions")}</TableHead>
+                                        </TableRow>
+                                    )}
                                 </TableHeader>
                                 <TableBody>
-                                    {processedOrders.length > 0 ? (
-                                        processedOrders.map((order) => (
-                                            <TableRow key={order.id_riga_ordine} className="hover:bg-secondary/30">
-                                                <TableCell className="font-mono text-xs">#{order.id_ordine}</TableCell>
-                                                <TableCell className="font-medium">
-                                                    {order.cliente_nome || "—"}
+                                    {isPending && processedOrders.map((order) => (
+                                        <TableRow key={order.id_riga_ordine} className="hover:bg-secondary/30">
+                                            <TableCell className="font-mono text-xs">#{order.id_ordine}</TableCell>
+                                            <TableCell className="font-medium">{order.cliente_nome || "—"}</TableCell>
+                                            <TableCell className="font-mono text-xs">{order.pod_pdr}</TableCell>
+                                            <TableCell>{order.prodotto}</TableCell>
+                                            <TableCell className="text-muted-foreground">{order.agente || "—"}</TableCell>
+                                            <TableCell>{getStatusBadge(order.stato)}</TableCell>
+                                            <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">{formatDate(order.data_firma)}</TableCell>
+                                            <TableCell>{order.metodo_pagam || "—"}</TableCell>
+                                            <TableCell>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8"
+                                                    disabled={mutatingRowId !== null}
+                                                    onClick={() => {
+                                                        setSelectedOrder(order);
+                                                        setExclusionReason("");
+                                                        setExclusionReasonError(null);
+                                                    }}
+                                                >
+                                                    {mutatingRowId === order.id_riga_ordine ? <Loader2 className="h-4 w-4 animate-spin" /> : t("excludeOrder")}
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {!isPending && processedExcludedOrders.map((excludedOrder) => {
+                                        const order = excludedOrder.ordine;
+
+                                        return (
+                                            <TableRow key={excludedOrder.id} className="hover:bg-secondary/30">
+                                                <TableCell>{excludedOrder.motivo}</TableCell>
+                                                <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">{formatDate(excludedOrder.data_esclusione)}</TableCell>
+                                                <TableCell>
+                                                    {order ? (
+                                                        <>
+                                                            <span className="font-medium">#{order.id_ordine} {order.cliente_nome || "—"}</span>
+                                                            <p className="font-mono text-xs text-muted-foreground">{order.pod_pdr}</p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-muted-foreground">{t("unavailableOrder")}</span>
+                                                            <p className="font-mono text-xs text-muted-foreground">{excludedOrder.id_riga_ordine}</p>
+                                                        </>
+                                                    )}
                                                 </TableCell>
-                                                <TableCell className="font-mono text-xs">{order.pod_pdr}</TableCell>
-                                                <TableCell>{order.prodotto}</TableCell>
-                                                <TableCell className="text-muted-foreground">
-                                                    {order.agente || "—"}
-                                                </TableCell>
-                                                <TableCell>{getStatusBadge(order.stato)}</TableCell>
-                                                <TableCell className="font-mono text-xs text-muted-foreground">
-                                                    {formatDate(order.data_firma)}
-                                                </TableCell>
-                                                <TableCell>{order.metodo_pagam || "—"}</TableCell>
                                                 <TableCell>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
+                                                        className="h-8"
                                                         disabled={mutatingRowId !== null}
-                                                        onClick={() => {
-                                                            setSelectedOrder(order);
-                                                            setExclusionReason("");
-                                                            setExclusionReasonError(null);
-                                                        }}
+                                                        onClick={() => void onRestoreOrder(excludedOrder.id_riga_ordine)}
                                                     >
-                                                        {mutatingRowId === order.id_riga_ordine ? <Loader2 className="h-4 w-4 animate-spin" /> : t("excludeOrder")}
+                                                        {mutatingRowId === excludedOrder.id_riga_ordine ? <Loader2 className="h-4 w-4 animate-spin" /> : t("restoreOrder")}
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    ) : (
+                                        );
+                                    })}
+                                    {(isPending ? processedOrders : processedExcludedOrders).length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                                            <TableCell colSpan={isPending ? 9 : 4} className="py-12 text-center text-muted-foreground">
                                                 {t("noDataFound")}
                                             </TableCell>
                                         </TableRow>
@@ -674,52 +587,20 @@ export function OrdersTab({
                                 </TableBody>
                             </Table>
                         </div>
-                    </div>
+                        <p className="shrink-0 text-xs text-muted-foreground">{footer}</p>
+                    </>
                 )}
-                </TabsContent>
-
-                <TabsContent value="excluded" className="mt-0 flex min-h-0 flex-1 flex-col">
-                    {excludedOrdersLoading ? (
-                        <div className="ledger-card flex flex-1 items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-energia-accent" /></div>
-                    ) : excludedOrders.length === 0 ? (
-                        <div className="ledger-card flex flex-1 flex-col items-center justify-center py-16 text-center">
-                            <Package className="mb-4 h-12 w-12 text-muted-foreground/30" />
-                            <p className="font-display text-lg text-muted-foreground">{excludedOrdersError ? t("error") : t("noExcludedOrders")}</p>
-                            {excludedOrdersError && <p className="mt-1 text-sm text-destructive">{excludedOrdersError}</p>}
-                        </div>
-                    ) : (
-                        <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
-                            <div className="min-h-0 flex-1 overflow-auto">
-                                <Table>
-                                    <TableHeader className="sticky top-0 bg-secondary/90 backdrop-blur-sm">
-                                        <TableRow>
-                                            <TableHead className="min-w-[200px]">{t("exclusionReason")}</TableHead>
-                                            <TableHead className="w-[150px]">{t("excludedOn")}</TableHead>
-                                            <TableHead className="min-w-[250px]">{t("orders")}</TableHead>
-                                            <TableHead className="w-[100px]">{t("actions")}</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {processedExcludedOrders.length > 0 ? processedExcludedOrders.map((excludedOrder) => {
-                                            const order = excludedOrder.ordine;
-
-                                            return <TableRow key={excludedOrder.id} className="hover:bg-secondary/30">
-                                                <TableCell>{excludedOrder.motivo}</TableCell>
-                                                <TableCell className="font-mono text-xs text-muted-foreground">{formatDate(excludedOrder.data_esclusione)}</TableCell>
-                                                <TableCell>
-                                                    {order ? <div><span className="font-medium">#{order.id_ordine} {order.cliente_nome || "—"}</span><p className="font-mono text-xs text-muted-foreground">{order.pod_pdr}</p></div> : <div><span>{t("unavailableOrder")}</span><p className="font-mono text-xs text-muted-foreground">{excludedOrder.id_riga_ordine}</p></div>}
-                                                </TableCell>
-                                                <TableCell><Button variant="outline" size="sm" disabled={mutatingRowId !== null} onClick={() => void onRestoreOrder(excludedOrder.id_riga_ordine)}>{mutatingRowId === excludedOrder.id_riga_ordine ? <Loader2 className="h-4 w-4 animate-spin" /> : t("restoreOrder")}</Button></TableCell>
-                                            </TableRow>;
-                                        }) : <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">{t("noDataFound")}</TableCell></TableRow>}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </div>
-                    )}
-                </TabsContent>
-                </Tabs>
             </section>
+
+            <OrdersImportDialog
+                open={importOpen}
+                onOpenChange={setImportOpen}
+                importing={ordersImporting}
+                progress={ordersProgress}
+                result={ordersResult}
+                onUpload={onOrdersUpload}
+            />
+            <SettlementsDialog open={settlementsOpen} onOpenChange={setSettlementsOpen} settlements={settlements} />
 
             <Dialog open={selectedOrder !== null} onOpenChange={closeExclusionDialog}>
                 <DialogContent>
@@ -739,33 +620,6 @@ export function OrdersTab({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            <AlertDialog open={pendingFiles !== null} onOpenChange={(open) => !open && setPendingFiles(null)}>
-                <AlertDialogContent className="w-auto min-w-[280px]">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-center">{t("confirmUploadTitle")}</AlertDialogTitle>
-                        <AlertDialogDescription className="text-center">{t("confirmUploadDescription")}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="py-2">
-                        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                            <SelectTrigger className="mx-auto w-48 h-11 text-base">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {PERIOD_OPTIONS.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <AlertDialogFooter className="grid grid-cols-2 gap-2">
-                        <AlertDialogCancel className="mt-0">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmUpload}>{t("confirm")}</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }

@@ -16,7 +16,7 @@ export { useInvoiceRequests } from "./useInviti";
 
 export { useDashboard } from "./useDashboard";
 
-export type { UnmatchedAgent } from "./useCalcolo";
+export type { PreviewState, UseCalculationResult } from "./useCalcolo";
 
 export type { DashboardData } from "./useDashboard";
 
