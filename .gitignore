@@ -64,9 +64,11 @@ ehthumbs.db
 *.local
 claudedocs/
 .desloppify/
+docs/
 scorecard.png
 .claude/
 .agents/
+.playwright-mcp/
 tools/*
 !tools/oxlint/
 tools/oxlint/*
