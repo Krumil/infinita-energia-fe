@@ -8,8 +8,8 @@
         "build": "tsc -b && vite build",
         "lint": "npm run lint:anti-slop && npm run lint:eslint",
         "preview": "vite preview",
-        "test": "vitest run",
-        "typecheck": "tsc --noEmit",
+        "test": "playwright test",
+        "typecheck": "tsc --noEmit && tsc --noEmit -p e2e",
         "lint:anti-slop": "oxlint .",
         "lint:eslint": "eslint ."
     },
@@ -50,6 +50,8 @@
     "devDependencies": {
         "@eslint/js": "^9.39.2",
         "@oxlint/plugins": "1.83.0",
+        "@playwright/test": "1.63.0",
+        "@types/node": "^24.19.0",
         "@types/react": "^19.2.7",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^4.3.4",

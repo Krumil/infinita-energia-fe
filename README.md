@@ -609,6 +609,21 @@ python app.py
 pnpm dev
 ```
 
+### End-to-end Tests
+
+The Playwright suite in `e2e/` drives the real app against the real backend, so start the Flask backend on port 5000 first. The tests write to the backend's database: they only use 2031 months, refuse a month that already holds liquidazioni, and delete the months and agents they create. Point them at a local or test database, never production.
+
+```bash
+# Once: install the browser, and create a login user in the backend folder
+pnpm exec playwright install chromium
+flask create-admin <user> <password>
+
+# Run the suite with that user
+E2E_USERNAME=<user> E2E_PASSWORD=<password> pnpm test
+```
+
+Playwright starts Vite on port 5190 (`E2E_PORT` changes it), or reuses a server already running there. The Vite dev proxy forwards `/api` to `localhost:5000`, and the suite first checks the backend's `/health` there. The login session is saved in `e2e/.auth/`, which is ignored by Git.
+
 ### Building for Production
 
 ```bash
