@@ -292,6 +292,7 @@ const en = {
     unpaidCalcDoneSummary: "Downloaded {rows} rows from {agents} agents. {skipped} skipped.",
     unpaidCalcDoneSingle: "Downloaded {rows} rows for {agent}.",
     unpaidCalcNoData: "No unpaid commission data found for the selected months.",
+    unpaidCalcEmptyTitle: "No CSV downloaded",
     unpaidCalcGroupSummary: "{count} invitations · {total}",
 
     // Login
@@ -598,6 +599,7 @@ const it: TranslationTable = {
     unpaidCalcDoneSummary: "Scaricate {rows} righe da {agents} agenti. {skipped} saltati.",
     unpaidCalcDoneSingle: "Scaricate {rows} righe per {agent}.",
     unpaidCalcNoData: "Nessun dato di provvigione non pagata trovato per i mesi selezionati.",
+    unpaidCalcEmptyTitle: "Nessun CSV scaricato",
     unpaidCalcGroupSummary: "{count} inviti · {total}",
 
     // Login

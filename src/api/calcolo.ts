@@ -38,7 +38,8 @@ export async function getUnpaidCalculation(
     agentId: number,
     months: string[],
 ): Promise<UnpaidCalculationResponse> {
-    const payload: UnpaidCalculationRequest = { agente_id: agentId, mesi_competenza: months.map(monthToStartDate) };
+    // Older invites carry full dates, so two invites of one month must become a single month start.
+    const payload: UnpaidCalculationRequest = { agente_id: agentId, mesi_competenza: [...new Set(months.map(monthToStartDate))] };
 
     const res = await authFetch(getApiUrl("/non-pagati"), {
         method: "POST",

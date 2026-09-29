@@ -6,7 +6,7 @@ import { downloadCsv, toCsv } from "@/lib/csvUtils";
 import { COMMISSION_HEADERS, commissionToRow } from "@/lib/exportUtils";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { InvoiceRequest } from "@/types";
+import type { CommissionData, InvoiceRequest } from "@/types";
 
 export interface UnpaidAgent {
     id: number;
@@ -24,6 +24,21 @@ function formatToday(): string {
 
 function sanitizeFilename(name: string): string {
     return name.trim().replace(/[^\w.-]+/g, "_");
+}
+
+// The origin goes last so the shared commission columns keep their order and meaning.
+const UNPAID_REPORT_HEADERS: string[] = [...COMMISSION_HEADERS, "Origine"];
+
+// Same rule as the backend's normalize_name, so an agent's older spelling still matches its own sales.
+function normalizeName(name: string): string {
+    return name.trim().toUpperCase().split(/\s+/).sort().join(" ");
+}
+
+// The backend returns the agent's own sales and, for a parent, only its share of each child sale under the child's name.
+function unpaidReportRow(item: CommissionData, agentKey: string): (string | number | null)[] {
+    const origin = normalizeName(item.venditore) === agentKey ? "Vendita diretta" : "Provvigione figlio";
+
+    return [...commissionToRow(item), origin];
 }
 
 export function useUnpaidInvoiceRequests() {
@@ -90,19 +105,21 @@ export function useUnpaidInvoiceRequests() {
             try {
                 const response = await getUnpaidCalculation(agent.id, months);
 
+                // An empty answer isn't a failure, and the selection stays so the operator can adjust it.
                 if (response.kind === "empty" || response.dati_provvigione.length === 0) {
                     toast({
-                        title: t("error"),
-                        description: t("unpaidCalcNoData"),
-                        variant: "destructive",
+                        title: t("unpaidCalcEmptyTitle"),
+                        description: response.kind === "empty" ? response.message : t("unpaidCalcNoData"),
                     });
 
                     return;
                 }
 
+                const agentKey = normalizeName(agent.name);
+
                 const csv = toCsv(
-                    [...COMMISSION_HEADERS],
-                    response.dati_provvigione.map(commissionToRow),
+                    UNPAID_REPORT_HEADERS,
+                    response.dati_provvigione.map((item) => unpaidReportRow(item, agentKey)),
                     { delimiter: ";", decimal: "," },
                 );
 

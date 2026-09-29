@@ -234,6 +234,21 @@ export class Backend {
         return invites.map(({ id, agente_id, mese_competenza, totale_invito, stato }) => ({ id, agente_id, mese_competenza, totale_invito, stato }));
     }
 
+    // The API normalizes names on every write, so a name saved before normalization existed can only be set in the database.
+    async renameAgentInDatabase(agent: TestAgent, name: string): Promise<void> {
+        const client = new pg.Client({ connectionString: DATABASE_URL });
+
+        await client.connect();
+
+        try {
+            const result = await client.query("UPDATE agenti SET nome_cognome = $1 WHERE id = $2", [name, agent.id]);
+
+            expect(result.rowCount, `renaming agent ${agent.id} to "${name}"`).toBe(1);
+        } finally {
+            await client.end();
+        }
+    }
+
     private async deleteInvites(agentIds: number[]): Promise<void> {
         const client = new pg.Client({ connectionString: DATABASE_URL });
 
