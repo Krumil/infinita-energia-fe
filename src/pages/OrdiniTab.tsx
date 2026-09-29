@@ -379,10 +379,17 @@ export function OrdersTab({
                         <FileSpreadsheet className="h-4 w-4" />
                         {t("importOrders")}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setSettlementsOpen(true)}>
-                        <Calendar className="h-4 w-4" />
-                        {t("settlementsAction")}
-                    </Button>
+                    <SettlementsDialog
+                        open={settlementsOpen}
+                        onOpenChange={setSettlementsOpen}
+                        settlements={settlements}
+                        trigger={
+                            <Button variant="outline" size="sm">
+                                <Calendar className="h-4 w-4" />
+                                {t("settlementsAction")}
+                            </Button>
+                        }
+                    />
                 </div>
             </header>
 
@@ -600,7 +607,6 @@ export function OrdersTab({
                 result={ordersResult}
                 onUpload={onOrdersUpload}
             />
-            <SettlementsDialog open={settlementsOpen} onOpenChange={setSettlementsOpen} settlements={settlements} />
 
             <Dialog open={selectedOrder !== null} onOpenChange={closeExclusionDialog}>
                 <DialogContent>

@@ -1,6 +1,6 @@
 import { useId, useState, type ReactElement } from "react";
 import { CheckCircle, Loader2, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { MonthPicker } from "@/components/DatePicker";
 import { FileDropzone } from "@/components/FileDropzone";
@@ -12,6 +12,8 @@ interface SettlementsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     settlements: UseSettlementsResult;
+    // Rendered as the dialog trigger, so closing the dialog returns focus to it.
+    trigger: ReactElement;
 }
 
 interface DeletionDecision {
@@ -19,7 +21,7 @@ interface DeletionDecision {
     replace: boolean;
 }
 
-export function SettlementsDialog({ open, onOpenChange, settlements }: SettlementsDialogProps): ReactElement {
+export function SettlementsDialog({ open, onOpenChange, settlements, trigger }: SettlementsDialogProps): ReactElement {
     const { t, language } = useTranslation();
     const monthId = useId();
     const [month, setMonth] = useState(() => settlements.preparedMonth ?? currentMonth());
@@ -94,7 +96,8 @@ export function SettlementsDialog({ open, onOpenChange, settlements }: Settlemen
     const warning = deletion ? t("deleteSettlementsWarning").split("{month}") : [];
 
     return (
-        <Dialog open={open} onOpenChange={(next) => { if (!next) requestClose(); }}>
+        <Dialog open={open} onOpenChange={(next) => { if (next) onOpenChange(true); else requestClose(); }}>
+            <DialogTrigger asChild>{trigger}</DialogTrigger>
             <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-[480px]" closeLabel={t("close")}>
                 <DialogHeader>
                     <DialogTitle className="pr-5 leading-snug">

@@ -34,7 +34,7 @@ A production-ready React application for managing sales agents, commission rules
 ### 📦 Orders Management (Ordini)
 
 - **Import Orders**: Upload Excel files with order data
-- **Import Liquidations**: Upload liquidation files with competency period selection
+- **Liquidations**: Import a competence month's liquidation file, or delete a month's liquidations after a confirmation. Importing a month that already has liquidations offers to delete and reimport it.
 - **Pending Orders View**: 
   - Track orders without associated liquidations
   - Advanced filtering and search
@@ -45,12 +45,12 @@ A production-ready React application for managing sales agents, commission rules
 
 ### 💰 Commission Calculation (Provvigioni)
 
-- Upload liquidation data for calculation
-- Match liquidations to agents using dynamic rules
-- Handle unmatched agents with warnings
-- Detailed calculation results
-- Export capabilities
-- Visual feedback for calculation progress
+- **Anteprima**: Calculate a competence month's commissions from its imported liquidations without saving anything
+- Unmatched rows are listed separately and never saved
+- Review the draft: edit amounts, remove rows and exclude agents before saving
+- Confirm the reviewed draft to save one draft invite per agent; an invite that is no longer a draft is skipped and reported
+- Download the preview ZIP (the unsaved draft) or the saved invites ZIP (the rows and totals stored in Inviti)
+- The unpaid commissions report in **Inviti** recalculates an agent's commissions for the selected months as a CSV
 
 ### 🔐 Authentication
 
@@ -193,6 +193,8 @@ calcolo-provvigioni/
 │   │   ├── AgentsTable.tsx
 │   │   ├── RegoleTable.tsx
 │   │   ├── CalcoloResults.tsx
+│   │   ├── ConfirmationOutcome.tsx
+│   │   ├── ZipDownloadButton.tsx
 │   │   ├── FileDropzone.tsx
 │   │   ├── EmptyState.tsx
 │   │   ├── KPICard.tsx
@@ -203,7 +205,7 @@ calcolo-provvigioni/
 │   │   ├── YearFilter.tsx
 │   │   ├── AgentFilter.tsx
 │   │   ├── SettingsPanel.tsx
-│   │   ├── LiquidazioniUploadDialog.tsx
+│   │   ├── SettlementsDialog.tsx
 │   │   └── LoginDialog.tsx
 │   ├── pages/              # Page components
 │   │   ├── DashboardTab.tsx
@@ -276,11 +278,17 @@ calcolo-provvigioni/
 
 ### Liquidations (Liquidazioni)
 
-- **POST** `/api/liquidazioni/import-excel` - Import liquidations with competency period
+- **POST** `/api/importa-liquidazioni` - Import a competence month's liquidations (`MM/YYYY`); 409 when the month already has some
+- **DELETE** `/api/liquidazioni/{YYYY-MM-01}` - Delete a competence month's liquidations
 
 ### Calculations (Provvigioni)
 
-- **POST** `/api/provvigioni/calcola` - Calculate commissions based on liquidations and agent rules
+- **POST** `/api/calcolo/anteprima` - Calculate a month's commissions without saving anything
+- **POST** `/api/calcolo/conferma` - Save the reviewed rows as one draft invite per agent, replacing that month's draft
+- **GET** `/api/storico-inviti/{id}/dettaglio` - A saved invite's rows and total, used by the saved invites ZIP
+- **POST** `/api/non-pagati` - Recalculate an agent's unpaid commissions for the selected months
+
+Competence months are sent as the first day of the month (`YYYY-MM-01`), except for the import, which takes `MM/YYYY`.
 
 ### Dashboard
 
@@ -368,10 +376,11 @@ The theme preference is saved to localStorage.
    - Drag and drop Excel file (.xlsx, .xls)
    - Wait for import progress
    - View success message with count
-3. **Import Liquidations**:
-   - Select competency period (month/year)
-   - Upload liquidation Excel file
-   - System automatically creates new rules if needed
+3. **Liquidations**:
+   - Click **Liquidazioni** and select the competence month
+   - Upload the liquidation Excel file
+   - If the month already has liquidations, confirm **Elimina competenza e reimporta** to replace them
+   - To remove a month, use the delete button next to the month and confirm
 4. **View Pending Orders**:
    - See orders without liquidations
    - Filter by date range
@@ -380,12 +389,12 @@ The theme preference is saved to localStorage.
 
 ### 6. Calculating Commissions (Provvigioni)
 
-1. Navigate to **Provvigioni** tab
-2. Upload liquidation data (if not already imported via Ordini)
-3. Review any unmatched agents warnings
-4. Click **Calculate** to process commissions
-5. View detailed results
-6. Export results if needed
+1. Import the month's liquidations in **Ordini** first
+2. In **Provvigioni**, select the competence month and click **Anteprima**. Nothing is saved yet
+3. Review the draft: edit amounts, remove rows or exclude agents. **Scarica anteprima ZIP** downloads the draft as it is
+4. Click **Conferma provvigioni**, check the summary, and click **Salva provvigioni**
+5. Read the outcome: saved agents with their invite IDs, and skipped agents with the reason
+6. Download **Scarica inviti salvati ZIP**, or click **Apri Inviti** to see the saved invites
 
 ### 7. Settings
 
@@ -401,7 +410,8 @@ The application includes several custom-built components:
 ### Data Display
 - `AgentsTable` - Sortable table with inline editing and actions
 - `RulesTable` - Rules management with toggle and value editing
-- `CalculationResults` - Commission calculation results display
+- `CalculationResults` - Editable commission preview by agent
+- `ConfirmationOutcome` - Saved and skipped agents after a confirmation
 - `KPICard` - Dashboard metric cards with trend indicators
 - `DashboardKPISection` - Grouped KPI display
 
@@ -413,7 +423,7 @@ The application includes several custom-built components:
 ### Forms & Input
 - `FileDropzone` - Drag-and-drop file upload with validation
 - `AgentDialog` - Agent creation/editing form with dynamic rules
-- `LiquidazioniUploadDialog` - Liquidation upload with period selection
+- `SettlementsDialog` - Liquidation import and month deletion
 - `LoginDialog` - Authentication form
 
 ### Filters & Controls

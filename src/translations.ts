@@ -39,7 +39,6 @@ const en = {
     viewAgents: "View Agents",
     importOrders: "Import Orders",
     importLiquidations: "Import Liquidations",
-    calculateCommissions: "Calculate Commissions",
     recentActivity: "Recent Activity",
     noActivity: "No recent activity",
     // Dashboard Charts
@@ -158,30 +157,18 @@ const en = {
     orderId: "Order ID",
 
     // Liquidations Tab
-    importLiquidationsTitle: "Import Liquidations",
-    importLiquidationsDesc: "Upload an Excel file with liquidation data.",
     selectPeriod: "Select period",
-    liquidationsImportResult: "Import Result",
-    noLiquidationsYet: "No liquidations loaded. Upload an Excel file to begin.",
 
     // Calculation Tab
     calculateCommissionsTitle: "Commissions",
     calculateCommissionsDesc: "Preview agent commissions from the liquidations imported for a month",
-    uploadForCalculation: "Upload Liquidation File",
     totalCommission: "Total Commission",
-    commissionDetails: "Commission Details",
     seller: "Seller",
     beneficiary: "Beneficiary",
     rule: "Rule",
-    quantity: "Quantity",
     amount: "Amount",
     commission: "Commission",
-    summaryBySeller: "Summary by Seller",
     summaryByBeneficiary: "Summary by Beneficiary",
-    detailsBySeller: "Details",
-    loadAgentsFirst: "Please load agents first to validate the file",
-    readyToCalculate: "ready to calculate",
-    viewUnmatchedAgents: "View unmatched agents",
 
     // File Upload
     clickToUpload: "Click to upload",
@@ -247,12 +234,8 @@ const en = {
     // Ordini Tab - Collapsible & Dialog
     importData: "Import Data",
     importDataDesc: "Import orders and liquidations from Excel files",
-    referenceMonth: "Reference Month",
-    selectPeriodDesc: "Select the reference period for the liquidation data",
-    selectFile: "Select File",
     change: "Change",
     import: "Import",
-    uploadLiquidazioni: "Upload Liquidations",
 
     // Inviti Tab
     inviti: "Inviti",
@@ -281,7 +264,7 @@ const en = {
     invitationUpdateFailed: "Failed to update invitation",
     fromMonth: "From",
     toMonth: "To",
-    unpaidCalcButton: "Calcolo non liquidati",
+    unpaidCalcButton: "Unpaid commissions report",
     unpaidCalcCancel: "Cancel",
     unpaidCalcRun: "Calculate & download CSV",
     unpaidCalcSelectAll: "Select all",
@@ -343,7 +326,6 @@ const it: TranslationTable = {
     viewAgents: "Visualizza Agenti",
     importOrders: "Importa Ordini",
     importLiquidations: "Importa Liquidazioni",
-    calculateCommissions: "Calcola Provvigioni",
     recentActivity: "Attività Recente",
     noActivity: "Nessuna attività recente",
     // Dashboard Charts
@@ -465,30 +447,18 @@ const it: TranslationTable = {
     orderId: "ID Ordine",
 
     // Liquidations Tab
-    importLiquidationsTitle: "Importa Liquidazioni",
-    importLiquidationsDesc: "Carica un file Excel con i dati delle liquidazioni.",
     selectPeriod: "Seleziona periodo",
-    liquidationsImportResult: "Risultato Importazione",
-    noLiquidationsYet: "Nessuna liquidazione caricata. Carica un file Excel per iniziare.",
 
     // Calculation Tab
     calculateCommissionsTitle: "Provvigioni",
     calculateCommissionsDesc: "Anteprima delle provvigioni degli agenti dalle liquidazioni importate per una competenza",
-    uploadForCalculation: "Carica File Liquidazioni",
     totalCommission: "Provvigione Totale",
-    commissionDetails: "Dettagli Provvigioni",
     seller: "Venditore",
     beneficiary: "Beneficiario",
     rule: "Regola",
-    quantity: "Quantità",
     amount: "Importo",
     commission: "Provvigione",
-    summaryBySeller: "Riepilogo per Venditore",
     summaryByBeneficiary: "Riepilogo per Beneficiario",
-    detailsBySeller: "Dettagli",
-    loadAgentsFirst: "Carica prima gli agenti per validare il file",
-    readyToCalculate: "pronti per il calcolo",
-    viewUnmatchedAgents: "Vedi agenti non trovati",
 
     // File Upload
     clickToUpload: "Clicca per caricare",
@@ -554,12 +524,8 @@ const it: TranslationTable = {
     // Ordini Tab - Collapsible & Dialog
     importData: "Importa Dati",
     importDataDesc: "Importa ordini e liquidazioni da file Excel",
-    referenceMonth: "Mese di Riferimento",
-    selectPeriodDesc: "Seleziona il periodo di riferimento per i dati delle liquidazioni",
-    selectFile: "Seleziona File",
     change: "Cambia",
     import: "Importa",
-    uploadLiquidazioni: "Carica Liquidazioni",
 
     // Inviti Tab
     inviti: "Inviti",

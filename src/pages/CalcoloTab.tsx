@@ -10,6 +10,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { MonthPicker } from "@/components/DatePicker";
 import { EmptyState, CalculationResults } from "@/components";
@@ -52,7 +53,6 @@ export function CalculationTab({
     const monthLabelId = useId();
     const confirmReasonId = useId();
     const [discardTarget, setDiscardTarget] = useState<DiscardTarget | null>(null);
-    const [reviewOpen, setReviewOpen] = useState(false);
     const loading = preview.status === "loading";
     const submitting = confirmation.status === "submitting";
     const dirty = preview.status === "ready" && preview.draft.dirty;
@@ -187,15 +187,37 @@ export function CalculationTab({
                                                             .replace("{agents}", String(summary.includedAgents))
                                                             .replace("{rows}", String(summary.includedRows))}
                                                 </p>
-                                                <Button
-                                                    className="btn-primary shrink-0"
-                                                    disabled={confirmBlock !== null}
-                                                    aria-describedby={confirmReasonId}
-                                                    onClick={() => setReviewOpen(true)}
-                                                >
-                                                    <CheckCircle2 className="h-4 w-4" />
-                                                    {t("previewConfirmAction")}
-                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button className="btn-primary shrink-0" disabled={confirmBlock !== null} aria-describedby={confirmReasonId}>
+                                                            <CheckCircle2 className="h-4 w-4" />
+                                                            {t("previewConfirmAction")}
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>{t("confirmReviewTitle").replace("{month}", formatMonthLabel(month, language))}</AlertDialogTitle>
+                                                            <AlertDialogDescription>{t("confirmReviewDescription")}</AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm">
+                                                            <dt className="text-muted-foreground">{t("confirmReviewIncludedAgents")}</dt>
+                                                            <dd className="text-right font-mono">{summary.includedAgents}</dd>
+                                                            <dt className="text-muted-foreground">{t("confirmReviewIncludedRows")}</dt>
+                                                            <dd className="text-right font-mono">{summary.includedRows}</dd>
+                                                            <dt className="font-medium">{t("confirmReviewTotal")}</dt>
+                                                            <dd className="text-right font-mono font-medium">{formatCurrency(summary.total)}</dd>
+                                                            <dt className="text-muted-foreground">{t("confirmReviewExcludedAgents")}</dt>
+                                                            <dd className="text-right font-mono">{summary.excludedAgents}</dd>
+                                                            <dt className="text-muted-foreground">{t("confirmReviewUnmatchedRows")}</dt>
+                                                            <dd className="text-right font-mono">{data.non_associati.length}</dd>
+                                                        </dl>
+                                                        <p className="text-sm text-muted-foreground">{t("confirmReviewReplaceNote")}</p>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={onConfirm}>{t("confirmReviewAction")}</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
                                             </div>
                                             <ZipDownloadButton
                                                 label={t("exportPreviewAction")}
@@ -262,34 +284,6 @@ export function CalculationTab({
                     onOpenInvites={() => onNavigate("inviti")}
                 />
             )}
-
-            <AlertDialog open={reviewOpen} onOpenChange={setReviewOpen}>
-                <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t("confirmReviewTitle").replace("{month}", formatMonthLabel(month, language))}</AlertDialogTitle>
-                        <AlertDialogDescription>{t("confirmReviewDescription")}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    {preview.status === "ready" && summary && (
-                        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm">
-                            <dt className="text-muted-foreground">{t("confirmReviewIncludedAgents")}</dt>
-                            <dd className="text-right font-mono">{summary.includedAgents}</dd>
-                            <dt className="text-muted-foreground">{t("confirmReviewIncludedRows")}</dt>
-                            <dd className="text-right font-mono">{summary.includedRows}</dd>
-                            <dt className="font-medium">{t("confirmReviewTotal")}</dt>
-                            <dd className="text-right font-mono font-medium">{formatCurrency(summary.total)}</dd>
-                            <dt className="text-muted-foreground">{t("confirmReviewExcludedAgents")}</dt>
-                            <dd className="text-right font-mono">{summary.excludedAgents}</dd>
-                            <dt className="text-muted-foreground">{t("confirmReviewUnmatchedRows")}</dt>
-                            <dd className="text-right font-mono">{preview.data.non_associati.length}</dd>
-                        </dl>
-                    )}
-                    <p className="text-sm text-muted-foreground">{t("confirmReviewReplaceNote")}</p>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={onConfirm}>{t("confirmReviewAction")}</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
 
             <AlertDialog open={discardTarget !== null} onOpenChange={(open) => !open && setDiscardTarget(null)}>
                 <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
