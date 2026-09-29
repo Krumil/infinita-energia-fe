@@ -1,4 +1,4 @@
-import type { PendingOrder, CommissionData } from "@/types";
+import type { PendingOrder } from "@/types";
 import { formatDate } from "@/lib/utils";
 
 class SpreadsheetExportError extends Error {
@@ -18,7 +18,25 @@ export const COMMISSION_HEADERS = [
     "Venditore",
 ] as const;
 
-export function commissionToRow(item: CommissionData): (string | number)[] {
+// Unpaid reports send non-null strings, while preview and saved invite rows may leave any text field empty.
+export interface CommissionRow {
+    cliente: string | null;
+    cf_piva: string | null;
+    pod_pdr: string | null;
+    comp_al: string | null;
+    regola: string | null;
+    importo_provvigione: number | null;
+    venditore: string | null;
+}
+
+export interface AgentWorkbook {
+    agentId: number;
+    agentName: string | null;
+    rows: CommissionRow[];
+    total: number;
+}
+
+export function commissionToRow(item: CommissionRow): (string | number | null)[] {
     return [
         item.cliente,
         item.cf_piva,
@@ -28,6 +46,53 @@ export function commissionToRow(item: CommissionData): (string | number)[] {
         item.importo_provvigione ?? 0,
         item.venditore,
     ];
+}
+
+// The ID keeps two agents with the same display name from overwriting each other in the ZIP.
+export function agentWorkbookName(agentId: number, agentName: string | null): string {
+    const name = (agentName ?? "").trim().replace(/[<>:"/\\|?*\s]+/g, "_") || "AGENTE";
+
+    return `${name}-${agentId}.xlsx`;
+}
+
+async function createAgentWorkbook(workbook: AgentWorkbook): Promise<Uint8Array> {
+    const XLSX = await import("xlsx");
+
+    const summaryRow = ["TOTALE", "", "", "", "", workbook.total, workbook.agentName ?? ""];
+    const worksheet = XLSX.utils.aoa_to_sheet([[...COMMISSION_HEADERS], ...workbook.rows.map(commissionToRow), summaryRow]);
+
+    worksheet["!cols"] = [
+        { wch: 30 }, // Cliente
+        { wch: 20 }, // CF/PIVA
+        { wch: 25 }, // POD/PDR
+        { wch: 12 }, // Comp. al
+        { wch: 40 }, // Regola
+        { wch: 18 }, // Importo Provvigione
+        { wch: 25 }, // Venditore
+    ];
+
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, worksheet, "Provvigioni");
+
+    const buffer: unknown = XLSX.write(book, { type: "array", bookType: "xlsx" });
+
+    if (!(buffer instanceof ArrayBuffer)) {
+        throw new SpreadsheetExportError(`commissions for agent ${workbook.agentId}`);
+    }
+
+    return new Uint8Array(buffer);
+}
+
+// One workbook per agent inside a YYYY-MM folder, the layout the operators already file.
+export async function zipAgentWorkbooks(month: string, workbooks: AgentWorkbook[]): Promise<Blob> {
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+
+    for (const workbook of workbooks) {
+        zip.file(`${month}/${agentWorkbookName(workbook.agentId, workbook.agentName)}`, await createAgentWorkbook(workbook));
+    }
+
+    return zip.generateAsync({ type: "blob" });
 }
 
 export async function exportPendingOrdersExcel(orders: PendingOrder[]): Promise<void> {

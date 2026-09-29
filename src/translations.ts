@@ -3,6 +3,7 @@ import { ordersEn, ordersIt } from "./translations/orders";
 import { invoiceRequestsEn, invoiceRequestsIt } from "./translations/inviti";
 import { attachmentsEn, attachmentsIt } from "./translations/allegati";
 import { confirmationEn, confirmationIt } from "./translations/confirmation";
+import { exportsEn, exportsIt } from "./translations/exports";
 import { previewEn, previewIt } from "./translations/preview";
 
 export type Language = "en" | "it";
@@ -14,6 +15,7 @@ const en = {
     ...attachmentsEn,
     ...previewEn,
     ...confirmationEn,
+    ...exportsEn,
     // Header
     appTitle: "Commission Calculator",
     settings: "Settings",
@@ -316,6 +318,7 @@ const it: TranslationTable = {
     ...attachmentsIt,
     ...previewIt,
     ...confirmationIt,
+    ...exportsIt,
     // Header
     appTitle: "Calcolo Provvigioni",
     settings: "Impostazioni",

@@ -14,9 +14,11 @@ import {
 import { MonthPicker } from "@/components/DatePicker";
 import { EmptyState, CalculationResults } from "@/components";
 import { ConfirmationOutcome } from "@/components/ConfirmationOutcome";
+import { ZipDownloadButton } from "@/components/ZipDownloadButton";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { ConfirmationState, PreviewState } from "@/hooks/useCalcolo";
 import { summarizeDraft, type DraftActions } from "@/lib/calculationDraft";
+import { buildPreviewZip } from "@/lib/calculationExport";
 import { formatMonthLabel } from "@/lib/competenceDates";
 import { formatCurrency } from "@/lib/utils";
 import type { Agent } from "@/types";
@@ -177,22 +179,31 @@ export function CalculationTab({
                                         editDraft={submitting ? undefined : editDraft}
                                     />
                                     {preview.draft.agents.length > 0 && (
-                                        <div className="ledger-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                                            <p id={confirmReasonId} className="text-sm text-muted-foreground">
-                                                {confirmBlock ??
-                                                    t("previewConfirmReady")
-                                                        .replace("{agents}", String(summary.includedAgents))
-                                                        .replace("{rows}", String(summary.includedRows))}
-                                            </p>
-                                            <Button
-                                                className="btn-primary shrink-0"
-                                                disabled={confirmBlock !== null}
-                                                aria-describedby={confirmReasonId}
-                                                onClick={() => setReviewOpen(true)}
-                                            >
-                                                <CheckCircle2 className="h-4 w-4" />
-                                                {t("previewConfirmAction")}
-                                            </Button>
+                                        <div className="ledger-card space-y-4 p-4">
+                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <p id={confirmReasonId} className="text-sm text-muted-foreground">
+                                                    {confirmBlock ??
+                                                        t("previewConfirmReady")
+                                                            .replace("{agents}", String(summary.includedAgents))
+                                                            .replace("{rows}", String(summary.includedRows))}
+                                                </p>
+                                                <Button
+                                                    className="btn-primary shrink-0"
+                                                    disabled={confirmBlock !== null}
+                                                    aria-describedby={confirmReasonId}
+                                                    onClick={() => setReviewOpen(true)}
+                                                >
+                                                    <CheckCircle2 className="h-4 w-4" />
+                                                    {t("previewConfirmAction")}
+                                                </Button>
+                                            </div>
+                                            <ZipDownloadButton
+                                                label={t("exportPreviewAction")}
+                                                note={t("exportPreviewNote")}
+                                                disabled={summary.includedAgents === 0 || summary.invalidIncludedRows > 0}
+                                                build={() => buildPreviewZip(preview.month, preview.draft)}
+                                                describeError={() => t("exportFailed")}
+                                            />
                                         </div>
                                     )}
                                 </>

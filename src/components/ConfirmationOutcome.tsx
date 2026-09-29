@@ -3,8 +3,10 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Info, Loader2 } from "lucide-r
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ZipDownloadButton } from "@/components/ZipDownloadButton";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { ConfirmationState } from "@/hooks/useCalcolo";
+import { buildSavedZip, SavedInviteDetailError } from "@/lib/calculationExport";
 import { formatMonthLabel } from "@/lib/competenceDates";
 import { formatCurrency } from "@/lib/utils";
 import type { ConfirmationResult } from "@/types";
@@ -22,10 +24,15 @@ export function ConfirmationOutcome({ confirmation, changedAfterSave, onOpenInvi
     const { t, language } = useTranslation();
     const titleId = useId();
     const { snapshot } = confirmation;
+    const savedCount = confirmation.status === "done" ? confirmation.results.filter((result) => result.salvato).length : 0;
 
-    const agentName = (result: ConfirmationResult): string =>
-        snapshot.agents.find((agent) => agent.agente_id === result.agente_id)?.nome_agente ??
-        t("agentIdLabel").replace("{id}", String(result.agente_id));
+    const agentName = (agentId: number): string =>
+        snapshot.agents.find((agent) => agent.agente_id === agentId)?.nome_agente ?? t("agentIdLabel").replace("{id}", String(agentId));
+
+    const describeSavedExportError = (cause: unknown): string =>
+        cause instanceof SavedInviteDetailError
+            ? t("exportSavedDetailFailed").replace("{invite}", String(cause.inviteId)).replace("{agent}", agentName(cause.agentId))
+            : t("exportFailed");
 
     const renderDone = (results: ConfirmationResult[]): ReactElement => {
         const saved = results.filter((result) => result.salvato).length;
@@ -66,7 +73,7 @@ export function ConfirmationOutcome({ confirmation, changedAfterSave, onOpenInvi
                         <TableBody>
                             {results.map((result) => (
                                 <TableRow key={result.agente_id}>
-                                    <TableCell className="font-medium">{agentName(result)}</TableCell>
+                                    <TableCell className="font-medium">{agentName(result.agente_id)}</TableCell>
                                     <TableCell>
                                         <Badge variant={result.salvato ? "secondary" : "outline"}>
                                             {result.salvato ? t("confirmSaved") : t("confirmSkipped")}
@@ -143,10 +150,21 @@ export function ConfirmationOutcome({ confirmation, changedAfterSave, onOpenInvi
             </div>
             {renderStatus()}
             {confirmation.status !== "submitting" && (
-                <Button variant="outline" size="sm" onClick={onOpenInvites}>
-                    {t("confirmOpenInvites")}
-                    <ArrowRight className="h-4 w-4" />
-                </Button>
+                <div className="flex flex-wrap items-start gap-3">
+                    <Button variant="outline" size="sm" onClick={onOpenInvites}>
+                        {t("confirmOpenInvites")}
+                        <ArrowRight className="h-4 w-4" />
+                    </Button>
+                    {confirmation.status === "done" && (
+                        <ZipDownloadButton
+                            label={t("exportSavedAction")}
+                            note={savedCount === 0 ? t("exportSavedNone") : t("exportSavedNote")}
+                            disabled={savedCount === 0}
+                            build={() => buildSavedZip(snapshot, confirmation.results)}
+                            describeError={describeSavedExportError}
+                        />
+                    )}
+                </div>
             )}
         </section>
     );
