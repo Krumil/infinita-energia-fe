@@ -1,7 +1,4 @@
 export const settlementsEn = {
-    settlementNoPreparedImport: "No prepared import is available",
-    settlementSelectFile: "Select a file to import",
-    settlementSelectMonth: "Select a reference month",
     settlementNoRows: "No rows found in the selected file",
     settlementNoOrderIds: "No row in the file has an order ID (ID Ordine), so there's nothing to import.",
     settlementSkippedRows: "Rows without an order ID (ID Ordine) not imported: {count}.",
@@ -11,9 +8,6 @@ export const settlementsEn = {
 } as const;
 
 export const settlementsIt = {
-    settlementNoPreparedImport: "Nessuna importazione pronta per il tentativo",
-    settlementSelectFile: "Seleziona un file da importare",
-    settlementSelectMonth: "Seleziona una competenza di riferimento",
     settlementNoRows: "Nessun dato trovato nel file selezionato",
     settlementNoOrderIds: "Nessuna riga del file ha un ID Ordine, quindi non c'è niente da importare.",
     settlementSkippedRows: "Righe senza ID Ordine non importate: {count}.",

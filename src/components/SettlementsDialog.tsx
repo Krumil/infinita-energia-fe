@@ -65,7 +65,7 @@ export function SettlementsDialog({ open, onOpenChange, settlements }: Settlemen
 
     const submitImport = (): void => {
         if (!file || !month || importing) return;
-        void settlements.handleUpload([file], month);
+        void settlements.handleUpload(file, month);
     };
 
     const runDeletion = (): void => {

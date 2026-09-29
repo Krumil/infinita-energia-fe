@@ -6,8 +6,6 @@ interface CalendarDate {
 
 const monthPattern = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/;
 
-const importCompetencePattern = /^(\d{2})\/(\d{4})$/;
-
 export class InvalidCompetenceDateError extends RangeError {
     constructor(input: string) {
         super(`Invalid competence date: ${input}`);
@@ -57,21 +55,14 @@ export function monthToStartDate(input: string): string {
     return `${formatMonth(year, month)}-01`;
 }
 
+export function monthToEndDate(input: string): string {
+    const { year, month } = parseMonthInput(input);
+
+    return `${formatMonth(year, month)}-${daysInMonth(year, month).toString().padStart(2, "0")}`;
+}
+
 export function monthToImportCompetence(input: string): string {
     const { year, month } = parseMonthInput(input);
 
     return `${month.toString().padStart(2, "0")}/${year.toString().padStart(4, "0")}`;
-}
-
-export function importCompetenceToMonth(input: string): string {
-    const match = importCompetencePattern.exec(input);
-
-    if (!match) throw new InvalidCompetenceDateError(input);
-
-    const month = Number(match[1]);
-    const year = Number(match[2]);
-
-    if (year === 0 || month < 1 || month > 12) throw new InvalidCompetenceDateError(input);
-
-    return formatMonth(year, month);
 }
