@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Agent, Rule, Tier, RuleConfiguration } from "./domain";
-import type { CreateAgentRequest, PreviewResponse } from "./api";
+import type { CreateAgentRequest, UnmatchedSettlement } from "./api";
+import type { CalculationDraft, DraftActions, DraftSummary } from "@/lib/calculationDraft";
 
 export interface FileDropzoneProps {
     accept: string;
@@ -55,6 +56,10 @@ export interface RulesTableProps {
 
 export interface CalculationResultsProps {
     month: string;
-    preview: PreviewResponse;
+    draft: CalculationDraft;
+    summary: DraftSummary;
+    unmatched: UnmatchedSettlement[];
     agents: Agent[];
+    // Absent while a recalculation loads, when the previous draft is shown read-only.
+    editDraft?: DraftActions;
 }

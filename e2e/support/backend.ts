@@ -9,6 +9,8 @@ export interface SettlementRow {
     amount: number;
     customer: string;
     orderId: number | null;
+    // Rows get distinct PODs by position unless a test needs two rows with the same one.
+    pod?: string;
 }
 
 export interface NewAgent {
@@ -145,7 +147,7 @@ export class Backend {
             venditore: row.seller,
             regola: row.rule,
             importo_euro: row.amount,
-            pod_pdr: `IT001E${String(index).padStart(8, "0")}`,
+            pod_pdr: row.pod ?? `IT001E${String(index).padStart(8, "0")}`,
             cliente: row.customer,
             cf_piva: "E2ETST80A01H501A",
             comp_dal: monthStart(month),

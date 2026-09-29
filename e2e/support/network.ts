@@ -24,3 +24,16 @@ export function recordApiWrites(page: Page): string[] {
 
     return calls;
 }
+
+// Records every API request, reads included, as "METHOD /path".
+export function recordApiRequests(page: Page): string[] {
+    const calls: string[] = [];
+
+    page.on("request", (request) => {
+        const { pathname } = new URL(request.url());
+
+        if (pathname.startsWith("/api/")) calls.push(`${request.method()} ${pathname}`);
+    });
+
+    return calls;
+}

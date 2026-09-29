@@ -200,6 +200,7 @@ function AuthenticatedApp() {
                                 month={calculation.month}
                                 preview={calculation.preview}
                                 agents={agents.agents}
+                                editDraft={calculation.editDraft}
                                 onMonthChange={calculation.selectMonth}
                                 onPreview={calculation.requestPreview}
                                 onNavigate={handleTabChange}

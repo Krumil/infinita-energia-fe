@@ -135,9 +135,9 @@ test.describe("calculation preview", () => {
 
         await previewButton(page).click();
 
-        await expect(agentRow(page, family.parent).getByRole("cell")).toHaveText(["", `${family.parent.name}#${family.parent.id}`, "4", "18,00 €"]);
-        await expect(agentRow(page, family.grandparent).getByRole("cell")).toHaveText(["", `${family.grandparent.name}#${family.grandparent.id}`, "2", "14,00 €"]);
-        await expect(agentRow(page, family.child).getByRole("cell")).toHaveText(["", `${family.child.name}#${family.child.id}`, "2", "8,00 €"]);
+        await expect(agentRow(page, family.parent).getByRole("cell")).toHaveText(["", "", `${family.parent.name}#${family.parent.id}`, "4", "18,00 €"]);
+        await expect(agentRow(page, family.grandparent).getByRole("cell")).toHaveText(["", "", `${family.grandparent.name}#${family.grandparent.id}`, "2", "14,00 €"]);
+        await expect(agentRow(page, family.child).getByRole("cell")).toHaveText(["", "", `${family.child.name}#${family.child.id}`, "2", "8,00 €"]);
         await expect(totalRow(page).getByRole("cell")).toHaveText(["Totale", "8", "40,00 €"]);
         await expect(page.getByText("Solo anteprima: nulla è stato salvato")).toBeVisible();
 
@@ -166,11 +166,13 @@ test.describe("calculation preview", () => {
             `Da vendite di ${family.child.name}`,
             "Gettone Residenziale Standard",
             "2031-08-31",
-            "3,00 €",
+            "",
+            "",
         ]);
+        await expect(recordRow(page, `Cliente Figlio A ${token}`).getByRole("textbox")).toHaveValue("3,00");
 
         await expect(recordRow(page, `Cliente Figlio B ${token}`).getByRole("cell").nth(3)).toHaveText(`Da vendite di ${family.child.name}`);
-        await expect(recordRow(page, `Cliente Figlio B ${token}`).getByRole("cell").nth(6)).toHaveText("1,00 €");
+        await expect(recordRow(page, `Cliente Figlio B ${token}`).getByRole("textbox")).toHaveValue("1,00");
 
         // Sold under a reordered spelling of the parent's own name, so these are direct sales with no child label.
         await expect(recordRow(page, `Cliente Padre A ${token}`).getByRole("cell")).toHaveText([
@@ -180,21 +182,23 @@ test.describe("calculation preview", () => {
             family.parent.name,
             "Gettone Residenziale Standard",
             "2031-08-31",
-            "10,00 €",
+            "",
+            "",
         ]);
+        await expect(recordRow(page, `Cliente Padre A ${token}`).getByRole("textbox")).toHaveValue("10,00");
 
         await expect(recordRow(page, `Cliente Padre B ${token}`).getByRole("cell").nth(3)).toHaveText(family.parent.name);
 
         await page.getByRole("button", { name: family.grandparent.name, exact: true }).click();
 
         await expect(recordRow(page, `Cliente Padre A ${token}`).getByRole("cell").nth(3)).toHaveText(`Da vendite di ${family.parent.name}`);
-        await expect(recordRow(page, `Cliente Padre B ${token}`).getByRole("cell").nth(6)).toHaveText("4,00 €");
+        await expect(recordRow(page, `Cliente Padre B ${token}`).getByRole("textbox")).toHaveValue("4,00");
         await expect(recordRow(page, "Cliente Figlio")).toHaveCount(0);
 
         await page.getByRole("button", { name: family.child.name, exact: true }).click();
 
         await expect(recordRow(page, `Cliente Figlio A ${token}`).getByRole("cell").nth(3)).toHaveText(family.child.name);
-        await expect(recordRow(page, `Cliente Figlio A ${token}`).getByRole("cell").nth(6)).toHaveText("6,00 €");
+        await expect(recordRow(page, `Cliente Figlio A ${token}`).getByRole("textbox")).toHaveValue("6,00");
         await expect(page.getByText(/^Da vendite di/)).toHaveCount(0);
     });
 

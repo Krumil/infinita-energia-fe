@@ -1,13 +1,26 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { previewCommissions } from "@/api/calcolo";
 import { ApiError } from "@/api/client";
+import {
+    createDraft,
+    removeDraftRow,
+    setDraftAgentIncluded,
+    setDraftRowAmount,
+    type CalculationDraft,
+    type DraftActions,
+} from "@/lib/calculationDraft";
 import { currentMonth } from "@/lib/competenceDates";
 import type { PreviewResponse } from "@/types";
 
+export interface LoadedPreview {
+    data: PreviewResponse;
+    draft: CalculationDraft;
+}
+
 export type PreviewState =
     | { status: "idle" }
-    | { status: "loading"; month: string; previous: PreviewResponse | null }
-    | { status: "ready"; month: string; data: PreviewResponse; stale: boolean }
+    | { status: "loading"; month: string; previous: LoadedPreview | null }
+    | { status: "ready"; month: string; data: PreviewResponse; draft: CalculationDraft; stale: boolean }
     | { status: "error"; month: string; reason: "setup" | "request"; message: string | null };
 
 interface PendingPreview {
@@ -21,6 +34,7 @@ export interface UseCalculationResult {
     selectMonth: (month: string) => void;
     requestPreview: () => void;
     invalidateMonth: (month: string) => void;
+    editDraft: DraftActions;
 }
 
 export function useCalculation(): UseCalculationResult {
@@ -48,7 +62,7 @@ export function useCalculation(): UseCalculationResult {
         setPreview((current) => {
             const previous =
                 current.status === "ready" && current.month === month
-                    ? current.data
+                    ? { data: current.data, draft: current.draft }
                     : current.status === "loading" && current.month === month
                       ? current.previous
                       : null;
@@ -62,7 +76,7 @@ export function useCalculation(): UseCalculationResult {
 
                 if (latestRequest.current !== request) return;
                 latestRequest.current = null;
-                setPreview({ status: "ready", month, data, stale: request.invalidated });
+                setPreview({ status: "ready", month, data, draft: createDraft(data), stale: request.invalidated });
             } catch (error) {
                 if (latestRequest.current !== request) return;
                 latestRequest.current = null;
@@ -92,5 +106,19 @@ export function useCalculation(): UseCalculationResult {
         );
     }, []);
 
-    return { month, preview, selectMonth, requestPreview, invalidateMonth };
+    // Edits apply only to a loaded draft; a draft shown while its recalculation loads is read-only.
+    const updateDraft = useCallback((edit: (draft: CalculationDraft) => CalculationDraft): void => {
+        setPreview((current) => (current.status === "ready" ? { ...current, draft: edit(current.draft) } : current));
+    }, []);
+
+    const editDraft = useMemo<DraftActions>(
+        () => ({
+            setRowAmount: (agentId, rowId, amountText) => updateDraft((draft) => setDraftRowAmount(draft, agentId, rowId, amountText)),
+            removeRow: (agentId, rowId) => updateDraft((draft) => removeDraftRow(draft, agentId, rowId)),
+            setAgentIncluded: (agentId, included) => updateDraft((draft) => setDraftAgentIncluded(draft, agentId, included)),
+        }),
+        [updateDraft],
+    );
+
+    return { month, preview, selectMonth, requestPreview, invalidateMonth, editDraft };
 }
