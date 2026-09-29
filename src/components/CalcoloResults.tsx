@@ -316,7 +316,8 @@ export function CalculationResults({ month, preview, agents }: CalculationResult
                                             <TableCell className="font-mono text-xs">{row.pod_pdr ?? EMPTY_VALUE}</TableCell>
                                             <TableCell className="font-mono text-xs">{row.cf_piva ?? EMPTY_VALUE}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground">{row.regola ?? EMPTY_VALUE}</TableCell>
-                                            <TableCell className="text-sm">{row.scaglione_consumo ?? EMPTY_VALUE}</TableCell>
+                                            {/* The backend sends a missing scaglione as an empty string, not null. */}
+                                            <TableCell className="text-sm">{row.scaglione_consumo || EMPTY_VALUE}</TableCell>
                                             <TableCell className="font-mono text-xs">{row.comp_al ?? EMPTY_VALUE}</TableCell>
                                             <TableCell className="text-right font-mono">
                                                 {row.importo_euro === null ? EMPTY_VALUE : formatCurrency(row.importo_euro)}
