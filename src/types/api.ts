@@ -75,30 +75,9 @@ export interface CommissionData {
     venditore: string;
 }
 
-export interface SellerCalculationResult {
-    totale_provvigione: number;
-    dati_provvigione: CommissionData[];
-}
-
-export interface CalculationResult {
-    [sellerName: string]: SellerCalculationResult;
-}
-
 export type UnpaidCalculationResponse =
     | { kind: "data"; totale_provvigione: number; dati_provvigione: CommissionData[] }
     | { kind: "empty"; message: string };
-
-export interface CalculationInput {
-    venditore: string;
-    regola: string;
-    scaglione_consumo: string;
-    importo_euro: number;
-    pod_pdr: string;
-    cliente: string;
-    cf_piva: string;
-    comp_al: string;
-    [key: string]: string | number | undefined;
-}
 
 export interface PendingOrder {
     id_riga_ordine: string;
@@ -245,16 +224,6 @@ export interface UpdateInvoiceRequestPayload {
     data_fattura?: string;
     pagato?: boolean;
     data_pagamento?: string;
-}
-
-export interface CheckAgentsResponse {
-    matches: string[];
-    not_found: string[];
-    stats: {
-        total_input: number;
-        matched_count: number;
-        not_found_count: number;
-    };
 }
 
 export interface DeleteSettlementsResponse {

@@ -18,8 +18,6 @@ export { TiersTable } from "./ScaglioniTable";
 
 export { CalculationResults } from "./CalcoloResults";
 
-export { SettlementsUploadDialog } from "./LiquidazioniUploadDialog";
-
 export { YearFilter } from "./YearFilter";
 
 export { AgentFilter } from "./AgentFilter";

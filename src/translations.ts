@@ -27,7 +27,6 @@ const en = {
     totalAgents: "Total Agents",
     totalCommissions: "Total Commissions",
     ordersImported: "Orders Imported",
-    liquidationsImported: "Liquidations Imported",
     activeCommissionAgents: "Active agents with commission rates",
     currentPeriodTotal: "Current period total",
     recordsProcessed: "Records processed",
@@ -157,18 +156,14 @@ const en = {
     // Liquidations Tab
     importLiquidationsTitle: "Import Liquidations",
     importLiquidationsDesc: "Upload an Excel file with liquidation data.",
-    competenzaPeriodLabel: "Competency Period",
     selectPeriod: "Select period",
     liquidationsImportResult: "Import Result",
     noLiquidationsYet: "No liquidations loaded. Upload an Excel file to begin.",
-    parsedRecords: "Parsed records",
 
     // Calculation Tab
     calculateCommissionsTitle: "Commissions",
     calculateCommissionsDesc: "Preview agent commissions from the liquidations imported for a month",
     uploadForCalculation: "Upload Liquidation File",
-    calculationResults: "Calculation Results",
-    noCalculationYet: "No calculation performed yet. Upload a liquidation file to calculate commissions.",
     totalCommission: "Total Commission",
     commissionDetails: "Commission Details",
     seller: "Seller",
@@ -180,23 +175,9 @@ const en = {
     summaryBySeller: "Summary by Seller",
     summaryByBeneficiary: "Summary by Beneficiary",
     detailsBySeller: "Details",
-    calculating: "Calculating commissions...",
-    unmatchedAgentsWarning: "Agents Not Found",
-    unmatchedAgentsDesc:
-        "The following sellers in the file do not match any agent in the system. Their commissions cannot be calculated.",
-    unmatchedAgentsCount: "unmatched agents",
-    recordsAffected: "records affected",
     loadAgentsFirst: "Please load agents first to validate the file",
-    noMatchedRecordsToCalculate: "No matched seller records are available for calculation.",
-    allAgentsMatched: "All sellers matched successfully",
     readyToCalculate: "ready to calculate",
-    newFile: "New file",
-    unmatchedShort: "unmatched",
-    continueWithUnmatched: "Continue with unmatched agents?",
-    recordsWillBeSkipped: "records will be skipped",
-    continueAnyway: "Calculate anyway",
     viewUnmatchedAgents: "View unmatched agents",
-    goToAgentsTab: "Go to Agents tab",
 
     // File Upload
     clickToUpload: "Click to upload",
@@ -245,10 +226,6 @@ const en = {
     // Placeholder names
     exampleName: "John Smith",
 
-    // Confirm upload dialog
-    confirmUploadTitle: "Confirm Upload Period",
-    confirmUploadDescription: "You are about to import liquidation data for:",
-
     // Common
     loading: "Loading...",
     error: "Error",
@@ -261,10 +238,6 @@ const en = {
     records: "Records",
     client: "Client",
     total: "Total",
-
-    // Export/Download
-    downloadZip: "Download ZIP",
-    generatingZip: "Generating ZIP...",
     period: "Period",
 
     // Ordini Tab - Collapsible & Dialog
@@ -355,7 +328,6 @@ const it: TranslationTable = {
     totalAgents: "Totale Agenti",
     totalCommissions: "Provvigioni Totali",
     ordersImported: "Ordini Importati",
-    liquidationsImported: "Liquidazioni Importate",
     activeCommissionAgents: "Agenti attivi con tariffe provvigionali",
     currentPeriodTotal: "Totale periodo corrente",
     recordsProcessed: "Record elaborati",
@@ -488,18 +460,14 @@ const it: TranslationTable = {
     // Liquidations Tab
     importLiquidationsTitle: "Importa Liquidazioni",
     importLiquidationsDesc: "Carica un file Excel con i dati delle liquidazioni.",
-    competenzaPeriodLabel: "Periodo di Competenza",
     selectPeriod: "Seleziona periodo",
     liquidationsImportResult: "Risultato Importazione",
     noLiquidationsYet: "Nessuna liquidazione caricata. Carica un file Excel per iniziare.",
-    parsedRecords: "Record elaborati",
 
     // Calculation Tab
     calculateCommissionsTitle: "Provvigioni",
     calculateCommissionsDesc: "Anteprima delle provvigioni degli agenti dalle liquidazioni importate per una competenza",
     uploadForCalculation: "Carica File Liquidazioni",
-    calculationResults: "Risultati Calcolo",
-    noCalculationYet: "Nessun calcolo effettuato. Carica un file di liquidazioni per calcolare le provvigioni.",
     totalCommission: "Provvigione Totale",
     commissionDetails: "Dettagli Provvigioni",
     seller: "Venditore",
@@ -511,23 +479,9 @@ const it: TranslationTable = {
     summaryBySeller: "Riepilogo per Venditore",
     summaryByBeneficiary: "Riepilogo per Beneficiario",
     detailsBySeller: "Dettagli",
-    calculating: "Calcolo provvigioni in corso...",
-    unmatchedAgentsWarning: "Agenti Non Trovati",
-    unmatchedAgentsDesc:
-        "I seguenti venditori nel file non corrispondono a nessun agente nel sistema. Le loro provvigioni non possono essere calcolate.",
-    unmatchedAgentsCount: "agenti non trovati",
-    recordsAffected: "record interessati",
     loadAgentsFirst: "Carica prima gli agenti per validare il file",
-    noMatchedRecordsToCalculate: "Non ci sono record con venditori abbinati da calcolare.",
-    allAgentsMatched: "Tutti i venditori sono stati abbinati correttamente",
     readyToCalculate: "pronti per il calcolo",
-    newFile: "Nuovo file",
-    unmatchedShort: "non trovati",
-    continueWithUnmatched: "Continuare con agenti non trovati?",
-    recordsWillBeSkipped: "record verranno saltati",
-    continueAnyway: "Calcola comunque",
     viewUnmatchedAgents: "Vedi agenti non trovati",
-    goToAgentsTab: "Vai alla scheda Agenti",
 
     // File Upload
     clickToUpload: "Clicca per caricare",
@@ -576,10 +530,6 @@ const it: TranslationTable = {
     // Placeholder names
     exampleName: "Mario Rossi",
 
-    // Confirm upload dialog
-    confirmUploadTitle: "Conferma Periodo di Caricamento",
-    confirmUploadDescription: "Stai per importare dati di liquidazione per:",
-
     // Common
     loading: "Caricamento...",
     error: "Errore",
@@ -592,10 +542,6 @@ const it: TranslationTable = {
     records: "Record",
     client: "Cliente",
     total: "Totale",
-
-    // Export/Download
-    downloadZip: "Scarica ZIP",
-    generatingZip: "Generazione ZIP...",
     period: "Periodo",
 
     // Ordini Tab - Collapsible & Dialog

@@ -1,4 +1,4 @@
-import type { CalculationInput, Settlement } from "@/types";
+import type { Settlement } from "@/types";
 import { parseEuroNumber } from "@/lib/numbers";
 import { parseExcelFile } from "./excel";
 
@@ -36,19 +36,6 @@ function parseAndFormatDate(dateStr: string | number | undefined): string | unde
     }
 
     return str;
-}
-
-export function convertToCalculationInput(settlements: Settlement[]): CalculationInput[] {
-    return settlements.map((settlement) => ({
-        venditore: settlement.venditore || "",
-        regola: settlement.regola || "",
-        scaglione_consumo: settlement.scaglione_consumo || "",
-        importo_euro: settlement.importo_euro || 0,
-        pod_pdr: settlement.pod_pdr || "",
-        cliente: settlement.cliente || "",
-        cf_piva: settlement.cf_piva || "",
-        comp_al: settlement.comp_al || "",
-    }));
 }
 
 export async function parseSettlementsExcel(file: File): Promise<Settlement[]> {

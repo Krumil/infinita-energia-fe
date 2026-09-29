@@ -36,10 +36,7 @@ export type {
     ImportExcelResponse,
     ImportSettlementsResponse,
     CommissionData,
-    SellerCalculationResult,
-    CalculationResult,
     UnpaidCalculationResponse,
-    CalculationInput,
     PendingOrder,
     PendingOrdersResponse,
     DashboardTotalContracts,
@@ -51,7 +48,6 @@ export type {
     DashboardProductContracts,
     DashboardContractsByProduct,
     UpdateInvoiceRequestPayload,
-    CheckAgentsResponse,
 } from "./api";
 
 export type {

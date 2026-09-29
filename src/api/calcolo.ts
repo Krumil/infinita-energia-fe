@@ -4,10 +4,7 @@ import type {
     ConfirmationRequest,
     ConfirmationResponse,
     UnpaidCalculationRequest,
-    CalculationInput,
     UnpaidCalculationResponse,
-    CalculationResult,
-    CheckAgentsResponse,
 } from "@/types";
 import { z } from "zod";
 import { monthToStartDate } from "@/lib/competenceDates";
@@ -15,7 +12,6 @@ import { previewResponseSchema, confirmationRequestSchema, confirmationResponseS
 import {
     authFetch,
     getApiUrl,
-    handleResponse,
     handleEmptyResponse,
     handleResponseWithSanitization,
 } from "./client";
@@ -30,11 +26,6 @@ const commissionDataSchema = z.object({
     venditore: z.string(),
 });
 
-const calculationResultSchema = z.record(z.object({
-    totale_provvigione: z.number(),
-    dati_provvigione: z.array(commissionDataSchema),
-}));
-
 const unpaidResponseSchema = z.object({
     totale_provvigione: z.number().nullish(),
     dati_provvigione: z.array(commissionDataSchema).nullish(),
@@ -42,26 +33,6 @@ const unpaidResponseSchema = z.object({
     data: z.object({}).passthrough().optional(),
     error: z.string().optional(),
 });
-
-export async function calculateCommissions(data: CalculationInput[]): Promise<CalculationResult> {
-    const res = await authFetch(getApiUrl("/calcolo"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-    });
-
-    return handleResponseWithSanitization(res, calculationResultSchema);
-}
-
-export async function checkAgents(names: string[]): Promise<CheckAgentsResponse> {
-    const res = await authFetch(getApiUrl("/check-agenti"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nomi: names }),
-    });
-
-    return handleResponse<CheckAgentsResponse>(res);
-}
 
 export async function getUnpaidCalculation(
     agentId: number,
