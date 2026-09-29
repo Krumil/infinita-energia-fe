@@ -1,4 +1,7 @@
 import { expect, type APIRequestContext } from "@playwright/test";
+import pg from "pg";
+
+import { DATABASE_URL } from "./env";
 
 // Rules that already exist with a fixed-value entry, so imports never create new rules or tiers.
 export type RuleName = "Gettone Residenziale Standard" | "Gettone SDD Residenziale" | "Rinnovo Residenziale";
@@ -38,6 +41,29 @@ interface RuleConfigEntry {
 interface RuleConfigBody {
     nome_agente: string;
     configurazione: RuleConfigEntry[];
+}
+
+// One saved invite row, in the shape the confirmation request sends and the invite detail returns.
+export interface InviteDetail {
+    venditore: string;
+    comp_al: string;
+    regola: string;
+    importo_provvigione: number;
+    pod_pdr: string;
+    cliente: string;
+    cf_piva: string;
+}
+
+export interface StoredInvite {
+    id: number;
+    agente_id: number;
+    mese_competenza: string;
+    totale_invito: number;
+    stato: string;
+}
+
+interface ConfirmationBody {
+    risultati: Array<{ agente_id: number; invito_id: number; salvato: boolean }>;
 }
 
 interface PreviewBody {
@@ -175,6 +201,62 @@ export class Backend {
         return response.text();
     }
 
+    // Saves an invite through the confirmation API, then moves it on when the test needs one that is no longer a draft.
+    async seedInvite(month: string, agent: TestAgent, dettaglio: InviteDetail[], stato: "bozza" | "inviato"): Promise<number> {
+        const response = await this.api.post("/api/calcolo/conferma", {
+            data: { mese_competenza: monthStart(month), agenti: [{ agente_id: agent.id, dettaglio }] },
+        });
+
+        expect(response.status(), `POST /api/calcolo/conferma for agent ${agent.id}: ${await response.text()}`).toBe(200);
+
+        const body: ConfirmationBody = await response.json();
+
+        expect(body.risultati[0], `saved invite for agent ${agent.id}`).toMatchObject({ agente_id: agent.id, salvato: true });
+
+        const inviteId = body.risultati[0].invito_id;
+
+        if (stato !== "bozza") {
+            const updated = await this.api.put(`/api/storico-inviti/${inviteId}`, { data: { stato } });
+
+            expect(updated.ok(), `PUT /api/storico-inviti/${inviteId} to ${stato}: ${await updated.text()}`).toBe(true);
+        }
+
+        return inviteId;
+    }
+
+    async invites(agent: TestAgent): Promise<StoredInvite[]> {
+        const response = await this.api.get(`/api/storico-inviti?agente_id=${agent.id}`);
+
+        expect(response.ok(), `GET /api/storico-inviti for agent ${agent.id}`).toBe(true);
+
+        const invites: StoredInvite[] = await response.json();
+
+        return invites.map(({ id, agente_id, mese_competenza, totale_invito, stato }) => ({ id, agente_id, mese_competenza, totale_invito, stato }));
+    }
+
+    private async deleteInvites(agentIds: number[]): Promise<void> {
+        const client = new pg.Client({ connectionString: DATABASE_URL });
+
+        await client.connect();
+
+        try {
+            await client.query("BEGIN");
+
+            const ownInvites = "SELECT id FROM storico_inviti WHERE agente_id = ANY($1::int[])";
+
+            await client.query(`DELETE FROM dettagli_invito WHERE storico_invito_id IN (${ownInvites})`, [agentIds]);
+            await client.query(`DELETE FROM allegati_invito WHERE storico_invito_id IN (${ownInvites})`, [agentIds]);
+            await client.query("DELETE FROM storico_inviti WHERE agente_id = ANY($1::int[])", [agentIds]);
+            await client.query("COMMIT");
+        } catch (error) {
+            await client.query("ROLLBACK");
+
+            throw new Error(`Deleting the invites of agents ${agentIds.join(", ")} failed`, { cause: error });
+        } finally {
+            await client.end();
+        }
+    }
+
     async cleanUp(): Promise<void> {
         const failures: string[] = [];
 
@@ -183,6 +265,9 @@ export class Backend {
 
             if (!response.ok()) failures.push(`DELETE /api/liquidazioni/${monthStart(month)} returned ${response.status()}`);
         }
+
+        // An agent with invites can't be deleted, so its invites go first.
+        if (this.agentIds.length > 0) await this.deleteInvites(this.agentIds);
 
         // Children go first so no agent is removed while another still names it as parent.
         for (const id of [...this.agentIds].reverse()) {

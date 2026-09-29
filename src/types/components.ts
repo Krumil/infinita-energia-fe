@@ -60,6 +60,6 @@ export interface CalculationResultsProps {
     summary: DraftSummary;
     unmatched: UnmatchedSettlement[];
     agents: Agent[];
-    // Absent while a recalculation loads, when the previous draft is shown read-only.
+    // Absent while a recalculation loads or a confirmation is saving, when the draft is shown read-only.
     editDraft?: DraftActions;
 }

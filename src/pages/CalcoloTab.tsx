@@ -13,9 +13,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MonthPicker } from "@/components/DatePicker";
 import { EmptyState, CalculationResults } from "@/components";
+import { ConfirmationOutcome } from "@/components/ConfirmationOutcome";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { PreviewState } from "@/hooks/useCalcolo";
+import type { ConfirmationState, PreviewState } from "@/hooks/useCalcolo";
 import { summarizeDraft, type DraftActions } from "@/lib/calculationDraft";
+import { formatMonthLabel } from "@/lib/competenceDates";
+import { formatCurrency } from "@/lib/utils";
 import type { Agent } from "@/types";
 
 interface CalculationTabProps {
@@ -23,8 +26,10 @@ interface CalculationTabProps {
     preview: PreviewState;
     agents: Agent[];
     editDraft: DraftActions;
+    confirmation: ConfirmationState;
     onMonthChange: (month: string) => void;
     onPreview: () => void;
+    onConfirm: () => void;
     onNavigate: (tab: string) => void;
 }
 
@@ -35,15 +40,19 @@ export function CalculationTab({
     preview,
     agents,
     editDraft,
+    confirmation,
     onMonthChange,
     onPreview,
+    onConfirm,
     onNavigate,
 }: CalculationTabProps): ReactElement {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const monthLabelId = useId();
     const confirmReasonId = useId();
     const [discardTarget, setDiscardTarget] = useState<DiscardTarget | null>(null);
+    const [reviewOpen, setReviewOpen] = useState(false);
     const loading = preview.status === "loading";
+    const submitting = confirmation.status === "submitting";
     const dirty = preview.status === "ready" && preview.draft.dirty;
 
     const draft = preview.status === "ready" ? preview.draft : preview.status === "loading" ? (preview.previous?.draft ?? null) : null;
@@ -125,13 +134,15 @@ export function CalculationTab({
                 const { data } = preview;
                 const isEmpty = data.agenti.length === 0 && data.non_associati.length === 0;
 
-                const confirmBlock = preview.stale
-                    ? t("previewConfirmBlockedStale")
-                    : summary && summary.includedAgents === 0
-                      ? t("previewConfirmBlockedEmpty")
-                      : summary && summary.invalidIncludedRows > 0
-                        ? t("previewConfirmBlockedInvalid")
-                        : null;
+                const confirmBlock = submitting
+                    ? t("confirmSubmittingBlock")
+                    : preview.stale
+                      ? t("previewConfirmBlockedStale")
+                      : summary && summary.includedAgents === 0
+                        ? t("previewConfirmBlockedEmpty")
+                        : summary && summary.invalidIncludedRows > 0
+                          ? t("previewConfirmBlockedInvalid")
+                          : null;
 
                 return (
                     <div className="space-y-6">
@@ -144,7 +155,7 @@ export function CalculationTab({
                                     <AlertTriangle className="h-4 w-4 shrink-0" />
                                     {t("previewStale")}
                                 </span>
-                                <Button variant="outline" size="sm" className="shrink-0" onClick={handlePreview}>
+                                <Button variant="outline" size="sm" className="shrink-0" disabled={submitting} onClick={handlePreview}>
                                     {t("previewRecalculate")}
                                 </Button>
                             </div>
@@ -163,7 +174,7 @@ export function CalculationTab({
                                         summary={summary}
                                         unmatched={data.non_associati}
                                         agents={agents}
-                                        editDraft={editDraft}
+                                        editDraft={submitting ? undefined : editDraft}
                                     />
                                     {preview.draft.agents.length > 0 && (
                                         <div className="ledger-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -177,6 +188,7 @@ export function CalculationTab({
                                                 className="btn-primary shrink-0"
                                                 disabled={confirmBlock !== null}
                                                 aria-describedby={confirmReasonId}
+                                                onClick={() => setReviewOpen(true)}
                                             >
                                                 <CheckCircle2 className="h-4 w-4" />
                                                 {t("previewConfirmAction")}
@@ -210,8 +222,9 @@ export function CalculationTab({
                             onChange={handleMonthChange}
                             placeholder={t("selectPeriod")}
                             className="min-w-0 flex-1 sm:w-[200px] sm:flex-none"
+                            disabled={submitting}
                         />
-                        <Button onClick={handlePreview} disabled={!month || loading} className="btn-primary shrink-0">
+                        <Button onClick={handlePreview} disabled={!month || loading || submitting} className="btn-primary shrink-0">
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
                             {t("previewAction")}
                         </Button>
@@ -230,6 +243,42 @@ export function CalculationTab({
             </p>
 
             {renderBody()}
+
+            {confirmation.status !== "idle" && (
+                <ConfirmationOutcome
+                    confirmation={confirmation}
+                    changedAfterSave={confirmation.status === "done" && dirty}
+                    onOpenInvites={() => onNavigate("inviti")}
+                />
+            )}
+
+            <AlertDialog open={reviewOpen} onOpenChange={setReviewOpen}>
+                <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t("confirmReviewTitle").replace("{month}", formatMonthLabel(month, language))}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("confirmReviewDescription")}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {preview.status === "ready" && summary && (
+                        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm">
+                            <dt className="text-muted-foreground">{t("confirmReviewIncludedAgents")}</dt>
+                            <dd className="text-right font-mono">{summary.includedAgents}</dd>
+                            <dt className="text-muted-foreground">{t("confirmReviewIncludedRows")}</dt>
+                            <dd className="text-right font-mono">{summary.includedRows}</dd>
+                            <dt className="font-medium">{t("confirmReviewTotal")}</dt>
+                            <dd className="text-right font-mono font-medium">{formatCurrency(summary.total)}</dd>
+                            <dt className="text-muted-foreground">{t("confirmReviewExcludedAgents")}</dt>
+                            <dd className="text-right font-mono">{summary.excludedAgents}</dd>
+                            <dt className="text-muted-foreground">{t("confirmReviewUnmatchedRows")}</dt>
+                            <dd className="text-right font-mono">{preview.data.non_associati.length}</dd>
+                        </dl>
+                    )}
+                    <p className="text-sm text-muted-foreground">{t("confirmReviewReplaceNote")}</p>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={onConfirm}>{t("confirmReviewAction")}</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <AlertDialog open={discardTarget !== null} onOpenChange={(open) => !open && setDiscardTarget(null)}>
                 <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">

@@ -7,6 +7,9 @@ export const APP_URL = `http://localhost:${E2E_PORT}`;
 
 export const BACKEND_URL = process.env.E2E_BACKEND_URL ?? "http://localhost:5000";
 
+// No API deletes an invite, so cleanup removes the ones the suite created straight from the backend's database.
+export const DATABASE_URL = process.env.E2E_DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/commissioni_db";
+
 export const AUTH_FILE = path.join(import.meta.dirname, "..", ".auth", "user.json");
 
 export function requiredEnv(name: string): string {

@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { rowAmount, type DraftAgent, type DraftRow } from "@/lib/calculationDraft";
+import { formatMonthLabel } from "@/lib/competenceDates";
 import { formatCurrency } from "@/lib/utils";
 import type { CalculationResultsProps } from "@/types/components";
 import type { CalculationDetail } from "@/types";
@@ -16,17 +17,6 @@ const EMPTY_VALUE = "—";
 // Mirrors the backend's agent-name key: uppercase words sorted alphabetically, so "Rossi Mario" matches "MARIO ROSSI".
 function normalizeName(name: string): string {
     return name.toUpperCase().split(/\s+/).filter(Boolean).sort().join(" ");
-}
-
-function formatMonthLabel(month: string, language: string): string {
-    const [year, monthNumber] = month.split("-").map(Number);
-
-    const label = new Date(year, monthNumber - 1, 1).toLocaleDateString(language === "it" ? "it-IT" : "en-GB", {
-        month: "long",
-        year: "numeric",
-    });
-
-    return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 // Sorting and filtering return the same row objects, so a row keeps its identity whatever the operator sees.

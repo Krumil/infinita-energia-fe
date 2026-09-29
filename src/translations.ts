@@ -2,6 +2,7 @@ import { settlementsEn, settlementsIt } from "./translations/settlements";
 import { ordersEn, ordersIt } from "./translations/orders";
 import { invoiceRequestsEn, invoiceRequestsIt } from "./translations/inviti";
 import { attachmentsEn, attachmentsIt } from "./translations/allegati";
+import { confirmationEn, confirmationIt } from "./translations/confirmation";
 import { previewEn, previewIt } from "./translations/preview";
 
 export type Language = "en" | "it";
@@ -12,6 +13,7 @@ const en = {
     ...invoiceRequestsEn,
     ...attachmentsEn,
     ...previewEn,
+    ...confirmationEn,
     // Header
     appTitle: "Commission Calculator",
     settings: "Settings",
@@ -313,6 +315,7 @@ const it: TranslationTable = {
     ...invoiceRequestsIt,
     ...attachmentsIt,
     ...previewIt,
+    ...confirmationIt,
     // Header
     appTitle: "Calcolo Provvigioni",
     settings: "Impostazioni",

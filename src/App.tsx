@@ -201,8 +201,10 @@ function AuthenticatedApp() {
                                 preview={calculation.preview}
                                 agents={agents.agents}
                                 editDraft={calculation.editDraft}
+                                confirmation={calculation.confirmation}
                                 onMonthChange={calculation.selectMonth}
                                 onPreview={calculation.requestPreview}
+                                onConfirm={calculation.confirmDraft}
                                 onNavigate={handleTabChange}
                             />
                         </TabsContent>

@@ -66,3 +66,15 @@ export function monthToImportCompetence(input: string): string {
 
     return `${month.toString().padStart(2, "0")}/${year.toString().padStart(4, "0")}`;
 }
+
+// Capitalized for headings, such as "Dicembre 2031".
+export function formatMonthLabel(month: string, language: string): string {
+    const [year, monthNumber] = month.split("-").map(Number);
+
+    const label = new Date(year, monthNumber - 1, 1).toLocaleDateString(language === "it" ? "it-IT" : "en-GB", {
+        month: "long",
+        year: "numeric",
+    });
+
+    return label.charAt(0).toUpperCase() + label.slice(1);
+}
