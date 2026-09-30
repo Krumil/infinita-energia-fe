@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, type Download, type Locator, type Page } from "@playwright/test";
 import * as XLSX from "xlsx";
 
 import type { SettlementRow } from "./backend";
@@ -35,6 +35,14 @@ export function importCompetence(month: string): string {
 
 export async function openTab(page: Page, name: string): Promise<void> {
     await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name, exact: true }).click();
+}
+
+export async function download(page: Page, button: Locator): Promise<Download> {
+    const file = page.waitForEvent("download");
+
+    await button.click();
+
+    return file;
 }
 
 export async function pickMonth(page: Page, group: Locator, month: string): Promise<void> {

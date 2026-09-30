@@ -1,11 +1,22 @@
 import type { Download, Locator, Page } from "@playwright/test";
 
 import { uniqueToken, type Backend, type InviteDetail, type RuleName, type SettlementRow, type TestAgent } from "./support/backend";
-import { agentTotal, amountInputs, confirmButton, expand, includeBox, monthGroup, overallTotal, previewButton } from "./support/calculation";
+import {
+    agentTotal,
+    amountInputs,
+    confirmButton,
+    expand,
+    includeBox,
+    monthGroup,
+    outcome,
+    outcomeRow,
+    overallTotal,
+    previewButton,
+} from "./support/calculation";
 import { recordApiWrites } from "./support/network";
 import { expect, test } from "./support/test";
-import { openTab, pickMonth } from "./support/ui";
-import { readWorkbookZip, type SheetRow } from "./support/zip";
+import { download, openTab, pickMonth } from "./support/ui";
+import { expectWorkbook, readWorkbookZip, type SheetRow } from "./support/zip";
 
 // Covers docs/frontend-calcolo-refactor/test-guides/06-calculation-exports.md. T-02 stays manual: the backend merges agents that share a name.
 const PREVIEW_MONTH = "2031-04";
@@ -23,8 +34,6 @@ const TAX_ID = "E2ETST80A01H501A";
 const CONFIRM_PATH = "/api/calcolo/conferma";
 
 const SKIPPED_REASON = "invito non più in bozza";
-
-const HEADERS: SheetRow = ["Cliente", "CF/PIVA", "POD/PDR", "Comp. al", "Regola", "Importo Provvigione", "Venditore"];
 
 const PREVIEW_NOTE = "Anteprima non salvata: il file contiene la bozza attuale.";
 
@@ -128,36 +137,12 @@ function member(fixture: Fixture, agent: TestAgent): string {
     return `${fixture.month}/${agent.name.split(" ").join("_")}-${agent.id}.xlsx`;
 }
 
-// Data rows follow the server's order, which the tests don't pin down, so both sides sort them between the header and the total.
-function expectWorkbook(rows: SheetRow[] | undefined, dataRows: SheetRow[], total: SheetRow): void {
-    const sorted = (list: SheetRow[]): SheetRow[] => [...list].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-    const shown = rows ?? [];
-
-    expect([shown[0], ...sorted(shown.slice(1, -1)), shown.at(-1)]).toEqual([HEADERS, ...sorted(dataRows), total]);
-}
-
-async function download(page: Page, button: Locator): Promise<Download> {
-    const file = page.waitForEvent("download");
-
-    await button.click();
-
-    return file;
-}
-
 function previewZipButton(page: Page): Locator {
     return page.getByRole("button", { name: "Scarica anteprima ZIP" });
 }
 
-function outcome(page: Page): Locator {
-    return page.getByRole("region", { name: "Esito del salvataggio" });
-}
-
 function savedZipButton(page: Page): Locator {
     return outcome(page).getByRole("button", { name: "Scarica inviti salvati ZIP" });
-}
-
-function outcomeRow(page: Page, agent: TestAgent): Locator {
-    return outcome(page).getByRole("row").filter({ has: page.getByRole("cell", { name: agent.name, exact: true }) });
 }
 
 async function confirmDraft(page: Page, fixture: Fixture): Promise<SavedResult[]> {

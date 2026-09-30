@@ -2,6 +2,7 @@ import { expect, type APIRequestContext } from "@playwright/test";
 import pg from "pg";
 
 import { DATABASE_URL } from "./env";
+import { importCompetence } from "./ui";
 
 // Rules that already exist with a fixed-value entry, so imports never create new rules or tiers.
 export type RuleName = "Gettone Residenziale Standard" | "Gettone SDD Residenziale" | "Rinnovo Residenziale";
@@ -84,12 +85,6 @@ function monthEnd(month: string): string {
     const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
 
     return `${month}-${String(lastDay).padStart(2, "0")}`;
-}
-
-function importCompetence(month: string): string {
-    const [year, monthNumber] = month.split("-");
-
-    return `${monthNumber}/${year}`;
 }
 
 // Talks to the real backend through the Vite proxy with the signed-in session, to arrange data and check what was stored.

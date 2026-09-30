@@ -41,6 +41,14 @@ export function recordRow(scope: Page | Locator, text: string): Locator {
     return scope.getByRole("row").filter({ hasText: text }).filter({ hasNot: scope.getByRole("row") });
 }
 
+export function outcome(page: Page): Locator {
+    return page.getByRole("region", { name: "Esito del salvataggio" });
+}
+
+export function outcomeRow(page: Page, agent: TestAgent): Locator {
+    return outcome(page).getByRole("row").filter({ has: page.getByRole("cell", { name: agent.name, exact: true }) });
+}
+
 export async function expectAmounts(inputs: Locator, values: string[]): Promise<void> {
     await expect(inputs).toHaveCount(values.length);
 

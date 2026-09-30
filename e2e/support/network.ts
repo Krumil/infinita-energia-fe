@@ -25,6 +25,22 @@ export function recordApiWrites(page: Page): string[] {
     return calls;
 }
 
+// Holds every request to the path at the browser until released, then lets it reach the real backend.
+export async function holdRequests(page: Page, path: string): Promise<() => void> {
+    let release: () => void = () => undefined;
+
+    const released = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+
+    await page.route(`**${path}`, async (route) => {
+        await released;
+        await route.continue();
+    });
+
+    return () => release();
+}
+
 // Records every API request, reads included, as "METHOD /path".
 export function recordApiRequests(page: Page): string[] {
     const calls: string[] = [];

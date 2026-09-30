@@ -1,6 +1,7 @@
 import type { Locator, Page, Request } from "@playwright/test";
 
 import { monthStart, uniqueToken, type Backend, type SettlementRow, type TestAgent } from "./support/backend";
+import { agentRow, monthGroup, previewButton, recordRow } from "./support/calculation";
 import { recordApiWrites } from "./support/network";
 import { expect, test } from "./support/test";
 import { attachWorkbook, importCompetence, monthLabel, openSettlements, openTab, pickMonth } from "./support/ui";
@@ -76,26 +77,13 @@ function isPreviewOf(request: Request, month: string): boolean {
     return request.url().endsWith("/api/calcolo/anteprima") && (request.postData() ?? "").includes(monthStart(month));
 }
 
-function previewButton(page: Page): Locator {
-    return page.getByRole("button", { name: "Anteprima", exact: true });
-}
-
 async function openPreview(page: Page, month: string): Promise<void> {
     await openTab(page, "Provvigioni");
-    await pickMonth(page, page.getByRole("group", { name: "Competenza", exact: true }), month);
-}
-
-function agentRow(page: Page, agent: TestAgent): Locator {
-    return page.getByRole("row").filter({ has: page.getByRole("button", { name: agent.name, exact: true }) });
+    await pickMonth(page, monthGroup(page), month);
 }
 
 function totalRow(page: Page): Locator {
     return page.getByRole("row").filter({ hasText: /^Totale/ });
-}
-
-// Expanded details sit in a table nested inside the summary row, so a single record is a row with no rows inside it.
-function recordRow(scope: Page | Locator, text: string): Locator {
-    return scope.getByRole("row").filter({ hasText: text }).filter({ hasNot: scope.getByRole("row") });
 }
 
 async function deleteMonthInOrders(page: Page, month: string, deletedRows: number): Promise<void> {

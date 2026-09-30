@@ -10,10 +10,12 @@ import {
     expectAmounts,
     includeBox,
     monthGroup,
+    outcome,
+    outcomeRow,
     overallTotal,
     previewButton,
 } from "./support/calculation";
-import { recordApiWrites } from "./support/network";
+import { holdRequests, recordApiWrites } from "./support/network";
 import { expect, test } from "./support/test";
 import { openTab, pickMonth } from "./support/ui";
 
@@ -150,14 +152,6 @@ function saveButton(page: Page): Locator {
     return reviewDialog(page).getByRole("button", { name: "Salva provvigioni" });
 }
 
-function outcome(page: Page): Locator {
-    return page.getByRole("region", { name: "Esito del salvataggio" });
-}
-
-function outcomeRow(page: Page, agent: TestAgent): Locator {
-    return outcome(page).getByRole("row").filter({ has: page.getByRole("cell", { name: agent.name, exact: true }) });
-}
-
 async function expectCells(row: Locator, cells: string[]): Promise<void> {
     await expect(row.getByRole("cell")).toHaveText(cells);
 }
@@ -170,22 +164,6 @@ async function confirmFromReview(page: Page): Promise<void> {
 
 function confirmationWrites(writes: string[]): string[] {
     return writes.filter((write) => write.startsWith("start "));
-}
-
-// Holds every confirmation at the browser until released, then lets it reach the real backend.
-async function holdConfirmations(page: Page): Promise<() => void> {
-    let release: () => void = () => undefined;
-
-    const released = new Promise<void>((resolve) => {
-        release = resolve;
-    });
-
-    await page.route(`**${CONFIRM_PATH}`, async (route) => {
-        await released;
-        await route.continue();
-    });
-
-    return () => release();
 }
 
 function byCustomerThenAmount(a: InviteDetail, b: InviteDetail): number {
@@ -452,7 +430,7 @@ test.describe("commission confirmation", () => {
     test("should send one write, lock the draft and show one outcome when the save button is double-clicked", async ({ page, backend }) => {
         const fixture = await createAndPreview(page, backend);
         const writes = recordApiWrites(page);
-        const release = await holdConfirmations(page);
+        const release = await holdRequests(page, CONFIRM_PATH);
 
         await expand(page, fixture.uno);
         await confirmButton(page).click();
@@ -481,7 +459,7 @@ test.describe("commission confirmation", () => {
     test("should send one write and show one outcome when Enter is pressed repeatedly on the save button", async ({ page, backend }) => {
         const fixture = await createAndPreview(page, backend);
         const writes = recordApiWrites(page);
-        const release = await holdConfirmations(page);
+        const release = await holdRequests(page, CONFIRM_PATH);
 
         await confirmButton(page).click();
         await saveButton(page).focus();

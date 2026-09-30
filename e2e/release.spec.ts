@@ -1,13 +1,24 @@
 import { readFile } from "node:fs/promises";
 
-import type { Download, Locator, Page, Request } from "@playwright/test";
+import type { Locator, Page, Request } from "@playwright/test";
 
 import { uniqueToken, type Backend, type RuleName, type SettlementRow, type TestAgent } from "./support/backend";
-import { agentRow, agentTotal, amountInputs, confirmButton, expand, includeBox, monthGroup, overallTotal, previewButton } from "./support/calculation";
-import { recordApiRequests, recordApiWrites } from "./support/network";
+import {
+    agentRow,
+    agentTotal,
+    amountInputs,
+    confirmButton,
+    expand,
+    includeBox,
+    monthGroup,
+    outcome,
+    overallTotal,
+    previewButton,
+} from "./support/calculation";
+import { holdRequests, recordApiRequests, recordApiWrites } from "./support/network";
 import { expect, test } from "./support/test";
-import { attachWorkbook, openSettlements, openTab, pickMonth } from "./support/ui";
-import { readWorkbookZip, type SheetRow } from "./support/zip";
+import { attachWorkbook, download, openSettlements, openTab, pickMonth } from "./support/ui";
+import { expectWorkbook, readWorkbookZip } from "./support/zip";
 
 // Covers docs/frontend-calcolo-refactor/test-guides/08-legacy-removal-and-release.md. T-02 is covered by the confirmation spec.
 const MONTH = "2031-05";
@@ -34,8 +45,6 @@ const UNPAID_PATH = "/api/non-pagati";
 const PREVIEW_FAILURE = "Anteprima non disponibile in questo momento";
 
 const UNPAID_HEADER = "Cliente;CF/PIVA;POD/PDR;Comp. al;Regola;Importo Provvigione;Venditore;Origine";
-
-const ZIP_HEADERS: SheetRow = ["Cliente", "CF/PIVA", "POD/PDR", "Comp. al", "Regola", "Importo Provvigione", "Venditore"];
 
 const STANDARD: RuleName = "Gettone Residenziale Standard";
 
@@ -94,20 +103,8 @@ function sentTo(page: Page, method: string, path: string): Promise<Request> {
     return page.waitForRequest((request) => request.method() === method && new URL(request.url()).pathname === path);
 }
 
-async function download(page: Page, button: Locator): Promise<Download> {
-    const file = page.waitForEvent("download");
-
-    await button.click();
-
-    return file;
-}
-
 function reviewDialog(page: Page, monthLabel: string): Locator {
     return page.getByRole("alertdialog", { name: `Conferma le provvigioni di ${monthLabel}` });
-}
-
-function outcome(page: Page): Locator {
-    return page.getByRole("region", { name: "Esito del salvataggio" });
 }
 
 // A dialog has to sit inside the viewport at any width. The page behind it isn't checked: the header navigation is wider than a phone screen.
@@ -125,33 +122,9 @@ async function expectNamedButtons(dialog: Locator): Promise<void> {
     for (const button of await dialog.getByRole("button").all()) await expect(button).toHaveAccessibleName(/\S/);
 }
 
-// Data rows follow the server's order, which the tests don't pin down, so both sides sort them between the header and the total.
-function expectWorkbook(rows: SheetRow[] | undefined, dataRows: SheetRow[], total: SheetRow): void {
-    const sorted = (list: SheetRow[]): SheetRow[] => [...list].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-    const shown = rows ?? [];
-
-    expect([shown[0], ...sorted(shown.slice(1, -1)), shown.at(-1)]).toEqual([ZIP_HEADERS, ...sorted(dataRows), total]);
-}
-
 // The backend stores agent names as sorted uppercase words, and file names join them with underscores.
 function fileName(agent: TestAgent): string {
     return agent.name.split(" ").join("_");
-}
-
-// Holds every request to the path at the browser until released, then lets it reach the real backend.
-async function holdRequests(page: Page, path: string): Promise<() => void> {
-    let release: () => void = () => undefined;
-
-    const released = new Promise<void>((resolve) => {
-        release = resolve;
-    });
-
-    await page.route(`**${path}`, async (route) => {
-        await released;
-        await route.continue();
-    });
-
-    return () => release();
 }
 
 // Imports through Ordini over an earlier import, previews after a month change and a failed attempt, edits, confirms,
