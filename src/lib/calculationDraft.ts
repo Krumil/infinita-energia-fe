@@ -65,8 +65,11 @@ export function createDraft(preview: PreviewResponse): CalculationDraft {
     return { agents, dirty: false };
 }
 
+// The backend rounds each row to cents before summing, so finer amounts would make the reviewed total differ from the saved one.
 export function rowAmount(row: DraftRow): number | undefined {
-    return parseEuroNumber(row.amountText);
+    const amount = parseEuroNumber(row.amountText);
+
+    return amount !== undefined && Number(amount.toFixed(2)) === amount ? amount : undefined;
 }
 
 export function summarizeDraft(draft: CalculationDraft): DraftSummary {

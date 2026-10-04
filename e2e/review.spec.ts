@@ -232,10 +232,13 @@ test.describe("preview review and editing", () => {
 
         await expand(page, fixture.parent);
 
-        for (const invalid of ["", "abc", "12,3.4"]) {
+        // The backend rounds each row to cents, so a third decimal would save a different total from the one reviewed.
+        for (const invalid of ["", "abc", "12,3.4", "1,004"]) {
             await amountInputs(page, fixture.parentCustomer).fill(invalid);
 
-            await expect(amountInputs(page, fixture.parentCustomer)).toHaveAccessibleDescription("Importo non valido");
+            await expect(amountInputs(page, fixture.parentCustomer)).toHaveAccessibleDescription(
+                "Importo non valido: usa al massimo 2 decimali",
+            );
             await expect(agentTotal(page, fixture.parent)).toHaveText("3,00 €Provvisorio");
             await expect(overallTotal(page)).toHaveText("83,35 €Provvisorio");
             await expect(provisional).toBeVisible();
