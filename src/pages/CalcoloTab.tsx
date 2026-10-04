@@ -1,5 +1,5 @@
 import { useId, useMemo, useState, type ReactElement } from "react";
-import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, FileSpreadsheet, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, FileSpreadsheet, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     AlertDialog,
@@ -15,13 +15,14 @@ import {
 import { MonthPicker } from "@/components/DatePicker";
 import { EmptyState, CalculationResults } from "@/components";
 import { ConfirmationOutcome } from "@/components/ConfirmationOutcome";
+import { PreviewOutline } from "@/components/PreviewOutline";
 import { ZipDownloadButton } from "@/components/ZipDownloadButton";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { ConfirmationState, PreviewState } from "@/hooks/useCalcolo";
-import { summarizeDraft, type DraftActions } from "@/lib/calculationDraft";
+import type { ConfirmationState, LoadedPreview, PreviewState } from "@/hooks/useCalcolo";
+import { summarizeDraft, type DraftActions, type DraftSummary } from "@/lib/calculationDraft";
 import { buildPreviewZip } from "@/lib/calculationExport";
 import { formatMonthLabel } from "@/lib/competenceDates";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import type { Agent } from "@/types";
 
 interface CalculationTabProps {
@@ -50,7 +51,6 @@ export function CalculationTab({
     onNavigate,
 }: CalculationTabProps): ReactElement {
     const { t, language } = useTranslation();
-    const monthLabelId = useId();
     const confirmReasonId = useId();
     const [discardTarget, setDiscardTarget] = useState<DiscardTarget | null>(null);
     const loading = preview.status === "loading";
@@ -85,10 +85,86 @@ export function CalculationTab({
         </Button>
     );
 
+    const emptyPreview = preview.status === "ready" && preview.data.agenti.length === 0 && preview.data.non_associati.length === 0;
+    // The results show the outcome under the total card; without results it falls to the end of the page.
+    const resultsShown = summary !== null && !emptyPreview;
+
+    const outcome = confirmation.status !== "idle" && (
+        <ConfirmationOutcome
+            confirmation={confirmation}
+            changedAfterSave={confirmation.status === "done" && dirty}
+            onOpenInvites={() => onNavigate("inviti")}
+        />
+    );
+
+    // While a recalculation loads, the bar keeps its place but stays locked, so the results under it don't move.
+    // The reason doubles as the confirm button's description, so it names what blocks confirming or that nothing is saved yet.
+    const renderConfirmBar = (shownMonth: string, shown: LoadedPreview, shownSummary: DraftSummary, confirmBlock: string | null): ReactElement => (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p
+                id={confirmReasonId}
+                className={cn(
+                    "mb-0 flex items-start gap-2 text-sm",
+                    confirmBlock && !submitting ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground",
+                )}
+            >
+                {submitting ? (
+                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+                ) : confirmBlock ? (
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                ) : (
+                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                )}
+                {confirmBlock ?? t("previewNotSaved")}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+                <ZipDownloadButton
+                    label={t("exportPreviewAction")}
+                    note={t("exportPreviewNote")}
+                    hideNote
+                    disabled={loading || shownSummary.includedAgents === 0 || shownSummary.invalidIncludedRows > 0}
+                    build={() => buildPreviewZip(shownMonth, shown.draft)}
+                    describeError={() => t("exportFailed")}
+                />
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button size="sm" className="btn-primary shrink-0" disabled={loading || confirmBlock !== null} aria-describedby={confirmReasonId}>
+                            <CheckCircle2 className="h-4 w-4" />
+                            {t("previewConfirmAction")}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>{t("confirmReviewTitle").replace("{month}", formatMonthLabel(shownMonth, language))}</AlertDialogTitle>
+                            <AlertDialogDescription>{t("confirmReviewDescription")}</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm">
+                            <dt className="text-muted-foreground">{t("confirmReviewIncludedAgents")}</dt>
+                            <dd className="text-right font-mono">{shownSummary.includedAgents}</dd>
+                            <dt className="text-muted-foreground">{t("confirmReviewIncludedRows")}</dt>
+                            <dd className="text-right font-mono">{shownSummary.includedRows}</dd>
+                            <dt className="font-medium">{t("confirmReviewTotal")}</dt>
+                            <dd className="text-right font-mono font-medium">{formatCurrency(shownSummary.total)}</dd>
+                            <dt className="text-muted-foreground">{t("confirmReviewExcludedAgents")}</dt>
+                            <dd className="text-right font-mono">{shownSummary.excludedAgents}</dd>
+                            <dt className="text-muted-foreground">{t("confirmReviewUnmatchedRows")}</dt>
+                            <dd className="text-right font-mono">{shown.data.non_associati.length}</dd>
+                        </dl>
+                        <p className="text-sm text-muted-foreground">{t("confirmReviewReplaceNote")}</p>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                            <AlertDialogAction onClick={onConfirm}>{t("confirmReviewAction")}</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        </div>
+    );
+
     const renderBody = (): ReactElement => {
         switch (preview.status) {
             case "idle":
-                return <EmptyState message={t("previewIdle")} icon={<Calculator className="h-16 w-16" />} />;
+                return <PreviewOutline month={month} loading={false} onGoToOrders={() => onNavigate("ordini")} />;
 
             case "loading":
                 return preview.previous && summary ? (
@@ -99,16 +175,12 @@ export function CalculationTab({
                             summary={summary}
                             unmatched={preview.previous.data.non_associati}
                             agents={agents}
+                            actions={preview.previous.draft.agents.length > 0 && renderConfirmBar(preview.month, preview.previous, summary, null)}
+                            outcome={outcome}
                         />
                     </div>
                 ) : (
-                    <div aria-busy="true" className="space-y-6">
-                        <div className="kpi-card flex h-48 items-center justify-center gap-3 p-6">
-                            <Loader2 className="h-6 w-6 animate-spin text-energia-accent" />
-                            <span className="font-display">{t("previewLoading")}</span>
-                        </div>
-                        <div className="ledger-card h-72 animate-pulse bg-secondary/20" />
-                    </div>
+                    <PreviewOutline month={preview.month} loading onGoToOrders={() => onNavigate("ordini")} />
                 );
 
             case "error":
@@ -134,7 +206,6 @@ export function CalculationTab({
 
             case "ready": {
                 const { data } = preview;
-                const isEmpty = data.agenti.length === 0 && data.non_associati.length === 0;
 
                 const confirmBlock = submitting
                     ? t("confirmSubmittingBlock")
@@ -162,73 +233,23 @@ export function CalculationTab({
                                 </Button>
                             </div>
                         )}
-                        {isEmpty ? (
+                        {emptyPreview ? (
                             <div className="flex flex-col items-center pb-8">
                                 <EmptyState message={t("previewEmpty")} icon={<FileSpreadsheet className="h-16 w-16" />} />
                                 {goToOrdersButton}
                             </div>
                         ) : (
                             summary && (
-                                <>
-                                    <CalculationResults
-                                        month={preview.month}
-                                        draft={preview.draft}
-                                        summary={summary}
-                                        unmatched={data.non_associati}
-                                        agents={agents}
-                                        editDraft={submitting ? undefined : editDraft}
-                                    />
-                                    {preview.draft.agents.length > 0 && (
-                                        <div className="ledger-card space-y-4 p-4">
-                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                                <p id={confirmReasonId} className="text-sm text-muted-foreground">
-                                                    {confirmBlock ??
-                                                        t("previewConfirmReady")
-                                                            .replace("{agents}", String(summary.includedAgents))
-                                                            .replace("{rows}", String(summary.includedRows))}
-                                                </p>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button className="btn-primary shrink-0" disabled={confirmBlock !== null} aria-describedby={confirmReasonId}>
-                                                            <CheckCircle2 className="h-4 w-4" />
-                                                            {t("previewConfirmAction")}
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>{t("confirmReviewTitle").replace("{month}", formatMonthLabel(month, language))}</AlertDialogTitle>
-                                                            <AlertDialogDescription>{t("confirmReviewDescription")}</AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm">
-                                                            <dt className="text-muted-foreground">{t("confirmReviewIncludedAgents")}</dt>
-                                                            <dd className="text-right font-mono">{summary.includedAgents}</dd>
-                                                            <dt className="text-muted-foreground">{t("confirmReviewIncludedRows")}</dt>
-                                                            <dd className="text-right font-mono">{summary.includedRows}</dd>
-                                                            <dt className="font-medium">{t("confirmReviewTotal")}</dt>
-                                                            <dd className="text-right font-mono font-medium">{formatCurrency(summary.total)}</dd>
-                                                            <dt className="text-muted-foreground">{t("confirmReviewExcludedAgents")}</dt>
-                                                            <dd className="text-right font-mono">{summary.excludedAgents}</dd>
-                                                            <dt className="text-muted-foreground">{t("confirmReviewUnmatchedRows")}</dt>
-                                                            <dd className="text-right font-mono">{data.non_associati.length}</dd>
-                                                        </dl>
-                                                        <p className="text-sm text-muted-foreground">{t("confirmReviewReplaceNote")}</p>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={onConfirm}>{t("confirmReviewAction")}</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </div>
-                                            <ZipDownloadButton
-                                                label={t("exportPreviewAction")}
-                                                note={t("exportPreviewNote")}
-                                                disabled={summary.includedAgents === 0 || summary.invalidIncludedRows > 0}
-                                                build={() => buildPreviewZip(preview.month, preview.draft)}
-                                                describeError={() => t("exportFailed")}
-                                            />
-                                        </div>
-                                    )}
-                                </>
+                                <CalculationResults
+                                    month={preview.month}
+                                    draft={preview.draft}
+                                    summary={summary}
+                                    unmatched={data.non_associati}
+                                    agents={agents}
+                                    editDraft={submitting ? undefined : editDraft}
+                                    actions={preview.draft.agents.length > 0 && renderConfirmBar(preview.month, preview, summary, confirmBlock)}
+                                    outcome={outcome}
+                                />
                             )
                         )}
                     </div>
@@ -244,31 +265,18 @@ export function CalculationTab({
                 <p className="font-body text-muted-foreground mt-1">{t("calculateCommissionsDesc")}</p>
             </div>
 
-            <div className="ledger-card flex flex-col gap-4 p-4 sm:flex-row sm:items-end sm:justify-between">
-                <div role="group" aria-labelledby={monthLabelId} className="space-y-2">
-                    <p id={monthLabelId} className="text-sm font-medium">
-                        {t("previewMonthLabel")}
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <MonthPicker
-                            value={month}
-                            onChange={handleMonthChange}
-                            placeholder={t("selectPeriod")}
-                            className="min-w-0 flex-1 sm:w-[200px] sm:flex-none"
-                            disabled={submitting}
-                        />
-                        <Button onClick={handlePreview} disabled={!month || loading || submitting} className="btn-primary shrink-0">
-                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
-                            {t("previewAction")}
-                        </Button>
-                    </div>
-                </div>
-                <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
-                    {t("previewImportHint")}
-                    <Button variant="link" size="unstyled" className="h-auto p-0" onClick={() => onNavigate("ordini")}>
-                        {t("previewGoToOrders")}
-                    </Button>
-                </p>
+            <div role="group" aria-label={t("previewMonthLabel")} className="flex items-center gap-2">
+                <MonthPicker
+                    value={month}
+                    onChange={handleMonthChange}
+                    placeholder={t("selectPeriod")}
+                    className="h-9 min-w-0 flex-1 sm:w-[200px] sm:flex-none"
+                    disabled={submitting}
+                />
+                <Button size="sm" onClick={handlePreview} disabled={!month || loading || submitting} className="btn-primary h-9 shrink-0 py-0">
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
+                    {t("previewAction")}
+                </Button>
             </div>
 
             <p className="sr-only" aria-live="polite">
@@ -277,13 +285,7 @@ export function CalculationTab({
 
             {renderBody()}
 
-            {confirmation.status !== "idle" && (
-                <ConfirmationOutcome
-                    confirmation={confirmation}
-                    changedAfterSave={confirmation.status === "done" && dirty}
-                    onOpenInvites={() => onNavigate("inviti")}
-                />
-            )}
+            {!resultsShown && outcome}
 
             <AlertDialog open={discardTarget !== null} onOpenChange={(open) => !open && setDiscardTarget(null)}>
                 <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">

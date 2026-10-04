@@ -205,12 +205,17 @@ test.describe("preview review and editing", () => {
         await expect(includeBox(page, fixture.child)).toBeDisabled();
         await expect(page.getByText(EXCLUSION_NOTE)).toBeVisible();
         await expect(overallTotal(page)).toHaveText("333,00 €");
+        await expect(page.getByText("2 beneficiari · 5 righe incluse", { exact: true })).toBeVisible();
         await expect(confirmButton(page)).toBeEnabled();
 
         await includeBox(page, fixture.twins).click();
+
+        await expect(page.getByText("1 beneficiario · 2 righe incluse", { exact: true })).toBeVisible();
+
         await includeBox(page, fixture.parent).click();
 
         await expect(overallTotal(page)).toHaveText("0,00 €");
+        await expect(page.getByText("0 beneficiari · 0 righe incluse", { exact: true })).toBeVisible();
         await expect(confirmButton(page)).toBeDisabled();
         await expect(confirmButton(page)).toHaveAccessibleDescription("Nessun agente incluso: non c'è nulla da confermare.");
     });
@@ -372,7 +377,7 @@ test.describe("preview review and editing", () => {
         await prompt.getByRole("button", { name: "Scarta modifiche" }).click();
 
         await expect(monthGroup(page)).toContainText(monthLabel(OTHER_MONTH));
-        await expect(page.getByText("Seleziona una competenza e avvia l'anteprima. Non viene salvato nulla.")).toBeVisible();
+        await expect(page.getByText("Avvia l'anteprima per calcolare il totale. Non viene salvato nulla.")).toBeVisible();
         await expect(confirmButton(page)).toHaveCount(0);
 
         await previewButton(page).click();
@@ -454,7 +459,7 @@ test.describe("preview review and editing", () => {
         await expect(amountInputs(page, fixture.twinCustomer)).toHaveCount(2);
         await expect(page.getByRole("main").getByRole("button", { name: /aggiungi/i })).toHaveCount(0);
 
-        const unmatched = page.getByRole("region", { name: "Righe non associate" });
+        const unmatched = page.getByRole("region", { name: "1 riga non associata, esclusa dal calcolo" });
 
         await expect(unmatched.getByRole("row").filter({ hasText: "Cliente Senza Agente" })).toBeVisible();
         await expect(unmatched.getByRole("textbox")).toHaveCount(0);

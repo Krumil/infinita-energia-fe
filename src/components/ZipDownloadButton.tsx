@@ -2,17 +2,20 @@ import { useId, useState, type ReactElement } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { downloadBlob } from "@/lib/exportUtils";
+import { cn } from "@/lib/utils";
 import type { ZipDownload } from "@/lib/calculationExport";
 
 interface ZipDownloadButtonProps {
     label: string;
     note: string;
+    // Where the text around the button already says what the file holds, the note only describes it to assistive technology.
+    hideNote?: boolean;
     disabled: boolean;
     build: () => Promise<ZipDownload>;
     describeError: (cause: unknown) => string;
 }
 
-export function ZipDownloadButton({ label, note, disabled, build, describeError }: ZipDownloadButtonProps): ReactElement {
+export function ZipDownloadButton({ label, note, hideNote = false, disabled, build, describeError }: ZipDownloadButtonProps): ReactElement {
     const noteId = useId();
     const [downloading, setDownloading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -39,7 +42,7 @@ export function ZipDownloadButton({ label, note, disabled, build, describeError 
                 {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 {label}
             </Button>
-            <p id={noteId} className="text-xs text-muted-foreground">
+            <p id={noteId} className={cn("text-xs text-muted-foreground", hideNote && "sr-only")}>
                 {note}
             </p>
             {error && (

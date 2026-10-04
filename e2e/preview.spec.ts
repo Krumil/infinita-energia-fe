@@ -115,9 +115,9 @@ test.describe("calculation preview", () => {
         });
 
         await page.goto("/");
-        await expect(page.getByText("Seleziona una competenza e avvia l'anteprima. Non viene salvato nulla.")).toBeHidden();
+        await expect(page.getByText("Avvia l'anteprima per calcolare il totale. Non viene salvato nulla.")).toBeHidden();
         await openPreview(page, MONTH);
-        await expect(page.getByText("Seleziona una competenza e avvia l'anteprima. Non viene salvato nulla.")).toBeVisible();
+        await expect(page.getByText("Avvia l'anteprima per calcolare il totale. Non viene salvato nulla.")).toBeVisible();
 
         const writes = recordApiWrites(page);
 
@@ -127,7 +127,9 @@ test.describe("calculation preview", () => {
         await expect(agentRow(page, family.grandparent).getByRole("cell")).toHaveText(["", "", `${family.grandparent.name}#${family.grandparent.id}`, "2", "14,00 €"]);
         await expect(agentRow(page, family.child).getByRole("cell")).toHaveText(["", "", `${family.child.name}#${family.child.id}`, "2", "8,00 €"]);
         await expect(totalRow(page).getByRole("cell")).toHaveText(["Totale", "8", "40,00 €"]);
+        await expect(page.getByText("3 beneficiari · 8 righe incluse", { exact: true })).toBeVisible();
         await expect(page.getByText("Solo anteprima: nulla è stato salvato")).toBeVisible();
+        await expect(confirmButton(page)).toHaveAccessibleDescription("Solo anteprima: nulla è stato salvato");
 
         expect(previewBodies).toEqual([PREVIEW_BODY]);
         await expect.poll(() => writes).toEqual(["start POST /api/calcolo/anteprima", "end POST /api/calcolo/anteprima"]);
@@ -201,10 +203,9 @@ test.describe("calculation preview", () => {
         await openPreview(page, MONTH);
         await previewButton(page).click();
 
-        await expect(page.getByRole("status").filter({ hasText: "non associate" })).toHaveText("2 righe non associate, escluse dal calcolo");
+        const unmatched = page.getByRole("region", { name: "2 righe non associate, escluse dal calcolo" });
 
-        const unmatched = page.getByRole("region", { name: "Righe non associate" });
-
+        await expect(unmatched.getByRole("status")).toHaveText("2 righe non associate, escluse dal calcolo");
         await expect(recordRow(unmatched, `Cliente Ignoto A ${token}`).getByRole("cell")).toHaveText([
             `${token} IGNOTO`,
             `Cliente Ignoto A ${token}`,
@@ -220,6 +221,23 @@ test.describe("calculation preview", () => {
         await expect(totalRow(page).getByRole("cell")).toHaveText(["Totale", "8", "40,00 €"]);
     });
 
+    test("should show the confirm action and the unmatched rows without scrolling when the preview has unmatched rows", async ({ page, backend }) => {
+        await backend.claimMonth(MONTH);
+
+        const family = await createFamily(backend);
+
+        await backend.importRows(MONTH, mixedRows(family));
+        await page.goto("/");
+        await openPreview(page, MONTH);
+        await previewButton(page).click();
+
+        const unmatched = page.getByRole("region", { name: "2 righe non associate, escluse dal calcolo" });
+
+        await expect(confirmButton(page)).toBeEnabled();
+        await expect(confirmButton(page)).toBeInViewport({ ratio: 1 });
+        await expect(recordRow(unmatched, `Cliente Ignoto A ${family.token}`)).toBeInViewport({ ratio: 1 });
+    });
+
     test("should show the unmatched rows instead of the empty state when no row in the month matches an agent", async ({ page, backend }) => {
         await backend.claimMonth(MONTH);
 
@@ -230,9 +248,11 @@ test.describe("calculation preview", () => {
         await openPreview(page, MONTH);
         await previewButton(page).click();
 
-        await expect(page.getByRole("status").filter({ hasText: "non associate" })).toHaveText("2 righe non associate, escluse dal calcolo");
+        const unmatched = page.getByRole("region", { name: "2 righe non associate, escluse dal calcolo" });
+
+        await expect(unmatched.getByRole("status")).toHaveText("2 righe non associate, escluse dal calcolo");
         await expect(page.getByText("Nessun agente matura provvigioni dalle liquidazioni di questa competenza.")).toBeVisible();
-        await expect(recordRow(page.getByRole("region", { name: "Righe non associate" }), token)).toHaveCount(2);
+        await expect(recordRow(unmatched, token)).toHaveCount(2);
         await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toHaveCount(0);
     });
 
@@ -280,8 +300,28 @@ test.describe("calculation preview", () => {
 
         await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toBeVisible();
 
-        // The first "Vai a Ordini" is the import hint above the results; the last one belongs to the empty state.
-        await page.getByRole("button", { name: "Vai a Ordini" }).last().click();
+        await page.getByRole("button", { name: "Vai a Ordini" }).click();
+
+        await expect(page.getByRole("heading", { name: "Ordini", level: 2 })).toBeVisible();
+        await expect(page).toHaveURL(/#ordini$/);
+    });
+
+    test("should show the outline of the results for the chosen month and link to Ordini when no preview has run", async ({ page }) => {
+        const outlineTitle = (month: string): RegExp => new RegExp(`^Provvigione Totale — ${monthLabel(month)}$`, "i");
+
+        await page.goto("/");
+        await openPreview(page, MONTH);
+
+        await expect(page.getByText(outlineTitle(MONTH))).toBeVisible();
+        await expect(page.getByText("Avvia l'anteprima per calcolare il totale. Non viene salvato nulla.")).toBeVisible();
+        await expect(page.getByRole("row")).toHaveCount(0);
+
+        await pickMonth(page, monthGroup(page), OTHER_MONTH);
+
+        await expect(page.getByText(outlineTitle(OTHER_MONTH))).toBeVisible();
+        await expect(page.getByText(outlineTitle(MONTH))).toHaveCount(0);
+
+        await page.getByRole("button", { name: "Vai a Ordini" }).click();
 
         await expect(page.getByRole("heading", { name: "Ordini", level: 2 })).toBeVisible();
         await expect(page).toHaveURL(/#ordini$/);
@@ -623,7 +663,7 @@ test.describe("calculation preview", () => {
 
             await page.goto("/");
             await openTab(page, "Provvigioni");
-            await expect(page.getByText("Select a competence month and run the preview. Nothing is saved.")).toBeVisible();
+            await expect(page.getByText("Run the preview to calculate the total. Nothing is saved.")).toBeVisible();
             await pickMonth(page, page.getByRole("group", { name: "Competence month", exact: true }), MONTH);
             await page.getByRole("button", { name: "Preview", exact: true }).click();
 
@@ -635,8 +675,10 @@ test.describe("calculation preview", () => {
             await alert.getByRole("button", { name: "Retry" }).click();
 
             await expect(page.getByText("Preview only: nothing has been saved")).toBeVisible();
-            await expect(page.getByRole("status").filter({ hasText: "unmatched" })).toHaveText("2 unmatched rows, excluded from the calculation");
-            await expect(page.getByRole("heading", { name: "Unmatched rows" })).toBeVisible();
+            await expect(page.getByText("3 beneficiaries · 8 included rows", { exact: true })).toBeVisible();
+            await expect(
+                page.getByRole("region", { name: "2 unmatched rows, excluded from the calculation" }).getByRole("status"),
+            ).toHaveText("2 unmatched rows, excluded from the calculation");
             await expect(page.getByRole("row").filter({ hasText: /^Total/ }).getByRole("cell")).toHaveText(["Total", "8", "40,00 €"]);
 
             await page.getByRole("button", { name: family.parent.name, exact: true }).click();

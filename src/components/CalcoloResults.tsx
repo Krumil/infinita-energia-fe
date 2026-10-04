@@ -11,6 +11,7 @@ import { formatMonthLabel } from "@/lib/competenceDates";
 import { formatCurrency } from "@/lib/utils";
 import type { CalculationResultsProps } from "@/types/components";
 import type { CalculationDetail } from "@/types";
+import type { TranslationKey } from "@/translations";
 
 const EMPTY_VALUE = "—";
 
@@ -36,7 +37,7 @@ function filterRows(rows: DraftRow[], query: string): DraftRow[] {
     );
 }
 
-export function CalculationResults({ month, draft, summary, unmatched, agents, editDraft }: CalculationResultsProps): ReactElement {
+export function CalculationResults({ month, draft, summary, unmatched, agents, editDraft, actions, outcome }: CalculationResultsProps): ReactElement {
     const { t, language } = useTranslation();
     const [expandedAgentId, setExpandedAgentId] = useState<number | null>(null);
     const [filterQuery, setFilterQuery] = useState<string>("");
@@ -44,6 +45,9 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
     const agentNames = useMemo(() => new Map(agents.map((agent) => [agent.id, agent.nome_cognome])), [agents]);
     const periodDisplay = formatMonthLabel(month, language);
     const provisional = summary.invalidIncludedRows > 0;
+
+    const countLabel = (count: number, one: TranslationKey, other: TranslationKey): string =>
+        count === 1 ? t(one) : t(other).replace("{count}", count.toLocaleString(language));
 
     const displayName = (agent: DraftAgent): string =>
         agentNames.get(agent.agente_id) ?? agent.nome_agente ?? t("agentIdLabel").replace("{id}", String(agent.agente_id));
@@ -205,39 +209,89 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
 
     return (
         <div className="space-y-6">
-            {unmatched.length > 0 && (
-                <div
-                    role="status"
-                    className="flex items-center gap-2 rounded-md border border-amber-500/50 bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
-                >
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    {unmatched.length === 1
-                        ? t("unmatchedRowsWarningOne")
-                        : t("unmatchedRowsWarningOther").replace("{count}", String(unmatched.length))}
+            {draft.agents.length > 0 ? (
+                <div className="kpi-card p-6 text-center">
+                    <span className="kpi-label">
+                        {t("totalCommission")}
+                        <span className="text-energia-accent"> — {periodDisplay}</span>
+                    </span>
+                    <div className="kpi-value text-5xl mt-3">{formatCurrency(summary.total)}</div>
+                    {provisional && (
+                        <p className="mt-3 text-sm font-medium text-destructive">
+                            {summary.invalidIncludedRows === 1
+                                ? t("previewProvisionalTotalOne")
+                                : t("previewProvisionalTotalOther").replace("{count}", String(summary.invalidIncludedRows))}
+                        </p>
+                    )}
+                    <p className="mt-3 text-sm text-muted-foreground">
+                        {countLabel(summary.includedAgents, "previewTotalAgentsOne", "previewTotalAgentsOther")}
+                        {" · "}
+                        {countLabel(summary.includedRows, "previewTotalRowsOne", "previewTotalRowsOther")}
+                    </p>
+                    {actions && <div className="mt-6 border-t border-border/50 pt-4 text-left">{actions}</div>}
                 </div>
+            ) : (
+                <p className="ledger-card p-6 text-center text-sm text-muted-foreground">{t("previewNoAgents")}</p>
             )}
 
-            {draft.agents.length > 0 ? (
-                <>
-                    <div className="kpi-card p-6 text-center">
-                        <span className="kpi-label">
-                            {t("totalCommission")}
-                            <span className="text-energia-accent"> — {periodDisplay}</span>
-                        </span>
-                        <div className="kpi-value text-5xl mt-3">{formatCurrency(summary.total)}</div>
-                        {provisional && (
-                            <p className="mt-3 text-sm font-medium text-destructive">
-                                {summary.invalidIncludedRows === 1
-                                    ? t("previewProvisionalTotalOne")
-                                    : t("previewProvisionalTotalOther").replace("{count}", String(summary.invalidIncludedRows))}
-                            </p>
-                        )}
-                        <p className="font-body text-muted-foreground mt-3 text-sm italic">
-                            {summary.includedAgents} {t("beneficiary").toLowerCase()}(i)
-                        </p>
-                        <p className="mt-2 text-xs font-medium text-muted-foreground">{t("previewNotSaved")}</p>
-                    </div>
+            {outcome}
 
+            {unmatched.length > 0 && (
+                <section
+                    aria-labelledby="unmatched-rows-title"
+                    className="overflow-hidden rounded-md border border-amber-500/50 bg-amber-50 dark:bg-amber-950/30"
+                >
+                    <div className="flex gap-3 p-4 text-amber-800 dark:text-amber-300">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div className="space-y-1">
+                            <h3 id="unmatched-rows-title" className="text-sm font-medium">
+                                <span role="status">
+                                    {unmatched.length === 1
+                                        ? t("unmatchedRowsWarningOne")
+                                        : t("unmatchedRowsWarningOther").replace("{count}", String(unmatched.length))}
+                                </span>
+                            </h3>
+                            <p className="text-sm text-amber-800/80 dark:text-amber-300/80">{t("unmatchedRowsDescription")}</p>
+                        </div>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto border-t border-amber-500/30 bg-card">
+                        <Table>
+                            <TableHeader className="sticky top-0 bg-secondary/80 backdrop-blur-sm">
+                                <TableRow>
+                                    <TableHead>{t("seller")}</TableHead>
+                                    <TableHead>{t("client")}</TableHead>
+                                    <TableHead>{t("podPdr")}</TableHead>
+                                    <TableHead>{t("taxId")}</TableHead>
+                                    <TableHead>{t("rule")}</TableHead>
+                                    <TableHead>{t("consumptionTier")}</TableHead>
+                                    <TableHead>{t("competenceTo")}</TableHead>
+                                    <TableHead className="text-right">{t("amount")}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {unmatched.map((row, idx) => (
+                                    <TableRow key={idx}>
+                                        <TableCell className="font-medium">{row.venditore ?? EMPTY_VALUE}</TableCell>
+                                        <TableCell>{row.cliente ?? EMPTY_VALUE}</TableCell>
+                                        <TableCell className="font-mono text-xs">{row.pod_pdr ?? EMPTY_VALUE}</TableCell>
+                                        <TableCell className="font-mono text-xs">{row.cf_piva ?? EMPTY_VALUE}</TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">{row.regola ?? EMPTY_VALUE}</TableCell>
+                                        {/* The backend sends a missing scaglione as an empty string, not null. */}
+                                        <TableCell className="text-sm">{row.scaglione_consumo || EMPTY_VALUE}</TableCell>
+                                        <TableCell className="font-mono text-xs">{row.comp_al ?? EMPTY_VALUE}</TableCell>
+                                        <TableCell className="text-right font-mono">
+                                            {row.importo_euro === null ? EMPTY_VALUE : formatCurrency(row.importo_euro)}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </section>
+            )}
+
+            {draft.agents.length > 0 && (
+                <>
                     <div className="section-divider" />
 
                     <div className="space-y-4">
@@ -345,54 +399,6 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
                         </div>
                     </div>
                 </>
-            ) : (
-                <p className="ledger-card p-6 text-center text-sm text-muted-foreground">{t("previewNoAgents")}</p>
-            )}
-
-            {unmatched.length > 0 && (
-                <section className="space-y-3" aria-labelledby="unmatched-rows-title">
-                    <div>
-                        <h3 id="unmatched-rows-title" className="font-display text-xl">
-                            {t("unmatchedRowsTitle")}
-                        </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">{t("unmatchedRowsDescription")}</p>
-                    </div>
-                    <div className="ledger-card overflow-hidden">
-                        <div className="max-h-96 overflow-y-auto">
-                            <Table>
-                                <TableHeader className="sticky top-0 bg-secondary/80 backdrop-blur-sm">
-                                    <TableRow>
-                                        <TableHead>{t("seller")}</TableHead>
-                                        <TableHead>{t("client")}</TableHead>
-                                        <TableHead>{t("podPdr")}</TableHead>
-                                        <TableHead>{t("taxId")}</TableHead>
-                                        <TableHead>{t("rule")}</TableHead>
-                                        <TableHead>{t("consumptionTier")}</TableHead>
-                                        <TableHead>{t("competenceTo")}</TableHead>
-                                        <TableHead className="text-right">{t("amount")}</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {unmatched.map((row, idx) => (
-                                        <TableRow key={idx}>
-                                            <TableCell className="font-medium">{row.venditore ?? EMPTY_VALUE}</TableCell>
-                                            <TableCell>{row.cliente ?? EMPTY_VALUE}</TableCell>
-                                            <TableCell className="font-mono text-xs">{row.pod_pdr ?? EMPTY_VALUE}</TableCell>
-                                            <TableCell className="font-mono text-xs">{row.cf_piva ?? EMPTY_VALUE}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">{row.regola ?? EMPTY_VALUE}</TableCell>
-                                            {/* The backend sends a missing scaglione as an empty string, not null. */}
-                                            <TableCell className="text-sm">{row.scaglione_consumo || EMPTY_VALUE}</TableCell>
-                                            <TableCell className="font-mono text-xs">{row.comp_al ?? EMPTY_VALUE}</TableCell>
-                                            <TableCell className="text-right font-mono">
-                                                {row.importo_euro === null ? EMPTY_VALUE : formatCurrency(row.importo_euro)}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </div>
-                </section>
             )}
         </div>
     );

@@ -478,7 +478,7 @@ test.describe("release", () => {
 
             await openTab(page, "Provvigioni");
 
-            await expect(page.getByText("Select a competence month and run the preview. Nothing is saved.")).toBeVisible();
+            await expect(page.getByText("Run the preview to calculate the total. Nothing is saved.")).toBeVisible();
             await expect(page.getByText("Liquidations are imported in Ordini.")).toBeVisible();
             await expect(page.getByRole("button", { name: "Go to Ordini" })).toBeVisible();
             await expect(page.getByText("Click to upload")).toHaveCount(0);
