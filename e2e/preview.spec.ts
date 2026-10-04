@@ -1,7 +1,7 @@
 import type { Locator, Page, Request } from "@playwright/test";
 
 import { monthStart, uniqueToken, type Backend, type SettlementRow, type TestAgent } from "./support/backend";
-import { agentRow, monthGroup, previewButton, recordRow } from "./support/calculation";
+import { agentRow, confirmButton, monthGroup, previewButton, recordRow } from "./support/calculation";
 import { recordApiWrites } from "./support/network";
 import { expect, test } from "./support/test";
 import { attachWorkbook, importCompetence, monthLabel, openSettlements, openTab, pickMonth } from "./support/ui";
@@ -460,6 +460,81 @@ test.describe("calculation preview", () => {
         await stale.getByRole("button", { name: "Ricalcola" }).click();
 
         await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toBeVisible();
+        await expect(stale).toBeHidden();
+    });
+
+    test("should mark the preview outdated and block confirming when the month is deleted but the response to the deletion is lost", async ({
+        page,
+        backend,
+    }) => {
+        await backend.claimMonth(MONTH);
+
+        const family = await createFamily(backend);
+
+        await backend.importRows(MONTH, mixedRows(family));
+        await page.goto("/");
+        await openPreview(page, MONTH);
+        await previewButton(page).click();
+        await expect(totalRow(page)).toContainText("40,00 €");
+
+        // The backend deletes the rows, but the page never receives its answer.
+        await page.route("**/api/liquidazioni/*", async (route) => {
+            if (route.request().method() !== "DELETE") return route.continue();
+
+            await route.fetch();
+            await route.abort("failed");
+        });
+
+        const dialog = await openSettlements(page, MONTH);
+
+        await dialog.getByRole("button", { name: `Elimina liquidazioni di ${monthLabel(MONTH)}` }).click();
+        await dialog.getByRole("button", { name: `Elimina ${importCompetence(MONTH)}` }).click();
+        await expect(dialog.getByRole("alert")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(dialog).toBeHidden();
+        await openTab(page, "Provvigioni");
+
+        await expect(page.getByRole("alert").filter({ hasText: STALE_MESSAGE })).toBeVisible();
+        await expect(confirmButton(page)).toBeDisabled();
+        await expect(confirmButton(page)).toHaveAccessibleDescription("Ricalcola l'anteprima prima di confermare.");
+        expect(await backend.storedUnmatchedRows(MONTH)).toBe(0);
+    });
+
+    test("should mark the preview outdated and show the imported commissions after recalculating when the response to an import is lost", async ({
+        page,
+        backend,
+    }) => {
+        await backend.claimMonth(MONTH);
+
+        const family = await createFamily(backend);
+
+        await page.goto("/");
+        await openPreview(page, MONTH);
+        await previewButton(page).click();
+        await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toBeVisible();
+
+        // The backend imports the rows, but the page never receives its answer.
+        await page.route("**/api/importa-liquidazioni", async (route) => {
+            await route.fetch();
+            await route.abort("failed");
+        });
+
+        const dialog = await openSettlements(page, MONTH);
+
+        await attachWorkbook(dialog, MONTH, `importazione-persa-${family.token}.xlsx`, childRows(family));
+        await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
+        await expect(dialog.getByRole("alert")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(dialog).toBeHidden();
+        await openTab(page, "Provvigioni");
+
+        const stale = page.getByRole("alert").filter({ hasText: STALE_MESSAGE });
+
+        await expect(stale).toBeVisible();
+
+        await stale.getByRole("button", { name: "Ricalcola" }).click();
+
+        await expect(totalRow(page).getByRole("cell")).toHaveText(["Totale", "4", "12,00 €"]);
         await expect(stale).toBeHidden();
     });
 

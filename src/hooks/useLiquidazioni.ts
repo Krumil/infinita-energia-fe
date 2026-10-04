@@ -85,6 +85,8 @@ export function useSettlements({ onSourceChanged, onImported }: UseSettlementsOp
             if (error instanceof ApiError && error.status === 409) {
                 setState({ status: "conflict", message: t("settlementAlreadyImported"), ...progress });
             } else {
+                // Only a conflict proves nothing was imported; any other failure may have lost the response to a completed import.
+                onSourceChanged(upload.month);
                 setState({ status: "error", message: error instanceof Error ? error.message : t("settlementImportFailed"), ...progress });
             }
 
@@ -196,6 +198,8 @@ export function useSettlements({ onSourceChanged, onImported }: UseSettlementsOp
                 setState({ status: "success", ...progress });
             }
         } catch (error) {
+            // The deletion may have committed before its response was lost, so the month's preview can't be trusted anymore.
+            onSourceChanged(month);
             fail(error instanceof Error ? error.message : t("settlementDeleteFailed"));
         } finally {
             setImporting(false);
