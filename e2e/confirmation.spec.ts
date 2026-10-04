@@ -45,6 +45,12 @@ const REJECTED_DESCRIPTION = "Il server non ha salvato nulla. Le modifiche resta
 
 const UNKNOWN_DESCRIPTION = "Non sappiamo se il salvataggio è avvenuto. Apri Inviti e controlla prima di confermare di nuovo.";
 
+const NOT_SAVED_NOTE = "Solo anteprima: nulla è stato salvato";
+
+const CONFIRMED_NOTE = "Confermato: l'esito è qui sotto. Confermando di nuovo sostituisci gli inviti ancora in bozza.";
+
+const UNKNOWN_NOTE = "L'ultimo salvataggio potrebbe essere avvenuto: controlla Inviti prima di confermare di nuovo.";
+
 const STANDARD: RuleName = "Gettone Residenziale Standard";
 
 const RENEWAL: RuleName = "Rinnovo Residenziale";
@@ -299,6 +305,8 @@ test.describe("commission confirmation", () => {
         await expectCells(outcomeRow(page, fixture.uno), [fixture.uno.name, "Salvato", `#${unoResult?.invito_id}`, "345,50 €", "—"]);
         await expectCells(outcomeRow(page, fixture.due), [fixture.due.name, "Salvato", `#${dueResult?.invito_id}`, "80,00 €", "—"]);
         await expect(outcomeRow(page, fixture.escluso)).toHaveCount(0);
+        await expect(page.getByText(NOT_SAVED_NOTE)).toHaveCount(0);
+        await expect(confirmButton(page)).toHaveAccessibleDescription(CONFIRMED_NOTE);
 
         await openTab(page, "Dashboard");
         await expect(outcome(page)).toBeHidden();
@@ -502,6 +510,7 @@ test.describe("commission confirmation", () => {
         await expectAmounts(amountInputs(page, fixture.twinCustomer), ["175,50", "150,00"]);
         await expect(agentTotal(page, fixture.uno)).toHaveText("345,50 €");
         await expect(confirmButton(page)).toBeEnabled();
+        await expect(confirmButton(page)).toHaveAccessibleDescription(NOT_SAVED_NOTE);
 
         await page.unroute(`**${CONFIRM_PATH}`);
         await page.route(`**${CONFIRM_PATH}`, (route) => route.fulfill({ status: 404, json: { error: unknownAgent } }));
@@ -536,6 +545,8 @@ test.describe("commission confirmation", () => {
         await expect(alert).toContainText(UNKNOWN_DESCRIPTION);
         await expect(outcome(page)).not.toContainText(REJECTED_DESCRIPTION);
         await expect(confirmButton(page)).toBeEnabled();
+        await expect(page.getByText(NOT_SAVED_NOTE)).toHaveCount(0);
+        await expect(confirmButton(page)).toHaveAccessibleDescription(UNKNOWN_NOTE);
         expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE]);
 
         await outcome(page).getByRole("button", { name: "Apri Inviti" }).click();

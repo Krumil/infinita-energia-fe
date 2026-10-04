@@ -97,8 +97,16 @@ export function CalculationTab({
         />
     );
 
+    // Once a confirmation went through or may have, saying nothing is saved would contradict the outcome under the bar.
+    const confirmNote =
+        confirmation.status === "done"
+            ? t("previewConfirmedNote")
+            : confirmation.status === "unknown"
+              ? t("previewOutcomeUnknownNote")
+              : t("previewNotSaved");
+
     // While a recalculation loads, the bar keeps its place but stays locked, so the results under it don't move.
-    // The reason doubles as the confirm button's description, so it names what blocks confirming or that nothing is saved yet.
+    // The reason doubles as the confirm button's description, so it names what blocks confirming or what saving has done so far.
     const renderConfirmBar = (shownMonth: string, shown: LoadedPreview, shownSummary: DraftSummary, confirmBlock: string | null): ReactElement => (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p
@@ -115,7 +123,7 @@ export function CalculationTab({
                 ) : (
                     <Info className="mt-0.5 h-4 w-4 shrink-0" />
                 )}
-                {confirmBlock ?? t("previewNotSaved")}
+                {confirmBlock ?? confirmNote}
             </p>
             <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                 <ZipDownloadButton
