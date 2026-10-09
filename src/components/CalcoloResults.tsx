@@ -218,9 +218,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
                     <div className="kpi-value text-5xl mt-3">{formatCurrency(summary.total)}</div>
                     {provisional && (
                         <p className="mt-3 text-sm font-medium text-destructive">
-                            {summary.invalidIncludedRows === 1
-                                ? t("previewProvisionalTotalOne")
-                                : t("previewProvisionalTotalOther").replace("{count}", String(summary.invalidIncludedRows))}
+                            {countLabel(summary.invalidIncludedRows, "previewProvisionalTotalOne", "previewProvisionalTotalOther")}
                         </p>
                     )}
                     <p className="mt-3 text-sm text-muted-foreground">
@@ -246,9 +244,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
                         <div className="space-y-1">
                             <h3 id="unmatched-rows-title" className="text-sm font-medium">
                                 <span role="status">
-                                    {unmatched.length === 1
-                                        ? t("unmatchedRowsWarningOne")
-                                        : t("unmatchedRowsWarningOther").replace("{count}", String(unmatched.length))}
+                                    {countLabel(unmatched.length, "unmatchedRowsWarningOne", "unmatchedRowsWarningOther")}
                                 </span>
                             </h3>
                             <p className="text-sm text-amber-800/80 dark:text-amber-300/80">{t("unmatchedRowsDescription")}</p>

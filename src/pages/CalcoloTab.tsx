@@ -107,67 +107,65 @@ export function CalculationTab({
 
     // While a recalculation loads, the bar keeps its place but stays locked, so the results under it don't move.
     // The reason doubles as the confirm button's description, so it names what blocks confirming or what saving has done so far.
-    const renderConfirmBar = (shownMonth: string, shown: LoadedPreview, shownSummary: DraftSummary, confirmBlock: string | null): ReactElement => (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p
-                id={confirmReasonId}
-                className={cn(
-                    "mb-0 flex items-start gap-2 text-sm",
-                    confirmBlock && !submitting ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground",
-                )}
-            >
-                {submitting ? (
-                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
-                ) : confirmBlock ? (
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                ) : (
-                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                )}
-                {confirmBlock ?? confirmNote}
-            </p>
-            <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
-                <ZipDownloadButton
-                    label={t("exportPreviewAction")}
-                    note={t("exportPreviewNote")}
-                    hideNote
-                    disabled={loading || shownSummary.includedAgents === 0 || shownSummary.invalidIncludedRows > 0}
-                    build={() => buildPreviewZip(shownMonth, shown.draft)}
-                    describeError={() => t("exportFailed")}
-                />
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button size="sm" className="btn-primary shrink-0" disabled={loading || confirmBlock !== null} aria-describedby={confirmReasonId}>
-                            <CheckCircle2 className="h-4 w-4" />
-                            {t("previewConfirmAction")}
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>{t("confirmReviewTitle").replace("{month}", formatMonthLabel(shownMonth, language))}</AlertDialogTitle>
-                            <AlertDialogDescription>{t("confirmReviewDescription")}</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm">
-                            <dt className="text-muted-foreground">{t("confirmReviewIncludedAgents")}</dt>
-                            <dd className="text-right font-mono">{shownSummary.includedAgents}</dd>
-                            <dt className="text-muted-foreground">{t("confirmReviewIncludedRows")}</dt>
-                            <dd className="text-right font-mono">{shownSummary.includedRows}</dd>
-                            <dt className="font-medium">{t("confirmReviewTotal")}</dt>
-                            <dd className="text-right font-mono font-medium">{formatCurrency(shownSummary.total)}</dd>
-                            <dt className="text-muted-foreground">{t("confirmReviewExcludedAgents")}</dt>
-                            <dd className="text-right font-mono">{shownSummary.excludedAgents}</dd>
-                            <dt className="text-muted-foreground">{t("confirmReviewUnmatchedRows")}</dt>
-                            <dd className="text-right font-mono">{shown.data.non_associati.length}</dd>
-                        </dl>
-                        <p className="text-sm text-muted-foreground">{t("confirmReviewReplaceNote")}</p>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                            <AlertDialogAction onClick={onConfirm}>{t("confirmReviewAction")}</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+    const renderConfirmBar = (shownMonth: string, shown: LoadedPreview, shownSummary: DraftSummary, confirmBlock: string | null): ReactElement => {
+        const NoteIcon = submitting ? Loader2 : confirmBlock ? AlertTriangle : Info;
+
+        return (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p
+                    id={confirmReasonId}
+                    className={cn(
+                        "mb-0 flex items-start gap-2 text-sm",
+                        confirmBlock && !submitting ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground",
+                    )}
+                >
+                    <NoteIcon className={cn("mt-0.5 h-4 w-4 shrink-0", submitting && "animate-spin")} />
+                    {confirmBlock ?? confirmNote}
+                </p>
+                <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+                    <ZipDownloadButton
+                        label={t("exportPreviewAction")}
+                        note={t("exportPreviewNote")}
+                        hideNote
+                        disabled={loading || shownSummary.includedAgents === 0 || shownSummary.invalidIncludedRows > 0}
+                        build={() => buildPreviewZip(shownMonth, shown.draft)}
+                        describeError={() => t("exportFailed")}
+                    />
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button size="sm" className="btn-primary shrink-0" disabled={loading || confirmBlock !== null} aria-describedby={confirmReasonId}>
+                                <CheckCircle2 className="h-4 w-4" />
+                                {t("previewConfirmAction")}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>{t("confirmReviewTitle").replace("{month}", formatMonthLabel(shownMonth, language))}</AlertDialogTitle>
+                                <AlertDialogDescription>{t("confirmReviewDescription")}</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm">
+                                <dt className="text-muted-foreground">{t("confirmReviewIncludedAgents")}</dt>
+                                <dd className="text-right font-mono">{shownSummary.includedAgents}</dd>
+                                <dt className="text-muted-foreground">{t("confirmReviewIncludedRows")}</dt>
+                                <dd className="text-right font-mono">{shownSummary.includedRows}</dd>
+                                <dt className="font-medium">{t("confirmReviewTotal")}</dt>
+                                <dd className="text-right font-mono font-medium">{formatCurrency(shownSummary.total)}</dd>
+                                <dt className="text-muted-foreground">{t("confirmReviewExcludedAgents")}</dt>
+                                <dd className="text-right font-mono">{shownSummary.excludedAgents}</dd>
+                                <dt className="text-muted-foreground">{t("confirmReviewUnmatchedRows")}</dt>
+                                <dd className="text-right font-mono">{shown.data.non_associati.length}</dd>
+                            </dl>
+                            <p className="text-sm text-muted-foreground">{t("confirmReviewReplaceNote")}</p>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                <AlertDialogAction onClick={onConfirm}>{t("confirmReviewAction")}</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderBody = (): ReactElement => {
         switch (preview.status) {
