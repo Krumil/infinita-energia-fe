@@ -86,12 +86,29 @@ function totalRow(page: Page): Locator {
     return page.getByRole("row").filter({ hasText: /^Totale/ });
 }
 
-async function deleteMonthInOrders(page: Page, month: string, deletedRows: number): Promise<void> {
+// "failed" expects the dialog to report an error, for a request whose response a test makes the page lose.
+async function deleteMonthInOrders(page: Page, month: string, outcome: number | "failed"): Promise<void> {
     const dialog = await openSettlements(page, month);
 
     await dialog.getByRole("button", { name: `Elimina liquidazioni di ${monthLabel(month)}` }).click();
     await dialog.getByRole("button", { name: `Elimina ${importCompetence(month)}` }).click();
-    await expect(dialog.getByRole("status")).toHaveText(`Liquidazioni eliminate: ${deletedRows}.`);
+
+    if (outcome === "failed") await expect(dialog.getByRole("alert")).toBeVisible();
+    else await expect(dialog.getByRole("status")).toHaveText(`Liquidazioni eliminate: ${outcome}.`);
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+}
+
+async function importMonthInOrders(page: Page, month: string, fileName: string, rows: SettlementRow[], outcome: "imported" | "failed"): Promise<void> {
+    const dialog = await openSettlements(page, month);
+
+    await attachWorkbook(dialog, month, fileName, rows);
+    await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
+
+    if (outcome === "failed") await expect(dialog.getByRole("alert")).toBeVisible();
+    else await expect(dialog.getByRole("status")).toContainText(`${rows.length} record elaborati`);
+
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 }
@@ -525,13 +542,7 @@ test.describe("calculation preview", () => {
             await route.abort("failed");
         });
 
-        const dialog = await openSettlements(page, MONTH);
-
-        await dialog.getByRole("button", { name: `Elimina liquidazioni di ${monthLabel(MONTH)}` }).click();
-        await dialog.getByRole("button", { name: `Elimina ${importCompetence(MONTH)}` }).click();
-        await expect(dialog.getByRole("alert")).toBeVisible();
-        await page.keyboard.press("Escape");
-        await expect(dialog).toBeHidden();
+        await deleteMonthInOrders(page, MONTH, "failed");
         await openTab(page, "Provvigioni");
 
         await expect(page.getByRole("alert").filter({ hasText: STALE_MESSAGE })).toBeVisible();
@@ -559,13 +570,7 @@ test.describe("calculation preview", () => {
             await route.abort("failed");
         });
 
-        const dialog = await openSettlements(page, MONTH);
-
-        await attachWorkbook(dialog, MONTH, `importazione-persa-${family.token}.xlsx`, childRows(family));
-        await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
-        await expect(dialog.getByRole("alert")).toBeVisible();
-        await page.keyboard.press("Escape");
-        await expect(dialog).toBeHidden();
+        await importMonthInOrders(page, MONTH, `importazione-persa-${family.token}.xlsx`, childRows(family), "failed");
         await openTab(page, "Provvigioni");
 
         const stale = page.getByRole("alert").filter({ hasText: STALE_MESSAGE });
@@ -591,13 +596,7 @@ test.describe("calculation preview", () => {
         await previewButton(page).click();
         await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toBeVisible();
 
-        const dialog = await openSettlements(page, MONTH);
-
-        await attachWorkbook(dialog, MONTH, `anteprima-${family.token}.xlsx`, childRows(family));
-        await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
-        await expect(dialog.getByRole("status")).toContainText("2 record elaborati");
-        await page.keyboard.press("Escape");
-        await expect(dialog).toBeHidden();
+        await importMonthInOrders(page, MONTH, `anteprima-${family.token}.xlsx`, childRows(family), "imported");
         await openTab(page, "Provvigioni");
 
         const stale = page.getByRole("alert").filter({ hasText: STALE_MESSAGE });
