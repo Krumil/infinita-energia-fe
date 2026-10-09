@@ -181,7 +181,7 @@ export function CalculationTab({
                             summary={summary}
                             unmatched={preview.previous.data.non_associati}
                             agents={agents}
-                            actions={preview.previous.draft.agents.length > 0 && renderConfirmBar(preview.month, preview.previous, summary, null)}
+                            actions={renderConfirmBar(preview.month, preview.previous, summary, null)}
                             outcome={outcome}
                         />
                     </div>
@@ -253,7 +253,7 @@ export function CalculationTab({
                                     unmatched={data.non_associati}
                                     agents={agents}
                                     editDraft={submitting ? undefined : editDraft}
-                                    actions={preview.draft.agents.length > 0 && renderConfirmBar(preview.month, preview, summary, confirmBlock)}
+                                    actions={renderConfirmBar(preview.month, preview, summary, confirmBlock)}
                                     outcome={outcome}
                                 />
                             )
