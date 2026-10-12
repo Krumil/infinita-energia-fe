@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+# pnpm only; an npm lockfile would drift from pnpm-lock.yaml
+package-lock.json
 
 # Logs
 logs/
@@ -68,6 +70,7 @@ docs/
 scorecard.png
 .claude/
 .agents/
+skills-lock.json
 .playwright-mcp/
 tools/*
 !tools/oxlint/
