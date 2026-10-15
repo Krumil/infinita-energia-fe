@@ -73,8 +73,6 @@ export async function parseSettlementsExcel(file: File): Promise<Settlement[]> {
             ["prezzo", ["prezzo", "Prezzo"]],
             ["udm", ["udm", "Udm", "UdM", "UDM"]],
             ["importo_euro", ["importo_euro", "importo_€", "Importo €", "Importo Euro"]],
-            ["comp_dal", ["comp_dal", "Comp. Dal", "Comp. dal"]],
-            ["comp_al", ["comp_al", "Comp. Al", "Comp. al"]],
             ["scaglione_consumo", ["scaglione_consumo", "Scaglione Consumo", "Scaglione consumo"]],
             ["scaglione_anno", ["scaglione_anno", "Scaglione Anno", "Scaglione anno"]],
             ["pod_pdr", ["pod_pdr", "podpdr", "POD/PDR", "Pod/Pdr"]],
@@ -98,10 +96,6 @@ export async function parseSettlementsExcel(file: File): Promise<Settlement[]> {
             ["indirizzo_fornitura", ["indirizzo_fornitura", "Indirizzo Fornitura", "Indirizzo fornitura"]],
             ["amministratore", ["amministratore", "Amministratore"]],
             ["metodo_di_pagamento", ["metodo_di_pagamento", "Metodo di Pagamento", "Metodo di pagamento"]],
-            [
-                "competenza_liquidazione",
-                ["competenza_liquidazione", "Competenza Liquidazione", "Comp. Liquidazione", "COMPETENZA"],
-            ],
         ];
 
         for (const [key, alternatives] of mappings) {
@@ -110,25 +104,7 @@ export async function parseSettlementsExcel(file: File): Promise<Settlement[]> {
             if (value !== undefined) {
                 if (key === "consumo" || key === "quantita" || key === "prezzo" || key === "importo_euro" || key === "scaglione_anno" || key === "id_ordine" || key === "id") {
                     settlement[key] = parseEuroNumber(value);
-                } else if (key === "competenza_liquidazione") {
-                    const str = String(value).trim();
-                    const mmYYYYMatch = str.match(/^(\d{1,2})\/(\d{4})$/);
-
-                    if (mmYYYYMatch) {
-                        const [, month, year] = mmYYYYMatch;
-                        settlement[key] = `${year}-${month.padStart(2, "0")}-01`;
-                    } else {
-                        const isoMatch = str.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/);
-
-                        if (isoMatch) {
-                            const [, year, month, day] = isoMatch;
-                            settlement[key] =
-                                `${year}-${month.padStart(2, "0")}-${(day || "01").padStart(2, "0")}`;
-                        } else {
-                            settlement[key] = str;
-                        }
-                    }
-                } else if (key === "comp_dal" || key === "comp_al" || key === "inizio_forn" || key === "fine_forn" || key === "data_firma" || key === "data_prima_accettazione") {
+                } else if (key === "inizio_forn" || key === "fine_forn" || key === "data_firma" || key === "data_prima_accettazione") {
                     settlement[key] = parseAndFormatDate(value);
                 } else {
                     settlement[key] = String(value);

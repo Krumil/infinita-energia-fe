@@ -7,7 +7,6 @@ import type { ExcludedOrder, PendingOrder } from "@/types";
 
 interface PendingOrdersHook {
     orders: PendingOrder[];
-    count: number;
     loading: boolean;
     error: string | null;
     excludedOrders: ExcludedOrder[];
@@ -20,12 +19,9 @@ interface PendingOrdersHook {
     setStartDate: (date: string) => void;
     endDate: string;
     setEndDate: (date: string) => void;
-    fetchPendingOrders: (start?: string, end?: string) => Promise<void>;
-    fetchExcludedOrders: () => Promise<void>;
     refreshOrders: (start?: string, end?: string) => Promise<void>;
     excludeOrder: (orderLineId: string, reason: string) => Promise<boolean>;
     restoreOrder: (orderLineId: string) => Promise<boolean>;
-    clearOrders: () => void;
 }
 
 function errorMessage(cause: unknown, fallback: string): string {
@@ -37,7 +33,6 @@ export function usePendingOrders(): PendingOrdersHook {
     const { t } = useTranslation();
 
     const [orders, setOrders] = useState<PendingOrder[]>([]);
-    const [count, setCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [startDate, setStartDateState] = useState<string>("");
@@ -77,7 +72,6 @@ export function usePendingOrders(): PendingOrdersHook {
 
                 if (requestId === pendingRequestRef.current) {
                     setOrders(response.data);
-                    setCount(response.count);
                 }
             } catch (err) {
                 const errorMsg = errorMessage(err, t("fetchError"));
@@ -135,7 +129,6 @@ export function usePendingOrders(): PendingOrdersHook {
                 await excludeOrderApi(orderLineId, reason);
                 pendingRequestRef.current += 1;
                 setOrders((currentOrders) => currentOrders.filter((order) => order.id_riga_ordine !== orderLineId));
-                setCount((currentCount) => Math.max(0, currentCount - 1));
                 void refreshOrders();
 
                 return true;
@@ -186,23 +179,8 @@ export function usePendingOrders(): PendingOrdersHook {
         [refreshOrders, toast, t],
     );
 
-    const clearOrders = useCallback(() => {
-        pendingRequestRef.current += 1;
-        excludedRequestRef.current += 1;
-        setOrders([]);
-        setCount(0);
-        setError(null);
-        setLoading(false);
-        setExcludedOrders([]);
-        setExcludedCount(0);
-        setExcludedError(null);
-        setExcludedLoading(false);
-        setMutationError(null);
-    }, []);
-
     return {
         orders,
-        count,
         loading,
         error,
         excludedOrders,
@@ -215,11 +193,8 @@ export function usePendingOrders(): PendingOrdersHook {
         setStartDate,
         endDate,
         setEndDate,
-        fetchPendingOrders,
-        fetchExcludedOrders,
         refreshOrders,
         excludeOrder,
         restoreOrder,
-        clearOrders,
     };
 }

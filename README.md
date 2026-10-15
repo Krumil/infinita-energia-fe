@@ -634,6 +634,8 @@ E2E_USERNAME=<user> E2E_PASSWORD=<password> pnpm test
 
 Playwright starts Vite on port 5190 (`E2E_PORT` changes it), or reuses a server already running there. The Vite dev proxy forwards `/api` to `localhost:5000`, and the suite first checks the backend's `/health` there. The login session is saved in `e2e/.auth/`, which is ignored by Git.
 
+Some cleanup has no API, so the suite also connects to Postgres, at `postgresql://postgres:postgres@localhost:5432/commissioni_db` unless `E2E_DATABASE_URL` names another database. It must be the database the backend uses (the backend's `DB_NAME`, which an exported variable overrides over its `.env`). The login step creates an agent through the API, looks for it in that database and deletes it again, so a wrong database stops the run before any test writes.
+
 ### Building for Production
 
 ```bash

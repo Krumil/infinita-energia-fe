@@ -87,6 +87,43 @@ function monthEnd(month: string): string {
     return `${month}-${String(lastDay).padStart(2, "0")}`;
 }
 
+// Cleanup goes straight to the database, so it must be the one the backend writes to. A copy of that database holds the
+// same rows, so only an agent written through the API tells them apart. It is deleted through the API alone, never by SQL.
+export async function expectBackendDatabase(api: APIRequestContext): Promise<void> {
+    const token = uniqueToken();
+
+    const created = await api.post("/api/agenti", {
+        data: { nome_cognome: `Controllo ${token}`, agente_padre: null, mail: null, statistiche: false, percentuale_provvigione_figlio: null },
+    });
+
+    expect(created.status(), `POST /api/agenti for the database check: ${await created.text()}`).toBe(201);
+
+    const { agente_id: id }: CreatedAgentBody = await created.json();
+
+    try {
+        const client = new pg.Client({ connectionString: DATABASE_URL });
+
+        await client.connect();
+
+        try {
+            // The backend normalizes names, so the stored one is matched by its token.
+            const result = await client.query("SELECT 1 FROM agenti WHERE id = $1 AND nome_cognome LIKE $2", [id, `%${token}%`]);
+            const database = new URL(DATABASE_URL).pathname.slice(1);
+
+            expect(
+                result.rowCount,
+                `The suite's database "${database}" is not the one the backend writes to. Set E2E_DATABASE_URL to the backend's database.`,
+            ).toBe(1);
+        } finally {
+            await client.end();
+        }
+    } finally {
+        const deleted = await api.delete(`/api/agenti/${id}`);
+
+        expect(deleted.ok(), `DELETE /api/agenti/${id} after the database check: ${await deleted.text()}`).toBe(true);
+    }
+}
+
 // Talks to the real backend through the Vite proxy with the signed-in session, to arrange data and check what was stored.
 export class Backend {
     private readonly claimedMonths: string[] = [];

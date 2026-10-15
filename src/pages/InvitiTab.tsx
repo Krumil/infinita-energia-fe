@@ -28,7 +28,8 @@ import { MonthPicker } from "@/components/DatePicker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InvoiceRequestDialog } from "@/components/InvitoDialog";
 import { useTranslation } from "@/hooks/useTranslation";
-import { formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatMonthLabel } from "@/lib/competenceDates";
 import { useInvoiceRequests } from "@/hooks/useInviti";
 import { useUnpaidInvoiceRequests } from "@/hooks/useInvitiNonLiquidati";
 import type { Agent, InvoiceRequest, UpdateInvoiceRequestPayload } from "@/types";
@@ -52,18 +53,7 @@ type SortDirection = "asc" | "desc";
 
 
 function formatMonth(isoDate: string): string {
-    const date = new Date(isoDate);
-
-    const monthNames = [
-        "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-        "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
-    ];
-
-    return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-function formatCurrency(value: number): string {
-    return value.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+    return formatMonthLabel(isoDate, "it");
 }
 
 function isEligibleInvoiceRequest(invoiceRequest: InvoiceRequest): boolean {

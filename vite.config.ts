@@ -16,6 +16,7 @@ export default defineConfig({
         __APP_VERSION__: JSON.stringify(packageJson.version),
     },
     server: {
+        host: "0.0.0.0",
         proxy: {
             "/api": {
                 target: "http://localhost:5000",
