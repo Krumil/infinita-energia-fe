@@ -52,6 +52,7 @@ export interface CalculationResultsProps {
     summary: DraftSummary;
     unmatched: UnmatchedSettlement[];
     agents: Agent[];
+    rules: Rule[];
     // Absent while a recalculation loads or a confirmation is saving, when the draft is shown read-only.
     editDraft?: DraftActions;
     // The save controls sit at the foot of the total card, and their outcome right under it, so saving needs no scrolling.

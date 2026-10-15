@@ -22,6 +22,7 @@ export interface CalculationDraft {
 export interface DraftActions {
     setRowAmount: (agentId: number, rowId: string, amountText: string) => void;
     removeRow: (agentId: number, rowId: string) => void;
+    addRow: (agentId: number, detail: CalculationDetail, amountText: string) => void;
     setAgentIncluded: (agentId: number, included: boolean) => void;
 }
 
@@ -66,10 +67,14 @@ export function createDraft(preview: PreviewResponse): CalculationDraft {
 }
 
 // The backend rounds each row to cents before summing, so finer amounts would make the reviewed total differ from the saved one.
-export function rowAmount(row: DraftRow): number | undefined {
-    const amount = parseEuroNumber(row.amountText);
+export function parseDraftAmount(amountText: string): number | undefined {
+    const amount = parseEuroNumber(amountText);
 
     return amount !== undefined && Number(amount.toFixed(2)) === amount ? amount : undefined;
+}
+
+export function rowAmount(row: DraftRow): number | undefined {
+    return parseDraftAmount(row.amountText);
 }
 
 export function summarizeDraft(draft: CalculationDraft): DraftSummary {
@@ -126,6 +131,21 @@ export function removeDraftRow(draft: CalculationDraft, agentId: number, rowId: 
         // An agent without rows has nothing to save, so it leaves the confirmation for good.
         return { ...agent, rows, included: agent.included && rows.length > 0 };
     });
+}
+
+// Server rows are identified by position, so added rows take ids from their own sequence.
+let addedRows = 0;
+
+export function addDraftRow(draft: CalculationDraft, agentId: number, detail: CalculationDetail, amountText: string): CalculationDraft {
+    addedRows += 1;
+    const row: DraftRow = { id: `added:${addedRows}`, detail, amountText };
+
+    return editAgent(draft, agentId, (agent) => ({
+        ...agent,
+        rows: [...agent.rows, row],
+        // An agent without rows was excluded only because it had nothing to save, so its first added row brings it back.
+        included: agent.included || agent.rows.length === 0,
+    }));
 }
 
 export function setDraftAgentIncluded(draft: CalculationDraft, agentId: number, included: boolean): CalculationDraft {

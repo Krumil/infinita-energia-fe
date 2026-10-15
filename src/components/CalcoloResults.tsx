@@ -4,21 +4,18 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { AddDraftRowDialog } from "@/components/AddDraftRowDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { rowAmount, type DraftAgent, type DraftRow } from "@/lib/calculationDraft";
 import { formatMonthLabel } from "@/lib/competenceDates";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, normalizeName } from "@/lib/utils";
 import type { CalculationResultsProps } from "@/types/components";
 import type { CalculationDetail } from "@/types";
 import type { TranslationKey } from "@/translations";
 
 const EMPTY_VALUE = "—";
-
-// Mirrors the backend's agent-name key: uppercase words sorted alphabetically, so "Rossi Mario" matches "MARIO ROSSI".
-function normalizeName(name: string): string {
-    return name.toUpperCase().split(/\s+/).filter(Boolean).sort().join(" ");
-}
 
 // Sorting and filtering return the same row objects, so a row keeps its identity whatever the operator sees.
 function sortByCustomer(rows: DraftRow[]): DraftRow[] {
@@ -37,10 +34,11 @@ function filterRows(rows: DraftRow[], query: string): DraftRow[] {
     );
 }
 
-export function CalculationResults({ month, draft, summary, unmatched, agents, editDraft, actions, outcome }: CalculationResultsProps): ReactElement {
+export function CalculationResults({ month, draft, summary, unmatched, agents, rules, editDraft, actions, outcome }: CalculationResultsProps): ReactElement {
     const { t, language } = useTranslation();
     const [expandedAgentId, setExpandedAgentId] = useState<number | null>(null);
     const [filterQuery, setFilterQuery] = useState<string>("");
+    const [unmatchedOpen, setUnmatchedOpen] = useState(false);
 
     const agentNames = useMemo(() => new Map(agents.map((agent) => [agent.id, agent.nome_cognome])), [agents]);
     const periodDisplay = formatMonthLabel(month, language);
@@ -81,27 +79,41 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
             <TableRow>
                 <TableCell colSpan={5} className="p-0 bg-secondary/10">
                     <div className="p-4 space-y-3">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder={t("filterPlaceholder")}
-                                aria-label={t("filterPlaceholder")}
-                                value={filterQuery}
-                                onChange={(e) => setFilterQuery(e.target.value)}
-                                className="pl-9 pr-9 h-9"
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder={t("filterPlaceholder")}
+                                    aria-label={t("filterPlaceholder")}
+                                    value={filterQuery}
+                                    onChange={(e) => setFilterQuery(e.target.value)}
+                                    className="pl-9 pr-9 h-9"
+                                />
+                                {filterQuery && (
+                                    <Button
+                                        type="button"
+                                        variant="unstyled"
+                                        size="unstyled"
+                                        aria-label={t("clearFilter")}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        onClick={() => setFilterQuery("")}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                            <AddDraftRowDialog
+                                agentName={displayName(agent)}
+                                seller={agentNames.get(agent.agente_id) ?? agent.nome_agente}
+                                month={month}
+                                rules={rules}
+                                disabled={!editDraft}
+                                onAdd={(detail, amountText) => {
+                                    editDraft?.addRow(agent.agente_id, detail, amountText);
+                                    // A filter that hides the new row would make the add look lost.
+                                    setFilterQuery("");
+                                }}
                             />
-                            {filterQuery && (
-                                <Button
-                                    type="button"
-                                    variant="unstyled"
-                                    size="unstyled"
-                                    aria-label={t("clearFilter")}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    onClick={() => setFilterQuery("")}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            )}
                         </div>
 
                         <div className="max-h-80 overflow-y-auto border rounded-md bg-background/50">
@@ -213,7 +225,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
                 <div className="kpi-card p-6 text-center">
                     <span className="kpi-label">
                         {t("totalCommission")}
-                        <span className="text-energia-accent"> — {periodDisplay}</span>
+                        <span> — {periodDisplay}</span>
                     </span>
                     <div className="kpi-value text-5xl mt-3">{formatCurrency(summary.total)}</div>
                     {provisional && (
@@ -233,58 +245,6 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
             )}
 
             {outcome}
-
-            {unmatched.length > 0 && (
-                <section
-                    aria-labelledby="unmatched-rows-title"
-                    className="overflow-hidden rounded-md border border-amber-500/50 bg-amber-50 dark:bg-amber-950/30"
-                >
-                    <div className="flex gap-3 p-4 text-amber-800 dark:text-amber-300">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                        <div className="space-y-1">
-                            <h3 id="unmatched-rows-title" className="text-sm font-medium">
-                                <span role="status">
-                                    {countLabel(unmatched.length, "unmatchedRowsWarningOne", "unmatchedRowsWarningOther")}
-                                </span>
-                            </h3>
-                            <p className="text-sm text-amber-800/80 dark:text-amber-300/80">{t("unmatchedRowsDescription")}</p>
-                        </div>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto border-t border-amber-500/30 bg-card">
-                        <Table>
-                            <TableHeader className="sticky top-0 bg-secondary/80 backdrop-blur-sm">
-                                <TableRow>
-                                    <TableHead>{t("seller")}</TableHead>
-                                    <TableHead>{t("client")}</TableHead>
-                                    <TableHead>{t("podPdr")}</TableHead>
-                                    <TableHead>{t("taxId")}</TableHead>
-                                    <TableHead>{t("rule")}</TableHead>
-                                    <TableHead>{t("consumptionTier")}</TableHead>
-                                    <TableHead>{t("competenceTo")}</TableHead>
-                                    <TableHead className="text-right">{t("amount")}</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {unmatched.map((row, idx) => (
-                                    <TableRow key={idx}>
-                                        <TableCell className="font-medium">{row.venditore ?? EMPTY_VALUE}</TableCell>
-                                        <TableCell>{row.cliente ?? EMPTY_VALUE}</TableCell>
-                                        <TableCell className="font-mono text-xs">{row.pod_pdr ?? EMPTY_VALUE}</TableCell>
-                                        <TableCell className="font-mono text-xs">{row.cf_piva ?? EMPTY_VALUE}</TableCell>
-                                        <TableCell className="text-sm text-muted-foreground">{row.regola ?? EMPTY_VALUE}</TableCell>
-                                        {/* The backend sends a missing scaglione as an empty string, not null. */}
-                                        <TableCell className="text-sm">{row.scaglione_consumo || EMPTY_VALUE}</TableCell>
-                                        <TableCell className="font-mono text-xs">{row.comp_al ?? EMPTY_VALUE}</TableCell>
-                                        <TableCell className="text-right font-mono">
-                                            {row.importo_euro === null ? EMPTY_VALUE : formatCurrency(row.importo_euro)}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </section>
-            )}
 
             {draft.agents.length > 0 && (
                 <>
@@ -364,7 +324,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
                                                     </TableCell>
                                                     <TableCell className="text-right font-mono">{agent.rows.length}</TableCell>
                                                     <TableCell
-                                                        className={`text-right font-mono font-semibold ${agent.included ? "text-energia-accent" : "line-through"}`}
+                                                        className={`text-right font-mono font-semibold ${agent.included ? "text-energia-accent-text" : "line-through"}`}
                                                     >
                                                         {formatCurrency(totals.total)}
                                                         {agent.included && totals.invalidRows > 0 && (
@@ -383,7 +343,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
                                             {t("total")}
                                         </TableCell>
                                         <TableCell className="text-right font-mono">{summary.includedRows}</TableCell>
-                                        <TableCell className="text-right font-mono font-bold text-lg text-energia-accent">
+                                        <TableCell className="text-right font-mono font-bold text-lg text-energia-accent-text">
                                             {formatCurrency(summary.total)}
                                             {provisional && (
                                                 <span className="block text-xs font-medium text-destructive">{t("previewProvisional")}</span>
@@ -395,6 +355,71 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, e
                         </div>
                     </div>
                 </>
+            )}
+
+            {/* Most sellers in a liquidation file aren't agents of ours, so the list stays closed below the results. */}
+            {unmatched.length > 0 && (
+                <Collapsible asChild open={unmatchedOpen} onOpenChange={setUnmatchedOpen}>
+                    <section
+                        aria-labelledby="unmatched-rows-title"
+                        className="overflow-hidden rounded-md border border-amber-500/50 bg-amber-50 dark:bg-amber-950/30"
+                    >
+                        <div className="flex flex-col gap-3 p-4 text-amber-800 sm:flex-row sm:items-center sm:justify-between dark:text-amber-300">
+                            <div className="flex gap-3">
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                <div className="space-y-1">
+                                    <h3 id="unmatched-rows-title" className="text-sm font-medium">
+                                        <span role="status">
+                                            {countLabel(unmatched.length, "unmatchedRowsWarningOne", "unmatchedRowsWarningOther")}
+                                        </span>
+                                    </h3>
+                                    <p className="text-sm text-amber-800/80 dark:text-amber-300/80">{t("unmatchedRowsDescription")}</p>
+                                </div>
+                            </div>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="outline" size="sm" className="shrink-0 self-start sm:self-center">
+                                    <ChevronRight
+                                        className={`h-4 w-4 transition-transform duration-200 ${unmatchedOpen ? "rotate-90" : ""}`}
+                                    />
+                                    {unmatchedOpen ? t("unmatchedRowsHide") : t("unmatchedRowsShow")}
+                                </Button>
+                            </CollapsibleTrigger>
+                        </div>
+                        <CollapsibleContent className="max-h-64 overflow-y-auto border-t border-amber-500/30 bg-card">
+                            <Table>
+                                <TableHeader className="sticky top-0 bg-secondary/80 backdrop-blur-sm">
+                                    <TableRow>
+                                        <TableHead>{t("seller")}</TableHead>
+                                        <TableHead>{t("client")}</TableHead>
+                                        <TableHead>{t("podPdr")}</TableHead>
+                                        <TableHead>{t("taxId")}</TableHead>
+                                        <TableHead>{t("rule")}</TableHead>
+                                        <TableHead>{t("consumptionTier")}</TableHead>
+                                        <TableHead>{t("competenceTo")}</TableHead>
+                                        <TableHead className="text-right">{t("amount")}</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {unmatched.map((row, idx) => (
+                                        <TableRow key={idx}>
+                                            <TableCell className="font-medium">{row.venditore ?? EMPTY_VALUE}</TableCell>
+                                            <TableCell>{row.cliente ?? EMPTY_VALUE}</TableCell>
+                                            <TableCell className="font-mono text-xs">{row.pod_pdr ?? EMPTY_VALUE}</TableCell>
+                                            <TableCell className="font-mono text-xs">{row.cf_piva ?? EMPTY_VALUE}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{row.regola ?? EMPTY_VALUE}</TableCell>
+                                            {/* The backend sends a missing scaglione as an empty string, not null. */}
+                                            <TableCell className="text-sm">{row.scaglione_consumo || EMPTY_VALUE}</TableCell>
+                                            <TableCell className="font-mono text-xs">{row.comp_al ?? EMPTY_VALUE}</TableCell>
+                                            <TableCell className="text-right font-mono">
+                                                {row.importo_euro === null ? EMPTY_VALUE : formatCurrency(row.importo_euro)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CollapsibleContent>
+                    </section>
+                </Collapsible>
             )}
         </div>
     );

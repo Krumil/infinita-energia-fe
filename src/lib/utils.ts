@@ -20,3 +20,8 @@ export function formatCurrency(amount: number | null, currency: string = "EUR"):
 
     return new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
 }
+
+// Mirrors the backend's normalize_name: uppercase words sorted alphabetically, so "Rossi Mario" matches "MARIO ROSSI".
+export function normalizeName(name: string): string {
+    return name.trim().toUpperCase().split(/\s+/).sort().join(" ");
+}

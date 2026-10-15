@@ -4,6 +4,7 @@ import { getInvoiceRequests } from "@/api/inviti";
 import { ApiError } from "@/api/client";
 import { downloadCsv, toCsv } from "@/lib/csvUtils";
 import { COMMISSION_HEADERS, commissionToRow } from "@/lib/exportUtils";
+import { normalizeName } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { CommissionData, InvoiceRequest } from "@/types";
@@ -28,11 +29,6 @@ function sanitizeFilename(name: string): string {
 
 // The origin goes last so the shared commission columns keep their order and meaning.
 const UNPAID_REPORT_HEADERS: string[] = [...COMMISSION_HEADERS, "Origine"];
-
-// Same rule as the backend's normalize_name, so an agent's older spelling still matches its own sales.
-function normalizeName(name: string): string {
-    return name.trim().toUpperCase().split(/\s+/).sort().join(" ");
-}
 
 // The backend returns the agent's own sales and, for a parent, only its share of each child sale under the child's name.
 function unpaidReportRow(item: CommissionData, agentKey: string): (string | number | null)[] {

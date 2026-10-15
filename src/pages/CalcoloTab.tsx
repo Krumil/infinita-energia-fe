@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type ReactElement } from "react";
+import { memo, useId, useMemo, useState, type ReactElement } from "react";
 import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, FileSpreadsheet, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,12 +23,13 @@ import { summarizeDraft, type DraftActions, type DraftSummary } from "@/lib/calc
 import { buildPreviewZip } from "@/lib/calculationExport";
 import { formatMonthLabel } from "@/lib/competenceDates";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { Agent } from "@/types";
+import type { Agent, Rule } from "@/types";
 
 interface CalculationTabProps {
     month: string;
     preview: PreviewState;
     agents: Agent[];
+    rules: Rule[];
     editDraft: DraftActions;
     confirmation: ConfirmationState;
     onMonthChange: (month: string) => void;
@@ -39,10 +40,12 @@ interface CalculationTabProps {
 
 type DiscardTarget = { kind: "month"; month: string } | { kind: "recalculate" };
 
-export function CalculationTab({
+// Memoized because App keeps this tab mounted while hidden, and every App render would otherwise redraw the whole preview.
+export const CalculationTab = memo(function CalculationTab({
     month,
     preview,
     agents,
+    rules,
     editDraft,
     confirmation,
     onMonthChange,
@@ -181,6 +184,7 @@ export function CalculationTab({
                             summary={summary}
                             unmatched={preview.previous.data.non_associati}
                             agents={agents}
+                            rules={rules}
                             actions={renderConfirmBar(preview.month, preview.previous, summary, null)}
                             outcome={outcome}
                         />
@@ -252,6 +256,7 @@ export function CalculationTab({
                                     summary={summary}
                                     unmatched={data.non_associati}
                                     agents={agents}
+                                    rules={rules}
                                     editDraft={submitting ? undefined : editDraft}
                                     actions={renderConfirmBar(preview.month, preview, summary, confirmBlock)}
                                     outcome={outcome}
@@ -309,4 +314,4 @@ export function CalculationTab({
             </AlertDialog>
         </div>
     );
-}
+});

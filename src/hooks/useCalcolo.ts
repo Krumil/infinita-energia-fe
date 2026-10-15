@@ -3,6 +3,7 @@ import { confirmCommissions, previewCommissions } from "@/api/calcolo";
 import { ApiError } from "@/api/client";
 import { buildConfirmation, type ConfirmationSnapshot } from "@/lib/calculationConfirmation";
 import {
+    addDraftRow,
     createDraft,
     removeDraftRow,
     setDraftAgentIncluded,
@@ -47,6 +48,7 @@ export interface UseCalculationResult {
     editDraft: DraftActions;
     confirmation: ConfirmationState;
     confirmDraft: () => void;
+    clearConfirmedPreview: () => void;
 }
 
 export function useCalculation(): UseCalculationResult {
@@ -131,6 +133,7 @@ export function useCalculation(): UseCalculationResult {
         () => ({
             setRowAmount: (agentId, rowId, amountText) => updateDraft((draft) => setDraftRowAmount(draft, agentId, rowId, amountText)),
             removeRow: (agentId, rowId) => updateDraft((draft) => removeDraftRow(draft, agentId, rowId)),
+            addRow: (agentId, detail, amountText) => updateDraft((draft) => addDraftRow(draft, agentId, detail, amountText)),
             setAgentIncluded: (agentId, included) => updateDraft((draft) => setDraftAgentIncluded(draft, agentId, included)),
         }),
         [updateDraft],
@@ -175,5 +178,13 @@ export function useCalculation(): UseCalculationResult {
         void run();
     }, [preview]);
 
-    return { month, preview, selectMonth, requestPreview, invalidateMonth, editDraft, confirmation, confirmDraft };
+    // A saved draft has nothing left to review. Edits made after the save aren't saved yet, so they stay.
+    const clearConfirmedPreview = useCallback((): void => {
+        if (confirmation.status !== "done" || preview.status !== "ready" || preview.draft.dirty) return;
+
+        setPreview({ status: "idle" });
+        setConfirmation({ status: "idle" });
+    }, [confirmation.status, preview]);
+
+    return { month, preview, selectMonth, requestPreview, invalidateMonth, editDraft, confirmation, confirmDraft, clearConfirmedPreview };
 }

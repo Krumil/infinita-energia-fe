@@ -317,7 +317,7 @@ test.describe("preview review and editing", () => {
         await openTab(page, "Provvigioni");
 
         await expect(overallTotal(page)).toHaveText("364,50 €");
-        await expand(page, fixture.twins);
+        // The tab stays mounted, so the row opened before leaving is still open.
         await expectAmounts(amountInputs(page, fixture.twinCustomer), ["175,50", "150,00"]);
 
         const prompt = page.getByRole("alertdialog", { name: "Scartare le modifiche?" });
@@ -441,7 +441,7 @@ test.describe("preview review and editing", () => {
         await expect(confirmButton(page)).toBeEnabled();
     });
 
-    test("should offer no way to add rows to the details or to the unmatched rows", async ({ page, backend }) => {
+    test("should offer adding rows to the expanded agent only and never to the unmatched rows when the preview has both", async ({ page, backend }) => {
         await backend.claimMonth(MONTH);
 
         const fixture = await createFixture(backend);
@@ -457,13 +457,15 @@ test.describe("preview review and editing", () => {
         await expand(page, fixture.twins);
 
         await expect(amountInputs(page, fixture.twinCustomer)).toHaveCount(2);
-        await expect(page.getByRole("main").getByRole("button", { name: /aggiungi/i })).toHaveCount(0);
+        await expect(page.getByRole("main").getByRole("button", { name: /aggiungi/i })).toHaveText(["Aggiungi riga"]);
 
         const unmatched = page.getByRole("region", { name: "1 riga non associata, esclusa dal calcolo" });
 
+        await unmatched.getByRole("button", { name: "Mostra righe" }).click();
+
         await expect(unmatched.getByRole("row").filter({ hasText: "Cliente Senza Agente" })).toBeVisible();
         await expect(unmatched.getByRole("textbox")).toHaveCount(0);
-        await expect(unmatched.getByRole("button")).toHaveCount(0);
+        await expect(unmatched.getByRole("button")).toHaveText(["Nascondi righe"]);
         await expect(unmatched.getByRole("checkbox")).toHaveCount(0);
     });
 });

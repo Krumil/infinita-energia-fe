@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Agentation } from "agentation";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -39,6 +39,7 @@ function AuthenticatedApp() {
     const { t } = useTranslation();
 
     const [activeTab, setActiveTab] = useState<string>("dashboard");
+    const [previousTab, setPreviousTab] = useState(activeTab);
 
     const [settingsOpen, setSettingsOpen] = useState(false);
     const agents = useAgents();
@@ -48,18 +49,21 @@ function AuthenticatedApp() {
     const calculation = useCalculation();
     const pendingOrders = usePendingOrders();
 
+    // Checked during render so header clicks and the browser's back button both count as leaving Provvigioni.
+    if (previousTab !== activeTab) {
+        setPreviousTab(activeTab);
+
+        if (previousTab === "provvigioni") calculation.clearConfirmedPreview();
+    }
+
     const settlements = useSettlements({
         onSourceChanged: (month) => {
             calculation.invalidateMonth(month);
-            void pendingOrders.refreshOrders().catch(() => {
-                toast({ title: t("error"), description: t("fetchError"), variant: "destructive" });
-            });
+            void pendingOrders.refreshOrders();
         },
         onImported: (hasNewRules) => {
             if (!hasNewRules) return;
-            void rules.loadRules().catch(() => {
-                toast({ title: t("error"), description: t("fetchError"), variant: "destructive" });
-            });
+            void rules.loadRules();
             toast({ title: t("newRulesCreated"), description: t("newRulesCreatedDesc") });
         },
     });
@@ -72,33 +76,28 @@ function AuthenticatedApp() {
     );
 
     useEffect(() => {
-        const hash = window.location.hash.replace("#", "") || "dashboard";
-        setActiveTab(hash);
-
-        if (hash === "ordini") {
-            pendingOrders.refreshOrders();
-        }
-
         const handleHashChange = () => {
-            const newHash = window.location.hash.replace("#", "") || "dashboard";
-            setActiveTab(newHash);
+            const hash = window.location.hash.replace("#", "") || "dashboard";
+            setActiveTab(hash);
 
-            if (newHash === "ordini") {
+            if (hash === "ordini") {
                 pendingOrders.refreshOrders();
             }
         };
 
+        handleHashChange();
         window.addEventListener("hashchange", handleHashChange);
 
         return () => window.removeEventListener("hashchange", handleHashChange);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleTabChange = (value: string) => {
+    // Stable so the memoized Provvigioni tab doesn't re-render while hidden.
+    const handleTabChange = useCallback((value: string) => {
         setActiveTab(value);
 
         if (window.location.hash !== `#${value}`) window.location.hash = value;
-    };
+    }, []);
 
     const handleOrdersUpload = async (files: File[]) => {
         const action = await orders.handleUpload(files);
@@ -195,11 +194,13 @@ function AuthenticatedApp() {
                             />
                         </TabsContent>
 
-                        <TabsContent value="provvigioni">
+                        {/* Kept mounted so a large preview isn't rebuilt on every return; the hidden attribute also keeps space-y off it. */}
+                        <TabsContent value="provvigioni" forceMount hidden={activeTab !== "provvigioni"}>
                             <CalculationTab
                                 month={calculation.month}
                                 preview={calculation.preview}
                                 agents={agents.agents}
+                                rules={rules.rules}
                                 editDraft={calculation.editDraft}
                                 confirmation={calculation.confirmation}
                                 onMonthChange={calculation.selectMonth}

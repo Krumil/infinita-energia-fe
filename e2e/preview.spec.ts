@@ -223,6 +223,7 @@ test.describe("calculation preview", () => {
         const unmatched = page.getByRole("region", { name: "2 righe non associate, escluse dal calcolo" });
 
         await expect(unmatched.getByRole("status")).toHaveText("2 righe non associate, escluse dal calcolo");
+        await unmatched.getByRole("button", { name: "Mostra righe" }).click();
         await expect(recordRow(unmatched, `Cliente Ignoto A ${token}`).getByRole("cell")).toHaveText([
             `${token} IGNOTO`,
             `Cliente Ignoto A ${token}`,
@@ -238,7 +239,7 @@ test.describe("calculation preview", () => {
         await expect(totalRow(page).getByRole("cell")).toHaveText(["Totale", "8", "40,00 €"]);
     });
 
-    test("should show the confirm action and the unmatched rows without scrolling when the preview has unmatched rows", async ({ page, backend }) => {
+    test("should keep the unmatched rows closed below the beneficiaries until opened when the preview has unmatched rows", async ({ page, backend }) => {
         await backend.claimMonth(MONTH);
 
         const family = await createFamily(backend);
@@ -249,10 +250,25 @@ test.describe("calculation preview", () => {
         await previewButton(page).click();
 
         const unmatched = page.getByRole("region", { name: "2 righe non associate, escluse dal calcolo" });
+        const unmatchedRow = recordRow(unmatched, `Cliente Ignoto A ${family.token}`);
 
         await expect(confirmButton(page)).toBeEnabled();
         await expect(confirmButton(page)).toBeInViewport({ ratio: 1 });
-        await expect(recordRow(unmatched, `Cliente Ignoto A ${family.token}`)).toBeInViewport({ ratio: 1 });
+        await expect(unmatched.getByRole("status")).toHaveText("2 righe non associate, escluse dal calcolo");
+        await expect(unmatchedRow).toHaveCount(0);
+
+        const totalBox = await totalRow(page).boundingBox();
+        const unmatchedBox = await unmatched.boundingBox();
+
+        expect(unmatchedBox?.y).toBeGreaterThan((totalBox?.y ?? Infinity) + (totalBox?.height ?? 0));
+
+        await unmatched.getByRole("button", { name: "Mostra righe" }).click();
+
+        await expect(unmatchedRow).toBeVisible();
+
+        await unmatched.getByRole("button", { name: "Nascondi righe" }).click();
+
+        await expect(unmatchedRow).toHaveCount(0);
     });
 
     test("should show the unmatched rows instead of the empty state when no row in the month matches an agent", async ({ page, backend }) => {
@@ -269,6 +285,7 @@ test.describe("calculation preview", () => {
 
         await expect(unmatched.getByRole("status")).toHaveText("2 righe non associate, escluse dal calcolo");
         await expect(page.getByText("Nessun agente matura provvigioni dalle liquidazioni di questa competenza.")).toBeVisible();
+        await unmatched.getByRole("button", { name: "Mostra righe" }).click();
         await expect(recordRow(unmatched, token)).toHaveCount(2);
         await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toHaveCount(0);
     });
