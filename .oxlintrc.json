@@ -15,6 +15,7 @@
     ".desloppify/**",
     "claudedocs/**",
     "tools/oxlint/anti-slop/**",
+    "src/components/evilcharts/**",
     "dist/**"
   ],
   "jsPlugins": [

@@ -167,55 +167,114 @@ export interface DownloadUrlResponse {
     nome_file: string;
 }
 
-export interface DashboardTotalContracts {
-    anno_riferimento: number;
-    totale_contratti_n: number;
-    totale_contratti_n_1: number;
-    variazione_percentuale: number;
+export interface DashboardPeriod {
+    anno_n: number;
+    anno_n_1: number;
+    dal_n: string;
+    al_n: string;
+    dal_n_1: string;
+    al_n_1: string;
+    parziale: boolean;
 }
 
-export interface DashboardTotalCommissions {
-    anno_riferimento: number;
-    totale_provvigioni_n: number;
-    totale_provvigioni_n_1: number;
-    variazione_percentuale: number;
+export interface DashboardSalesSplit {
+    luce: number;
+    gas: number;
+    altro_udm: number;
+    domestico: number;
+    non_domestico: number;
+    sepa: number;
+    altri_metodi: number;
+    pct_sepa: number | null;
+}
+
+export interface DashboardSalesSummary {
+    periodo: DashboardPeriod;
+    kpi: {
+        contratti_n: number;
+        contratti_n_1: number;
+        variazione_pct: number | null;
+    };
+    split_n: DashboardSalesSplit;
+    split_n_1: DashboardSalesSplit;
+}
+
+export interface DashboardMonth {
+    mese: number;
+    etichetta: string;
+    n: number;
+    n_1: number;
+    variazione_pct: number | null;
+}
+
+export interface DashboardMonthlySales {
+    periodo: DashboardPeriod;
+    mesi: DashboardMonth[];
+}
+
+export interface DashboardAgentMetrics {
+    contratti_totali: number;
+    sepa: number;
+    pct_sepa: number | null;
+    luce: number;
+    gas: number;
+    altro_udm: number;
+    domestico: number;
+    non_domestico: number;
+}
+
+export interface DashboardAgentRow {
+    agente_id: number;
+    agente: string;
+    n: DashboardAgentMetrics;
+    n_1: DashboardAgentMetrics;
+    variazione_pct: {
+        contratti_totali: number | null;
+        sepa: number | null;
+        luce: number | null;
+        gas: number | null;
+        domestico: number | null;
+        non_domestico: number | null;
+    };
+}
+
+export interface DashboardAgentComparison {
+    periodo: DashboardPeriod;
+    min_contratti: number;
+    ordina_per: "contratti_totali" | "pct_sepa";
+    esclusi_sotto_soglia: number;
+    contratti_agenti_non_statistiche_n: number;
+    agenti: DashboardAgentRow[];
+}
+
+export interface DashboardPreviousSellers {
+    periodo: DashboardPeriod;
+    top_n: number;
+    totale_contratti: number;
+    senza_dato: number;
+    venditori: { venditore: string; contratti: number }[];
+}
+
+export interface DashboardProductsByAgent {
+    periodo: DashboardPeriod;
+    agenti_evidenziati: string[];
+    prodotti: {
+        prodotto: string;
+        totale: number;
+        per_agente: { agente: string; contratti: number }[];
+    }[];
+}
+
+export interface DashboardRevenue {
+    periodo: DashboardPeriod;
+    ultima_competenza_disponibile: string;
     valuta: string;
-}
-
-export interface DashboardContractMonth {
-    mese_nome: string;
-    mese_num: number;
-    anno_n: number;
-    anno_n_1: number;
-}
-
-export interface DashboardMonthlyContracts {
-    anno_riferimento: number;
-    dati: DashboardContractMonth[];
-}
-
-export interface DashboardCommissionMonth {
-    mese_nome: string;
-    mese_num: number;
-    provvigioni_n: number;
-    provvigioni_n_1: number;
-}
-
-export interface DashboardMonthlyCommissions {
-    anno_riferimento: number;
-    unita_misura: string;
-    dati: DashboardCommissionMonth[];
-}
-
-export interface DashboardProductContracts {
-    prodotto: string;
-    anno_n: number;
-    anno_n_1: number;
-}
-
-export interface DashboardContractsByProduct {
-    anno_riferimento: number;
-    dati: DashboardProductContracts[];
+    kpi: {
+        fatturato_n: number;
+        fatturato_n_1: number;
+        variazione_pct: number | null;
+    };
+    mesi: DashboardMonth[];
 }
 
 export interface UpdateInvoiceRequestPayload {

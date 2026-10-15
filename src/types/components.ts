@@ -11,14 +11,6 @@ export interface FileDropzoneProps {
     disabled?: boolean;
 }
 
-export interface KPICardProps {
-    title: string;
-    value: string | number;
-    icon: ReactNode;
-    description?: string;
-    delay?: number;
-}
-
 export interface EmptyStateProps {
     message: string;
     icon?: ReactNode;

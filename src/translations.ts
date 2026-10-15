@@ -5,6 +5,7 @@ import { attachmentsEn, attachmentsIt } from "./translations/allegati";
 import { confirmationEn, confirmationIt } from "./translations/confirmation";
 import { exportsEn, exportsIt } from "./translations/exports";
 import { previewEn, previewIt } from "./translations/preview";
+import { dashboardEn, dashboardIt } from "./translations/dashboard";
 
 export type Language = "en" | "it";
 
@@ -16,6 +17,7 @@ const en = {
     ...previewEn,
     ...confirmationEn,
     ...exportsEn,
+    ...dashboardEn,
     // Header
     appTitle: "Commission Calculator",
     settings: "Settings",
@@ -25,40 +27,18 @@ const en = {
     agenti: "Agenti",
     ordini: "Ordini",
     provvigioni: "Provvigioni",
-    settingsTab: "Settings",
 
     // Dashboard
-    totalAgents: "Total Agents",
-    totalCommissions: "Total Commissions",
     ordersImported: "Orders Imported",
-    activeCommissionAgents: "Active agents with commission rates",
-    currentPeriodTotal: "Current period total",
     recordsProcessed: "Records processed",
-    quickActions: "Quick Actions",
-    getStartedCommonTasks: "Get started with common tasks",
-    viewAgents: "View Agents",
     importOrders: "Import Orders",
     importLiquidations: "Import Liquidations",
-    recentActivity: "Recent Activity",
-    noActivity: "No recent activity",
     // Dashboard Charts
     contracts: "Contracts",
-    subscribed: "Subscribed",
-    vsLastYear: "vs last year",
-    previousYear: "Previous Year",
-    currentYear: "Current Year",
-    contractsSubscribed: "Contracts Subscribed",
-    commissionsCollected: "Commissions Collected",
-    comparisonWithPreviousYear: "Comparison with previous year",
-    contractsByProduct: "Contracts by Product",
-    showingDataFor: "Showing data for",
-    variation: "Variation",
 
     // Agents Tab
     agentsList: "Agents List",
     agentsListDesc: "View all sales agents and their commission rates",
-    uploadAgentsCsv: "Upload Agents CSV",
-    uploadAgentsCsvDesc: "Import agents from a CSV file with commission rates",
     noAgentsYet: "No agents found. Click on Add Agent to add a new agent.",
     refreshAgents: "Refresh",
     agentName: "Agent Name",
@@ -77,7 +57,6 @@ const en = {
 
     // Regole
     regole: "Regole",
-    regoleDesc: "Manage commission rules and default values",
     noRegoleYet: "No rules found. Rules are created automatically when liquidations are imported.",
     ruleDescription: "Description",
     ruleActive: "Active",
@@ -91,7 +70,6 @@ const en = {
     business: "Business",
     gas: "Gas",
     luce: "Electricity",
-    incompleteRules: "rules need configuration",
     importRules: "Import Rules",
     importRulesSuccess: "Rules imported successfully",
     confirmRuleChangeTitle: "Confirm Change",
@@ -100,17 +78,8 @@ const en = {
     importScaglioni: "Import Scaglioni",
     importScaglioniSuccess: "Scaglioni imported successfully",
     noScaglioniYet: "No scaglioni found. Scaglioni are created automatically when liquidations are imported.",
-    configureRules: "Configure Rules",
-    agentConfiguration: "Agent Configuration",
-    customValue: "Custom",
-    defaultValue: "Default",
     newRulesCreated: "New rules created",
     newRulesCreatedDesc: "New commission rules were detected during import. Check the Regole tab to configure them.",
-    importingAgents: "Importing agents...",
-    importComplete: "Import completed",
-    agentsImported: "agents imported successfully",
-    agentsFailed: "failed",
-    importErrors: "Import Errors",
     row: "Row",
     addAgent: "Add Agent",
     editAgent: "Edit Agent",
@@ -127,26 +96,16 @@ const en = {
 
     // Orders Import Tab
     importOrdersTitle: "Import Orders from Excel",
-    importOrdersDesc: "Upload an Excel file to import orders",
-    ordersImportResult: "Import Result",
-    newRecords: "New",
-    updatedRecords: "Updated",
-    clients: "Clients",
     products: "Products",
-    technicalData: "Technical Data",
     orders: "Orders",
 
     // Pending Orders
     pendingOrders: "Pending Orders",
-    pendingOrdersDesc: "Orders without associated liquidation",
     noPendingOrders: "No pending orders found",
     orderStatus: "Status",
     signatureDate: "Signature Date",
     startDate: "From",
     endDate: "To",
-    confirmationDate: "Confirmation Date",
-    acceptanceDate: "Acceptance Date",
-    agency: "Agency",
     agent: "Agent",
     product: "Product",
     paymentMethod: "Payment Method",
@@ -191,13 +150,8 @@ const en = {
     noDataFound: "No data found",
 
     // Settings
-    applicationSettings: "Application Settings",
     configurePreferences: "Configure your preferences and defaults",
     currency: "Currency",
-    maxUploadSize: "Max Upload Size (MB)",
-    saveSettings: "Save Settings",
-    settingsSaved: "Settings saved",
-    preferencesUpdated: "Your preferences have been updated.",
     language: "Language",
     theme: "Theme",
     light: "Light",
@@ -205,11 +159,7 @@ const en = {
     system: "System",
 
     // Footer
-    lastAction: "Last action",
     version: "Version",
-
-    // Subtitle
-    systemSubtitle: "Commission System",
 
     // Inline actions
     clickToEdit: "Click to edit",
@@ -232,15 +182,12 @@ const en = {
     period: "Period",
 
     // Ordini Tab - Collapsible & Dialog
-    importData: "Import Data",
-    importDataDesc: "Import orders and liquidations from Excel files",
     change: "Change",
     import: "Import",
 
     // Inviti Tab
     inviti: "Inviti",
     invoiceInvitations: "Invoice Invitations",
-    invoiceInvitationsDesc: "View and manage invoice invitation records",
     competenceMonth: "Competence Month",
     invitationTotal: "Total",
     invoiceReference: "Invoice Ref.",
@@ -256,8 +203,6 @@ const en = {
     allPaymentStatuses: "All payments",
     paidOnly: "Paid",
     unpaidOnly: "Unpaid",
-    editInvitation: "Edit Invitation",
-    editInvitationDesc: "Update invoice details and payment information",
     noInvitiFound: "No invoice invitations found",
     noInvitiDesc: "Adjust filters or check back later",
     invitationUpdated: "Invitation updated",
@@ -267,12 +212,6 @@ const en = {
     unpaidCalcButton: "Unpaid commissions report",
     unpaidCalcCancel: "Cancel",
     unpaidCalcRun: "Calculate & download CSV",
-    unpaidCalcSelectAll: "Select all",
-    unpaidCalcColAgent: "Agent",
-    unpaidCalcColCount: "Invitations",
-    unpaidCalcColTotal: "Total",
-    unpaidCalcProgress: "Processing {current} of {total}",
-    unpaidCalcDoneSummary: "Downloaded {rows} rows from {agents} agents. {skipped} skipped.",
     unpaidCalcDoneSingle: "Downloaded {rows} rows for {agent}.",
     unpaidCalcNoData: "No unpaid commission data found for the selected months.",
     unpaidCalcEmptyTitle: "No CSV downloaded",
@@ -287,7 +226,6 @@ const en = {
     passwordPlaceholder: "Enter your password",
     login: "Login",
     loggingIn: "Logging in...",
-    loginError: "Invalid credentials. Please try again.",
     logout: "Logout",
 } as const;
 
@@ -303,6 +241,7 @@ const it: TranslationTable = {
     ...previewIt,
     ...confirmationIt,
     ...exportsIt,
+    ...dashboardIt,
     // Header
     appTitle: "Calcolo Provvigioni",
     settings: "Impostazioni",
@@ -312,40 +251,18 @@ const it: TranslationTable = {
     agenti: "Agenti",
     ordini: "Ordini",
     provvigioni: "Provvigioni",
-    settingsTab: "Impostazioni",
 
     // Dashboard
-    totalAgents: "Totale Agenti",
-    totalCommissions: "Provvigioni Totali",
     ordersImported: "Ordini Importati",
-    activeCommissionAgents: "Agenti attivi con tariffe provvigionali",
-    currentPeriodTotal: "Totale periodo corrente",
     recordsProcessed: "Record elaborati",
-    quickActions: "Azioni Rapide",
-    getStartedCommonTasks: "Inizia con le operazioni comuni",
-    viewAgents: "Visualizza Agenti",
     importOrders: "Importa Ordini",
     importLiquidations: "Importa Liquidazioni",
-    recentActivity: "Attività Recente",
-    noActivity: "Nessuna attività recente",
     // Dashboard Charts
     contracts: "Contratti",
-    subscribed: "Sottoscritti",
-    vsLastYear: "anno precedente",
-    previousYear: "Anno Precedente",
-    currentYear: "Anno Corrente",
-    contractsSubscribed: "Contratti Sottoscritti",
-    commissionsCollected: "Provvigioni Incassate",
-    comparisonWithPreviousYear: "Confronto con anno precedente",
-    contractsByProduct: "Contratti per Prodotto",
-    showingDataFor: "Dati per",
-    variation: "Variazione",
 
     // Agents Tab
     agentsList: "Lista Agenti",
     agentsListDesc: "Visualizza tutti gli agenti di vendita e le loro tariffe provvigionali",
-    uploadAgentsCsv: "Carica CSV Agenti",
-    uploadAgentsCsvDesc: "Importa agenti da un file CSV con le tariffe provvigionali",
     noAgentsYet: "Nessun agente trovato. Clicca su Aggiungi Agente per aggiungere un nuovo agente.",
     refreshAgents: "Aggiorna",
     agentName: "Nome Agente",
@@ -364,7 +281,6 @@ const it: TranslationTable = {
 
     // Regole
     regole: "Regole",
-    regoleDesc: "Gestisci le regole provvigionali e i valori predefiniti",
     noRegoleYet:
         "Nessuna regola trovata. Le regole vengono create automaticamente all'importazione delle liquidazioni.",
     ruleDescription: "Descrizione",
@@ -379,7 +295,6 @@ const it: TranslationTable = {
     business: "Business",
     gas: "Gas",
     luce: "Luce",
-    incompleteRules: "regole da configurare",
     importRules: "Importa Regole",
     importRulesSuccess: "Regole importate con successo",
     confirmRuleChangeTitle: "Conferma Modifica",
@@ -389,18 +304,9 @@ const it: TranslationTable = {
     importScaglioniSuccess: "Scaglioni importati con successo",
     noScaglioniYet:
         "Nessuno scaglione trovato. Gli scaglioni vengono creati automaticamente all'importazione delle liquidazioni.",
-    configureRules: "Configura Regole",
-    agentConfiguration: "Configurazione Agente",
-    customValue: "Personalizzato",
-    defaultValue: "Predefinito",
     newRulesCreated: "Nuove regole create",
     newRulesCreatedDesc:
         "Nuove regole provvigionali sono state rilevate durante l'importazione. Controlla la scheda Regole per configurarle.",
-    importingAgents: "Importazione agenti...",
-    importComplete: "Importazione completata",
-    agentsImported: "agenti importati con successo",
-    agentsFailed: "falliti",
-    importErrors: "Errori di Importazione",
     row: "Riga",
     addAgent: "Aggiungi Agente",
     editAgent: "Modifica Agente",
@@ -417,26 +323,16 @@ const it: TranslationTable = {
 
     // Orders Import Tab
     importOrdersTitle: "Importa Ordini da Excel",
-    importOrdersDesc: "Carica un file Excel (.xlsx, .xls) per importare gli ordini",
-    ordersImportResult: "Risultato Importazione",
-    newRecords: "Nuovi",
-    updatedRecords: "Aggiornati",
-    clients: "Clienti",
     products: "Prodotti",
-    technicalData: "Dati Tecnici",
     orders: "Ordini",
 
     // Pending Orders
     pendingOrders: "Ordini Inevasi",
-    pendingOrdersDesc: "Ordini senza liquidazione associata",
     noPendingOrders: "Nessun ordine in attesa trovato",
     orderStatus: "Stato",
     signatureDate: "Data Firma",
     startDate: "Da",
     endDate: "A",
-    confirmationDate: "Data Conferma",
-    acceptanceDate: "Data Accettazione",
-    agency: "Agenzia",
     agent: "Agente",
     product: "Prodotto",
     paymentMethod: "Metodo Pagamento",
@@ -481,13 +377,8 @@ const it: TranslationTable = {
     noDataFound: "Nessun dato trovato",
 
     // Settings
-    applicationSettings: "Impostazioni Applicazione",
     configurePreferences: "Configura le tue preferenze e impostazioni predefinite",
     currency: "Valuta",
-    maxUploadSize: "Dimensione Massima Caricamento (MB)",
-    saveSettings: "Salva Impostazioni",
-    settingsSaved: "Impostazioni salvate",
-    preferencesUpdated: "Le tue preferenze sono state aggiornate.",
     language: "Lingua",
     theme: "Tema",
     light: "Chiaro",
@@ -495,11 +386,7 @@ const it: TranslationTable = {
     system: "Sistema",
 
     // Footer
-    lastAction: "Ultima azione",
     version: "Versione",
-
-    // Subtitle
-    systemSubtitle: "Sistema Provvigionale",
 
     // Inline actions
     clickToEdit: "Clicca per modificare",
@@ -522,15 +409,12 @@ const it: TranslationTable = {
     period: "Periodo",
 
     // Ordini Tab - Collapsible & Dialog
-    importData: "Importa Dati",
-    importDataDesc: "Importa ordini e liquidazioni da file Excel",
     change: "Cambia",
     import: "Importa",
 
     // Inviti Tab
     inviti: "Inviti",
     invoiceInvitations: "Inviti a Fatturare",
-    invoiceInvitationsDesc: "Visualizza e gestisci gli inviti a fatturare",
     competenceMonth: "Mese Competenza",
     invitationTotal: "Totale",
     invoiceReference: "Rif. Fattura",
@@ -546,8 +430,6 @@ const it: TranslationTable = {
     allPaymentStatuses: "Tutti i pagamenti",
     paidOnly: "Pagato",
     unpaidOnly: "Non pagato",
-    editInvitation: "Modifica Invito",
-    editInvitationDesc: "Aggiorna i dettagli della fattura e le informazioni di pagamento",
     noInvitiFound: "Nessun invito a fatturare trovato",
     noInvitiDesc: "Modifica i filtri o ricontrolla più tardi",
     invitationUpdated: "Invito aggiornato",
@@ -557,12 +439,6 @@ const it: TranslationTable = {
     unpaidCalcButton: "Calcolo non liquidati",
     unpaidCalcCancel: "Annulla",
     unpaidCalcRun: "Calcola e scarica CSV",
-    unpaidCalcSelectAll: "Seleziona tutti",
-    unpaidCalcColAgent: "Agente",
-    unpaidCalcColCount: "Inviti",
-    unpaidCalcColTotal: "Totale",
-    unpaidCalcProgress: "Elaborazione {current} di {total}",
-    unpaidCalcDoneSummary: "Scaricate {rows} righe da {agents} agenti. {skipped} saltati.",
     unpaidCalcDoneSingle: "Scaricate {rows} righe per {agent}.",
     unpaidCalcNoData: "Nessun dato di provvigione non pagata trovato per i mesi selezionati.",
     unpaidCalcEmptyTitle: "Nessun CSV scaricato",
@@ -577,7 +453,6 @@ const it: TranslationTable = {
     passwordPlaceholder: "Inserisci la tua password",
     login: "Accedi",
     loggingIn: "Accesso in corso...",
-    loginError: "Credenziali non valide. Riprova.",
     logout: "Esci",
 };
 

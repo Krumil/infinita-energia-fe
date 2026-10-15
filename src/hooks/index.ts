@@ -18,7 +18,7 @@ export { useDashboard } from "./useDashboard";
 
 export type { PreviewState, UseCalculationResult } from "./useCalcolo";
 
-export type { DashboardData } from "./useDashboard";
+export type { DashboardData, DashboardSection } from "./useDashboard";
 
 // Re-export shadcn hooks
 export { useToast } from "./use-toast";
