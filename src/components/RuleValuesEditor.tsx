@@ -83,7 +83,7 @@ function RuleGroup({
                     {group.name}
                 </span>
                 {isGeneral && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary font-mono uppercase">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary-text font-mono uppercase">
                         Gen
                     </span>
                 )}
@@ -236,7 +236,7 @@ export function RuleValuesEditor({ configuration, rules, loading, editedValues, 
             </div>
             <div className="flex items-center gap-6 text-xs text-muted-foreground font-body px-1">
                 <span className="flex items-center gap-1.5">
-                    <span className="text-[9px] px-1 py-0.5 rounded-sm bg-primary/10 text-primary font-mono uppercase">Gen</span>
+                    <span className="text-[9px] px-1 py-0.5 rounded-sm bg-primary/10 text-primary-text font-mono uppercase">Gen</span>
                     {t("tipoUtenza")}: -
                 </span>
             </div>

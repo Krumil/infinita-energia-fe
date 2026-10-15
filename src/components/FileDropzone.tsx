@@ -91,7 +91,7 @@ export function FileDropzone({ accept, maxSizeMB, multiple = false, onFiles, dis
 
             <FileSpreadsheet className="dropzone-icon pointer-events-none" />
             <p className="font-display text-sm text-muted-foreground pointer-events-none">
-                <span className="text-energia-accent font-medium">{t("clickToUpload")}</span>{" "}
+                <span className="text-energia-accent-text font-medium">{t("clickToUpload")}</span>{" "}
                 <span className="text-muted-foreground/70">
                     {t("or")} {t("dragAndDrop")}
                 </span>

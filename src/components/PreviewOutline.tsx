@@ -25,7 +25,7 @@ export function PreviewOutline({ month, loading, onGoToOrders }: PreviewOutlineP
             <div className="kpi-card p-6 text-center">
                 <span aria-hidden="true" className="kpi-label">
                     {t("totalCommission")}
-                    {month && <span className="text-energia-accent"> — {formatMonthLabel(month, language)}</span>}
+                    {month && <span> — {formatMonthLabel(month, language)}</span>}
                 </span>
                 {loading ? (
                     <div className="mt-3 flex h-12 items-center justify-center gap-3">

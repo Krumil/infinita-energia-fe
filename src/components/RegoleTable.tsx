@@ -230,7 +230,7 @@ export function RulesTable({
                                         />
                                     ) : (
                                         <span
-                                            className="group inline-flex items-center gap-2 font-mono cursor-pointer rounded px-2 py-1 bg-muted/30 hover:bg-muted/50 text-foreground hover:text-energia-accent transition-colors border border-border/40 hover:border-border float-right"
+                                            className="group inline-flex items-center gap-2 font-mono cursor-pointer rounded px-2 py-1 bg-muted/30 hover:bg-muted/50 text-foreground hover:text-energia-accent-text transition-colors border border-border/40 hover:border-border float-right"
                                             onClick={() => startEditing(rule)}
                                             title={t("clickToEdit")}
                                         >

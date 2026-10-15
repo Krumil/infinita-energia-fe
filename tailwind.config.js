@@ -11,26 +11,9 @@ export default {
             },
             colors: {
                 // Infinita Energia brand palette
-                "energia-primary": {
-                    DEFAULT: "hsl(var(--energia-primary) / <alpha-value>)",
-                    light: "hsl(var(--energia-primary-light) / <alpha-value>)",
-                    dark: "hsl(var(--energia-primary-dark) / <alpha-value>)",
-                },
                 "energia-accent": {
                     DEFAULT: "hsl(var(--energia-accent) / <alpha-value>)",
-                    light: "hsl(var(--energia-accent-light) / <alpha-value>)",
-                    dark: "hsl(var(--energia-accent-dark) / <alpha-value>)",
-                },
-                "energia-secondary": {
-                    DEFAULT: "hsl(var(--energia-secondary) / <alpha-value>)",
-                    light: "hsl(var(--energia-secondary) / <alpha-value>)",
-                },
-                "energia-text": {
-                    DEFAULT: "hsl(var(--energia-text) / <alpha-value>)",
-                },
-                sage: {
-                    DEFAULT: "hsl(var(--sage) / <alpha-value>)",
-                    light: "hsl(var(--sage-light) / <alpha-value>)",
+                    text: "hsl(var(--energia-accent-text) / <alpha-value>)",
                 },
                 // Keep shadcn compatibility
                 border: "hsl(var(--border))",
@@ -41,6 +24,7 @@ export default {
                 primary: {
                     DEFAULT: "hsl(var(--primary))",
                     foreground: "hsl(var(--primary-foreground))",
+                    text: "hsl(var(--primary-text))",
                 },
                 secondary: {
                     DEFAULT: "hsl(var(--secondary))",

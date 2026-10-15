@@ -12,13 +12,14 @@
         --popover: 205 22% 97%;
         --popover-foreground: 210 25% 25%;
         --primary: 197 66% 50%;
-        --primary-foreground: 0 0% 100%;
+        --primary-foreground: 211 100% 18%;
+        --primary-text: 197 75% 32%;
         --secondary: 205 18% 90%;
         --secondary-foreground: 210 25% 25%;
         --muted: 205 16% 92%;
-        --muted-foreground: 210 10% 45%;
+        --muted-foreground: 210 10% 40%;
         --accent: 130 52% 45%;
-        --accent-foreground: 0 0% 100%;
+        --accent-foreground: 211 100% 18%;
         --destructive: 0 65% 48%;
         --destructive-foreground: 0 0% 100%;
         --border: 205 14% 82%;
@@ -36,16 +37,25 @@
         --dialog-shadow: 0 25px 50px -12px hsl(211 50% 30% / 0.25);
 
         /* Custom color tokens for light mode - Infinita Energia Brand */
-        --energia-primary: 197 66% 50%;
-        --energia-primary-light: 197 66% 66%;
-        --energia-primary-dark: 197 70% 40%;
         --energia-accent: 130 52% 45%;
-        --energia-accent-light: 130 52% 55%;
-        --energia-accent-dark: 130 55% 35%;
-        --energia-secondary: 210 25% 25%;
-        --energia-text: 210 10% 45%;
-        --sage: 130 52% 45%;
-        --sage-light: 130 50% 55%;
+        /* Leaf fills sit below 3:1 on light surfaces, so Leaf text uses this darker step. */
+        --energia-accent-text: 130 55% 30%;
+
+        /* Chart series: full colors, not HSL triplets. Checked for color-blind separation against --card. */
+        --series-1: #2a78d6;
+        --series-2: #eb6834;
+        --series-3: #1baf7a;
+        --series-4: #eda100;
+        --series-5: #e87ba4;
+        --series-6: #008300;
+        --series-7: #4a3aa7;
+        /* 8-12 only appear in the product stack, which names up to twelve agents. */
+        --series-8: #8c564b;
+        --series-9: #0f9fb4;
+        --series-10: #c43c45;
+        --series-11: #8a8a1e;
+        --series-12: #2f4b7c;
+        --series-muted: #a9a8a0;
 
         /* Header specific */
         --header-gradient-start: 211 100% 18%;
@@ -64,13 +74,15 @@
         --popover: 210 12% 15%;
         --popover-foreground: 210 5% 90%;
         --primary: 197 60% 55%;
-        --primary-foreground: 0 0% 100%;
+        /* Deeper than the light-mode navy so text still clears 4.5:1 on the dimmed hover fill. */
+        --primary-foreground: 211 100% 12%;
+        --primary-text: 197 60% 55%;
         --secondary: 210 10% 18%;
         --secondary-foreground: 210 5% 85%;
         --muted: 210 10% 18%;
         --muted-foreground: 210 5% 55%;
         --accent: 130 50% 55%;
-        --accent-foreground: 0 0% 100%;
+        --accent-foreground: 211 100% 12%;
         --destructive: 0 55% 50%;
         --destructive-foreground: 0 0% 100%;
         --border: 210 10% 22%;
@@ -78,16 +90,22 @@
         --ring: 197 60% 55%;
 
         /* Custom color tokens for dark mode - Infinita Energia Brand */
-        --energia-primary: 197 60% 55%;
-        --energia-primary-light: 197 65% 65%;
-        --energia-primary-dark: 197 55% 45%;
         --energia-accent: 130 50% 55%;
-        --energia-accent-light: 130 52% 65%;
-        --energia-accent-dark: 130 48% 42%;
-        --energia-secondary: 210 6% 55%;
-        --energia-text: 210 5% 65%;
-        --sage: 130 50% 50%;
-        --sage-light: 130 48% 60%;
+        --energia-accent-text: 130 50% 55%;
+
+        --series-1: #3987e5;
+        --series-2: #d95926;
+        --series-3: #199e70;
+        --series-4: #c98500;
+        --series-5: #d55181;
+        --series-6: #008300;
+        --series-7: #9085e9;
+        --series-8: #b07c6f;
+        --series-9: #22b5ca;
+        --series-10: #e0636b;
+        --series-11: #b3b33a;
+        --series-12: #6f8fc7;
+        --series-muted: #5f5e59;
         --surface-tint: 210 12% 11%;
         --metric-value: 210 5% 90%;
         --ledger-card-shadow: 0 0 0 hsl(0 0% 0% / 0);
@@ -291,35 +309,6 @@
         background: hsl(var(--energia-accent));
     }
 
-    /* Tab Navigation - Editorial Style */
-    .ledger-tabs [role="tablist"] {
-        @apply bg-transparent border-b border-border/50 pb-0;
-    }
-
-    .ledger-tabs [role="tab"] {
-        @apply relative px-6 py-4 text-sm tracking-wide uppercase;
-        @apply text-muted-foreground hover:text-foreground transition-colors duration-300;
-        @apply bg-transparent rounded-none border-0;
-        font-family: "Roboto Slab", Georgia, serif;
-        font-weight: 400;
-        letter-spacing: 0.1em;
-    }
-
-    .ledger-tabs [role="tab"][data-state="active"] {
-        @apply text-foreground bg-transparent;
-    }
-
-    .ledger-tabs [role="tab"][data-state="active"]::after {
-        content: "";
-        position: absolute;
-        bottom: -1px;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: hsl(var(--energia-accent));
-        animation: slideIn 0.3s ease-out;
-    }
-
     /* ═══════════════════════════════════════════════════════════════════════
      CARDS - Ledger Page Style
      ═══════════════════════════════════════════════════════════════════════ */
@@ -377,7 +366,7 @@
     .kpi-label {
         font-family: "Roboto Slab", Georgia, serif;
         @apply text-sm uppercase;
-        color: hsl(var(--energia-accent));
+        color: hsl(var(--energia-accent-text));
         letter-spacing: 0.12em;
     }
 
@@ -432,27 +421,13 @@
         font-family: "Roboto Slab", Georgia, serif;
         font-weight: 400;
         letter-spacing: 0.12em;
-        background: hsl(var(--energia-accent));
-        color: hsl(var(--accent-foreground));
-    }
-
-    .btn-primary:hover {
-        background: hsl(var(--energia-accent-light));
-    }
-
-    .btn-primary:active {
-        background: hsl(var(--energia-accent-dark));
-    }
-
-    .btn-primary:focus {
-        --tw-ring-color: hsl(var(--energia-accent) / 0.5);
     }
 
     .btn-primary::before {
         content: "";
         position: absolute;
         inset: 0;
-        background: linear-gradient(180deg, hsl(var(--accent-foreground) / 0.1) 0%, transparent 50%);
+        background: linear-gradient(180deg, hsl(0 0% 100% / 0.1) 0%, transparent 50%);
         pointer-events: none;
         border-radius: inherit;
     }
@@ -520,47 +495,6 @@
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
-     BADGES & INDICATORS
-     ═══════════════════════════════════════════════════════════════════════ */
-
-    .badge-ledger {
-        @apply inline-flex items-center px-3 py-1 rounded-sm;
-        font-family: "IBM Plex Mono", Consolas, monospace;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        background: hsl(var(--secondary) / 0.5);
-        color: hsl(var(--foreground));
-        border: 1px solid hsl(var(--border) / 0.5);
-    }
-
-    .badge-accent {
-        background: hsl(var(--energia-accent) / 0.1);
-        color: hsl(var(--energia-accent));
-        border-color: hsl(var(--energia-accent) / 0.25);
-    }
-
-    .badge-success {
-        background: hsl(var(--sage) / 0.15);
-        color: hsl(var(--sage-light));
-        border-color: hsl(var(--sage) / 0.25);
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-     PROGRESS INDICATORS
-     ═══════════════════════════════════════════════════════════════════════ */
-
-    .progress-ledger {
-        @apply h-1.5 rounded-full overflow-hidden;
-        background: hsl(var(--secondary));
-    }
-
-    .progress-ledger [role="progressbar"] {
-        @apply h-full transition-all duration-500 ease-out;
-        background: hsl(var(--energia-accent));
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
      DIALOG & SHEETS
      ═══════════════════════════════════════════════════════════════════════ */
 
@@ -614,50 +548,6 @@
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
-     QUICK ACTION CARDS
-     ═══════════════════════════════════════════════════════════════════════ */
-
-    .action-card {
-        @apply relative flex items-center gap-4 p-5 rounded-sm;
-        @apply transition-all duration-300 cursor-pointer;
-        background: hsl(var(--secondary) / 0.3);
-        border: 1px solid hsl(var(--border) / 0.3);
-    }
-
-    .action-card:hover {
-        background: hsl(var(--secondary) / 0.5);
-        border-color: hsl(var(--energia-accent) / 0.3);
-    }
-
-    .action-card::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 0;
-        height: 60%;
-        background: hsl(var(--energia-accent));
-        transition: width 0.3s ease;
-        border-radius: 0 2px 2px 0;
-    }
-
-    .action-card:hover::before {
-        width: 3px;
-    }
-
-    .action-card-icon {
-        @apply w-10 h-10 flex items-center justify-center rounded-sm;
-        @apply transition-all duration-300;
-        background: hsl(var(--energia-accent) / 0.1);
-        color: hsl(var(--energia-accent));
-    }
-
-    .action-card:hover .action-card-icon {
-        background: hsl(var(--energia-accent) / 0.15);
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
      FORM INPUTS - Better Readability
      ═══════════════════════════════════════════════════════════════════════ */
 
@@ -687,20 +577,6 @@
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
-     ALERTS - Better Visibility
-     ═══════════════════════════════════════════════════════════════════════ */
-
-    .alert-success {
-        background: hsl(var(--sage) / 0.1);
-        border: 1px solid hsl(var(--sage) / 0.25);
-    }
-
-    .alert-warning {
-        background: hsl(var(--energia-accent) / 0.08);
-        border: 1px solid hsl(var(--energia-accent) / 0.2);
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
      ANIMATIONS
      ═══════════════════════════════════════════════════════════════════════ */
 
@@ -726,48 +602,9 @@
         }
     }
 
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateX(-8px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
-    }
-
-    .animate-stagger > * {
-        opacity: 0;
-        animation: fadeUp 0.5s ease-out forwards;
-    }
-
-    .animate-stagger > *:nth-child(1) {
-        animation-delay: 0.05s;
-    }
-    .animate-stagger > *:nth-child(2) {
-        animation-delay: 0.1s;
-    }
-    .animate-stagger > *:nth-child(3) {
-        animation-delay: 0.15s;
-    }
-    .animate-stagger > *:nth-child(4) {
-        animation-delay: 0.2s;
-    }
-    .animate-stagger > *:nth-child(5) {
-        animation-delay: 0.25s;
-    }
-    .animate-stagger > *:nth-child(6) {
-        animation-delay: 0.3s;
-    }
-
     /* ═══════════════════════════════════════════════════════════════════════
      UTILITY CLASSES
      ═══════════════════════════════════════════════════════════════════════ */
-
-    .text-balance {
-        text-wrap: balance;
-    }
 
     .editorial-caps {
         font-family: "Roboto Slab", Georgia, serif;
@@ -775,11 +612,6 @@
         text-transform: uppercase;
         letter-spacing: 0.1em;
         font-weight: 400;
-    }
-
-    .ledger-number {
-        font-family: "IBM Plex Mono", Consolas, monospace;
-        font-variant-numeric: tabular-nums;
     }
 
     /* Scrollbar Styling */
