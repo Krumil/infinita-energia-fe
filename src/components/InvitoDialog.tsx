@@ -3,6 +3,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { getInvoiceRequestDetails } from "@/api/inviti";
 import { InvoiceRequestAttachments } from "@/components/InvitoAttachments";
+import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/DatePicker";
@@ -57,6 +58,7 @@ interface DetailPanelProps {
 
 function DetailPanel({ invoiceRequestId, translations, language }: DetailPanelProps): ReactElement {
     const [detail, setDetail] = useState<InvoiceRequestDetailsResponse | null>(null);
+    const [shownRows, setShownRows] = useState(ROWS_PAGE_SIZE);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     const requestVersion = useRef(0);
@@ -121,7 +123,7 @@ function DetailPanel({ invoiceRequestId, translations, language }: DetailPanelPr
                             <TableHead>{translations.taxId}</TableHead>
                             <TableHead className="text-right">{translations.commissionAmount}</TableHead>
                         </TableRow></TableHeader>
-                        <TableBody>{detail.dati.map((row) => (
+                        <TableBody>{detail.dati.slice(0, shownRows).map((row) => (
                             <TableRow key={row.id}>
                                 <TableCell>{row.venditore ?? "—"}</TableCell>
                                 <TableCell className="whitespace-nowrap">{formatDate(row.comp_al)}</TableCell>
@@ -133,6 +135,7 @@ function DetailPanel({ invoiceRequestId, translations, language }: DetailPanelPr
                             </TableRow>
                         ))}</TableBody>
                     </Table>
+                    <ShowMoreRows shown={shownRows} total={detail.dati.length} onShowMore={setShownRows} />
                 </div>
             ) : detail ? (
                 <p className="ledger-card px-4 py-10 text-center text-sm text-muted-foreground">{translations.detailUnavailable}</p>

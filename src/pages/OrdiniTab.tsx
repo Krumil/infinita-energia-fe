@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/DatePicker";
 import { OrdersImportDialog } from "@/components/OrdersImportDialog";
 import { SettlementsDialog } from "@/components/SettlementsDialog";
+import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { UseSettlementsResult } from "@/hooks/useLiquidazioni";
 import { exportPendingOrdersExcel } from "@/lib/exportUtils";
@@ -260,6 +261,7 @@ export function OrdersTab({
     const [sortField, setSortField] = useState<SortField>("cliente_nome");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
     const [ordersView, setOrdersView] = useState<"pending" | "excluded">("pending");
+    const [shownRows, setShownRows] = useState(ROWS_PAGE_SIZE);
     const [importOpen, setImportOpen] = useState(false);
     const [settlementsOpen, setSettlementsOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<PendingOrder | null>(null);
@@ -367,6 +369,7 @@ export function OrdersTab({
         ? t("pendingOrdersFooter").replace("{shown}", String(processedOrders.length)).replace("{total}", String(pendingOrders.length))
         : t("excludedOrdersFooter").replace("{shown}", String(processedExcludedOrders.length)).replace("{total}", String(excludedOrdersCount));
 
+    const visibleCount = isPending ? processedOrders.length : processedExcludedOrders.length;
     const isEmpty = isPending ? pendingOrders.length === 0 : excludedOrders.length === 0;
     const emptyError = isPending ? pendingOrdersError : excludedOrdersError;
 
@@ -400,6 +403,7 @@ export function OrdersTab({
 
                         if (parsedView.success) {
                             setOrdersView(parsedView.data);
+                            setShownRows(ROWS_PAGE_SIZE);
                         }
                     }}>
                         <TabsList className="h-auto gap-1 bg-transparent p-0">
@@ -498,7 +502,7 @@ export function OrdersTab({
                     </div>
                 ) : (
                     <>
-                        <div className={`${PANEL_CLASSES} flex min-h-0 flex-1 flex-col overflow-hidden [&>div]:min-h-0 [&>div]:flex-1`}>
+                        <div className={`${PANEL_CLASSES} flex min-h-0 flex-1 flex-col overflow-hidden [&>div:first-child]:min-h-0 [&>div:first-child]:flex-1`}>
                             <Table className="[&_td]:px-3 [&_td]:py-2 [&_th]:h-9 [&_th]:px-3">
                                 <TableHeader className="sticky top-0 z-10 bg-secondary/90 backdrop-blur-sm">
                                     {isPending ? (
@@ -523,7 +527,7 @@ export function OrdersTab({
                                     )}
                                 </TableHeader>
                                 <TableBody>
-                                    {isPending && processedOrders.map((order) => (
+                                    {isPending && processedOrders.slice(0, shownRows).map((order) => (
                                         <TableRow key={order.id_riga_ordine} className="hover:bg-secondary/30">
                                             <TableCell className="font-mono text-xs">#{order.id_ordine}</TableCell>
                                             <TableCell className="font-medium">{order.cliente_nome || "—"}</TableCell>
@@ -550,7 +554,7 @@ export function OrdersTab({
                                             </TableCell>
                                         </TableRow>
                                     ))}
-                                    {!isPending && processedExcludedOrders.map((excludedOrder) => {
+                                    {!isPending && processedExcludedOrders.slice(0, shownRows).map((excludedOrder) => {
                                         const order = excludedOrder.ordine;
 
                                         return (
@@ -584,10 +588,18 @@ export function OrdersTab({
                                             </TableRow>
                                         );
                                     })}
-                                    {(isPending ? processedOrders : processedExcludedOrders).length === 0 && (
+                                    {visibleCount === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={isPending ? 9 : 4} className="py-12 text-center text-muted-foreground">
                                                 {t("noDataFound")}
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                    {/* A row, because the table's own wrapper is the scroll container the sticky header needs. */}
+                                    {shownRows < visibleCount && (
+                                        <TableRow>
+                                            <TableCell colSpan={isPending ? 9 : 4} className="!p-0">
+                                                <ShowMoreRows shown={shownRows} total={visibleCount} onShowMore={setShownRows} />
                                             </TableCell>
                                         </TableRow>
                                     )}

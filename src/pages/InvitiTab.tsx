@@ -27,6 +27,7 @@ import { SearchableSelect } from "@/components/SearchableSelect";
 import { MonthPicker } from "@/components/DatePicker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InvoiceRequestDialog } from "@/components/InvitoDialog";
+import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { formatMonthLabel } from "@/lib/competenceDates";
@@ -236,6 +237,7 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
     const [sortField, setSortField] = useState<SortField>("mese_competenza");
     const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
     const [editingInvoiceRequest, setEditingInvoiceRequest] = useState<InvoiceRequest | null>(null);
+    const [shownRows, setShownRows] = useState(ROWS_PAGE_SIZE);
 
     const [dialogInitialTab, setDialogInitialTab] = useState<"edit" | "attachments">("edit");
     const attachmentInputRef = useRef<HTMLInputElement | null>(null);
@@ -753,7 +755,7 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
                             </TableHeader>
                             <TableBody>
                                 {processedInvoiceRequests.length > 0 ? (
-                                    processedInvoiceRequests.map((invoiceRequest) => (
+                                    processedInvoiceRequests.slice(0, shownRows).map((invoiceRequest) => (
                                         <TableRow
                                             key={invoiceRequest.id}
                                             className="hover:bg-secondary/30 cursor-pointer"
@@ -813,6 +815,7 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
                                 )}
                             </TableBody>
                         </Table>
+                        <ShowMoreRows shown={shownRows} total={processedInvoiceRequests.length} onShowMore={setShownRows} />
                     </div>
                 </div>
             )}

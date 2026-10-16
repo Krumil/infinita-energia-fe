@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { AddDraftRowDialog } from "@/components/AddDraftRowDialog";
+import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { rowAmount, type DraftAgent, type DraftRow } from "@/lib/calculationDraft";
 import { formatMonthLabel } from "@/lib/competenceDates";
@@ -17,12 +18,13 @@ import type { TranslationKey } from "@/translations";
 
 const EMPTY_VALUE = "—";
 
-// A month can hold thousands of unmatched rows, and mounting them all freezes the page on open and on every draft edit.
-const UNMATCHED_PAGE_SIZE = 100;
+function compareCustomers(a: CalculationDetail, b: CalculationDetail): number {
+    return (a.cliente ?? "").localeCompare(b.cliente ?? "", "it");
+}
 
 // Sorting and filtering return the same row objects, so a row keeps its identity whatever the operator sees.
 function sortByCustomer(rows: DraftRow[]): DraftRow[] {
-    return [...rows].sort((a, b) => (a.detail.cliente ?? "").localeCompare(b.detail.cliente ?? "", "it"));
+    return [...rows].sort((a, b) => compareCustomers(a.detail, b.detail));
 }
 
 function filterRows(rows: DraftRow[], query: string): DraftRow[] {
@@ -42,7 +44,8 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
     const [expandedAgentId, setExpandedAgentId] = useState<number | null>(null);
     const [filterQuery, setFilterQuery] = useState<string>("");
     const [unmatchedOpen, setUnmatchedOpen] = useState(false);
-    const [unmatchedShown, setUnmatchedShown] = useState(UNMATCHED_PAGE_SIZE);
+    const [unmatchedShown, setUnmatchedShown] = useState(ROWS_PAGE_SIZE);
+    const [detailShown, setDetailShown] = useState(ROWS_PAGE_SIZE);
 
     const agentNames = useMemo(() => new Map(agents.map((agent) => [agent.id, agent.nome_cognome])), [agents]);
     const periodDisplay = formatMonthLabel(month, language);
@@ -71,7 +74,11 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
     };
 
     const handleExpandAgent = (agentId: number): void => {
-        if (expandedAgentId !== agentId) setFilterQuery("");
+        if (expandedAgentId !== agentId) {
+            setFilterQuery("");
+            setDetailShown(ROWS_PAGE_SIZE);
+        }
+
         setExpandedAgentId(expandedAgentId === agentId ? null : agentId);
     };
 
@@ -116,6 +123,9 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                     editDraft?.addRow(agent.agente_id, detail, amountText);
                                     // A filter that hides the new row would make the add look lost.
                                     setFilterQuery("");
+                                    // The stable sort puts the appended row after every existing row with the same customer or an earlier one.
+                                    const position = agent.rows.filter((row) => compareCustomers(row.detail, detail) <= 0).length;
+                                    setDetailShown(Math.max(detailShown, position + 1));
                                 }}
                             />
                         </div>
@@ -138,7 +148,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                 </TableHeader>
                                 <TableBody>
                                     {visibleRows.length > 0 ? (
-                                        visibleRows.map((row) => {
+                                        visibleRows.slice(0, detailShown).map((row) => {
                                             const { detail } = row;
                                             const childSeller = childOriginSeller(agent, detail);
                                             const client = detail.cliente ?? EMPTY_VALUE;
@@ -203,6 +213,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                     )}
                                 </TableBody>
                             </Table>
+                            <ShowMoreRows shown={detailShown} total={visibleRows.length} onShowMore={setDetailShown} />
                         </div>
 
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -421,21 +432,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                     ))}
                                 </TableBody>
                             </Table>
-                            {unmatched.length > unmatchedShown && (
-                                <div className="flex items-center justify-between gap-3 border-t px-4 py-2 text-xs text-muted-foreground">
-                                    <span>
-                                        {t("unmatchedRowsShown")
-                                            .replace("{shown}", unmatchedShown.toLocaleString(language))
-                                            .replace("{count}", unmatched.length.toLocaleString(language))}
-                                    </span>
-                                    <Button variant="outline" size="sm" onClick={() => setUnmatchedShown(unmatchedShown + UNMATCHED_PAGE_SIZE)}>
-                                        {t("unmatchedRowsShowMore").replace(
-                                            "{count}",
-                                            Math.min(UNMATCHED_PAGE_SIZE, unmatched.length - unmatchedShown).toLocaleString(language),
-                                        )}
-                                    </Button>
-                                </div>
-                            )}
+                            <ShowMoreRows shown={unmatchedShown} total={unmatched.length} onShowMore={setUnmatchedShown} />
                         </CollapsibleContent>
                     </section>
                 </Collapsible>

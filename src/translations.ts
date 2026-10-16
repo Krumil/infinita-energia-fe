@@ -145,6 +145,7 @@ const en = {
     // Tables
     showing: "Showing",
     of: "of",
+    rowsShown: "Showing {shown} of {count} rows",
     clearFilter: "Clear filter",
     filterPlaceholder: "Filter...",
     noDataFound: "No data found",
@@ -372,6 +373,7 @@ const it: TranslationTable = {
     // Tables
     showing: "Visualizzazione",
     of: "di",
+    rowsShown: "{shown} righe mostrate su {count}",
     clearFilter: "Cancella filtro",
     filterPlaceholder: "Filtra...",
     noDataFound: "Nessun dato trovato",

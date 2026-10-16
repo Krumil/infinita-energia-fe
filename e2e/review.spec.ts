@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import { uniqueToken, type Backend, type SettlementRow, type TestAgent } from "./support/backend";
 import {
@@ -101,6 +101,40 @@ async function loadPreview(page: Page, backend: Backend): Promise<Fixture> {
     await expect(overallTotal(page)).toHaveText("339,00 €");
 
     return fixture;
+}
+
+interface ManyRows {
+    agent: TestAgent;
+    customers: string[];
+}
+
+// 150 rows at 2,00 € each. Zero-padded customers keep the sorted order equal to the import order.
+async function loadManyRows(page: Page, backend: Backend): Promise<ManyRows> {
+    await backend.claimMonth(MONTH);
+
+    const token = uniqueToken();
+    const agent = await backend.createAgent({ name: `Molte ${token}`, ruleValues: { "Gettone Residenziale Standard": 2 } });
+    const customers = Array.from({ length: 150 }, (_, index) => `Cliente ${String(index).padStart(3, "0")} ${token}`);
+
+    await backend.importRows(
+        MONTH,
+        customers.map((customer, index) => ({ seller: agent.name, rule: "Gettone Residenziale Standard", amount: 100, customer, orderId: 992_100 + index })),
+    );
+    await page.goto("/");
+    await openTab(page, "Provvigioni");
+    await pickMonth(page, monthGroup(page), MONTH);
+    await previewButton(page).click();
+    await expect(agentTotal(page, agent)).toHaveText("300,00 €");
+    await expand(page, agent);
+
+    return { agent, customers };
+}
+
+function detailRows(page: Page): Locator {
+    return page
+        .getByRole("row")
+        .filter({ has: page.getByRole("textbox", { name: /^Provvigione di / }) })
+        .filter({ hasNot: page.getByRole("row") });
 }
 
 // Unlike pickMonth, this doesn't expect the month to change, because the discard prompt may keep the current one.
@@ -467,5 +501,56 @@ test.describe("preview review and editing", () => {
         await expect(unmatched.getByRole("textbox")).toHaveCount(0);
         await expect(unmatched.getByRole("button")).toHaveText(["Nascondi righe"]);
         await expect(unmatched.getByRole("checkbox")).toHaveCount(0);
+    });
+
+    test("should show the rows a hundred at a time while the filter and total still cover every row when an agent has 150 rows", async ({
+        page,
+        backend,
+    }) => {
+        const { customers } = await loadManyRows(page, backend);
+        const details = detailRows(page);
+        const status = page.getByText("100 righe mostrate su 150", { exact: true });
+
+        await expect(details).toHaveCount(100);
+        await expect(details.last().getByRole("cell").first()).toHaveText(customers[99]);
+        await expect(status).toBeVisible();
+        await expect(page.getByText("Totale: 300,00 €", { exact: true })).toBeVisible();
+
+        // Customers 140 to 149 are past the first hundred, so the filter has to search the rows that aren't shown.
+        await page.getByRole("textbox", { name: "Filtra..." }).fill("Cliente 14");
+
+        await expect(details).toHaveCount(10);
+        await expect(details.first().getByRole("cell").first()).toHaveText(customers[140]);
+        await expect(page.getByText("Totale: 20,00 €", { exact: true })).toBeVisible();
+        await expect(page.getByText(/righe mostrate su/)).toHaveCount(0);
+
+        await page.getByRole("button", { name: "Cancella filtro" }).click();
+        await expect(details).toHaveCount(100);
+        await status.scrollIntoViewIfNeeded();
+
+        await expect(details).toHaveCount(150);
+        await expect(details.last().getByRole("cell").first()).toHaveText(customers[149]);
+        await expect(page.getByText(/righe mostrate su/)).toHaveCount(0);
+        await expect(page.getByText("Totale: 300,00 €", { exact: true })).toBeVisible();
+    });
+
+    test("should show the added row when it sorts after the rows already shown", async ({ page, backend }) => {
+        const { agent } = await loadManyRows(page, backend);
+        const added = `Cliente Zeta ${agent.id}`;
+        const dialog = page.getByRole("dialog", { name: `Aggiungi una riga a ${agent.name}` });
+
+        await expect(detailRows(page)).toHaveCount(100);
+        await page.getByRole("button", { name: "Aggiungi riga" }).click();
+        await dialog.getByRole("combobox", { name: "Seleziona una regola" }).click();
+        await page.getByRole("option", { name: "Rinnovo Residenziale", exact: true }).click();
+        await dialog.getByRole("textbox", { name: "Provvigione", exact: true }).fill("12,34");
+        await dialog.getByRole("textbox", { name: "Cliente (facoltativo)" }).fill(added);
+        await dialog.getByRole("button", { name: "Aggiungi alla bozza" }).click();
+
+        await expect(dialog).toBeHidden();
+        await expect(amountInputs(page, added)).toBeVisible();
+        await expect(amountInputs(page, added)).toHaveValue("12,34");
+        await expect(detailRows(page).last().getByRole("cell").first()).toHaveText(added);
+        await expect(agentTotal(page, agent)).toHaveText("312,34 €");
     });
 });

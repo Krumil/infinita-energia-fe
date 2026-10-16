@@ -314,10 +314,10 @@ test.describe("calculation preview", () => {
         await expect(recordRow(unmatched, token)).toHaveCount(100);
         await expect(unmatched.getByText("100 righe mostrate su 250")).toBeVisible();
 
-        await unmatched.getByRole("button", { name: "Mostra altre 100" }).click();
+        await unmatched.getByText("100 righe mostrate su 250").scrollIntoViewIfNeeded();
         await expect(recordRow(unmatched, token)).toHaveCount(200);
 
-        await unmatched.getByRole("button", { name: "Mostra altre 50" }).click();
+        await unmatched.getByText("200 righe mostrate su 250").scrollIntoViewIfNeeded();
         await expect(recordRow(unmatched, token)).toHaveCount(250);
         await expect(unmatched.getByText(/righe mostrate su/)).toHaveCount(0);
         await expect(unmatched.getByRole("button")).toHaveText(["Nascondi righe"]);
