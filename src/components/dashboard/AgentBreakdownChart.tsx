@@ -16,6 +16,7 @@ import {
     formatCount,
     formatPercent,
     formatPeriodComparison,
+    share,
 } from "@/lib/dashboardFormat";
 import type { TranslationKey } from "@/translations";
 import type { DashboardAgentComparison, DashboardAgentMetrics, DashboardAgentRow } from "@/types";
@@ -57,13 +58,8 @@ function formatShare(value: number | null, language: Parameters<typeof formatPer
     return value === null ? "–" : formatPercent(value, language);
 }
 
-/** The backend reports no change for "Altro", so its segments go unlabeled. */
-function changeOf(agent: DashboardAgentRow, key: CountKey): number | null | undefined {
-    return key === "altro_udm" ? undefined : agent.variazione_pct[key];
-}
-
 // Recharts types label geometry loosely; on a bar segment it's always numbers. A missing value means "no label here".
-const changeLabelProps = z.object({
+const segmentLabelProps = z.object({
     x: z.number(),
     y: z.number(),
     width: z.number(),
@@ -71,9 +67,9 @@ const changeLabelProps = z.object({
     value: z.string(),
 });
 
-/** A segment's change from the previous year, drawn only where the text fits inside the segment. */
-function ChangeLabel(props: LabelProps): ReactElement | null {
-    const parsed = changeLabelProps.safeParse(props);
+/** A segment's share of the agent's contracts, drawn only where the text fits inside the segment. */
+function SegmentLabel(props: LabelProps): ReactElement | null {
+    const parsed = segmentLabelProps.safeParse(props);
 
     if (!parsed.success) return null;
 
@@ -247,13 +243,13 @@ export function AgentBreakdownChart({ kind, section, loading }: AgentBreakdownCh
         </Table>
     );
 
-    // The change label of an empty segment would sit on nothing, so it's left out.
-    const changeLabel = (agent: DashboardAgentRow, key: CountKey): string | undefined => {
-        const change = changeOf(agent, key);
+    // The label of an empty segment would sit on nothing, so it's left out.
+    const shareLabel = (agent: DashboardAgentRow, key: CountKey): string | undefined => {
+        if (agent.n[key] === 0) return undefined;
 
-        if (change === undefined || agent.n[key] === 0) return undefined;
+        const total = parts.reduce((sum, part) => sum + agent.n[part.key], 0);
 
-        return change === null ? t("dashboardChangeUnavailable") : formatPercent(Math.round(change), language, true);
+        return formatPercent(Math.round(share(agent.n[key], total)), language);
     };
 
     // Dynamic series keys, so rows are a string-keyed record.
@@ -262,7 +258,7 @@ export function AgentBreakdownChart({ kind, section, loading }: AgentBreakdownCh
             ["agent", displayName(agent.agente)],
             ...parts.flatMap((part) => [
                 [part.key, agent.n[part.key]],
-                [`${part.key}_change`, changeLabel(agent, part.key)],
+                [`${part.key}_share`, shareLabel(agent, part.key)],
             ]),
         ]),
     );
@@ -275,7 +271,7 @@ export function AgentBreakdownChart({ kind, section, loading }: AgentBreakdownCh
         <DashboardCard
             title={title}
             period={period}
-            description={`${description} ${fillTemplate(t("dashboardAgentsChangeLabels"), { year: periodo.anno_n_1 })}`}
+            description={`${description} ${fillTemplate(t("dashboardAgentsShareLabels"), { year: periodo.anno_n })}`}
             loading={loading}
             table={table}
         >
@@ -300,7 +296,7 @@ export function AgentBreakdownChart({ kind, section, loading }: AgentBreakdownCh
                         <EvilBarChart.Bar
                             key={part.key}
                             dataKey={part.key}
-                            barProps={{ children: <LabelList dataKey={`${part.key}_change`} content={ChangeLabel} /> }}
+                            barProps={{ children: <LabelList dataKey={`${part.key}_share`} content={SegmentLabel} /> }}
                         />
                     ))}
                 </EvilBarChart>
