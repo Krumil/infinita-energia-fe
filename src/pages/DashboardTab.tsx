@@ -1,5 +1,6 @@
-import { useRef, type ReactElement } from "react";
+import { useRef, useState, type ReactElement } from "react";
 import { Download, Loader2 } from "lucide-react";
+import { MotionConfig } from "motion/react";
 import { Button } from "@/components/ui/button";
 import {
     AgentBreakdownChart,
@@ -7,6 +8,7 @@ import {
     ContractMixChart,
     DashboardFilters,
     DashboardKpis,
+    landPending,
     MonthlyComparisonChart,
     PreviousSellersChart,
     ProductsByAgentChart,
@@ -24,9 +26,40 @@ function fileNamePart(text: string): string {
         .replace(/^-|-$/g, "");
 }
 
+// Longer than the pause before a chart's intro starts (recharts holds the pie for 400ms), so a chart that's still
+// about to draw never reads as finished.
+const CHARTS_QUIET_MS = 500;
+
+// shortcut: exports whatever is drawn after this, raise it if a chart's intro ever runs longer.
+const CHARTS_SETTLE_CAP_MS = 6000;
+
+/** Resolves once nothing under the element has changed for a moment, so the charts it holds have finished drawing. */
+function chartsSettled(element: Element): Promise<void> {
+    return new Promise((resolve) => {
+        const start = performance.now();
+        let lastChange = start;
+        const observer = new MutationObserver(() => (lastChange = performance.now()));
+
+        observer.observe(element, { subtree: true, childList: true, attributes: true, characterData: true });
+
+        function check(now: number): void {
+            if (now - lastChange < CHARTS_QUIET_MS && now - start < CHARTS_SETTLE_CAP_MS) {
+                requestAnimationFrame(check);
+
+                return;
+            }
+
+            observer.disconnect();
+            resolve();
+        }
+
+        requestAnimationFrame(check);
+    });
+}
+
 function Spinner(): ReactElement {
     return (
-        <div className="flex items-center justify-center py-20">
+        <div className="flex animate-fade-in-late items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
     );
@@ -38,20 +71,30 @@ export function DashboardTab(): ReactElement {
     const dashboard = useDashboard();
     const { filters, data, loading, agentsLoading } = dashboard;
     const exportRef = useRef<HTMLDivElement>(null);
+    const [exporting, setExporting] = useState(false);
 
-    function handleExport(): void {
-        if (!exportRef.current || !filters) return;
+    async function handleExport(): Promise<void> {
+        const element = exportRef.current;
+
+        if (!element || !filters) return;
 
         const agentPart = filters.agent ? `-${fileNamePart(filters.agent)}` : "";
 
+        setExporting(true);
+        // Charts mount only once their card scrolls into view, and the export copies what's drawn on the page.
+        landPending();
+
         try {
-            exportElementAsHtml(exportRef.current, {
+            await chartsSettled(element);
+            exportElementAsHtml(element, {
                 title: `${t("dashboard")} ${filters.year}${filters.agent ? `, ${filters.agent}` : ""}`,
                 fileName: `dashboard-vendite-${filters.year}${agentPart}.html`,
             });
         } catch (err: unknown) {
             console.error("Dashboard HTML export failed", err);
             toast({ title: t("dashboardExportFailed"), variant: "destructive" });
+        } finally {
+            setExporting(false);
         }
     }
 
@@ -68,20 +111,18 @@ export function DashboardTab(): ReactElement {
 
         return (
             <>
-                <Reveal index={0}>
-                    <DashboardFilters
-                        years={dashboard.years}
-                        agents={dashboard.agents}
-                        filters={filters}
-                        minContracts={dashboard.minContracts}
-                        periodEnd={data?.summary.status === "ready" ? data.summary.data.periodo.al_n : null}
-                        onYearChange={dashboard.setYear}
-                        onAgentChange={dashboard.setAgent}
-                        onMonthFromChange={dashboard.setMonthFrom}
-                        onMonthToChange={dashboard.setMonthTo}
-                        onMinContractsChange={dashboard.setMinContracts}
-                    />
-                </Reveal>
+                <DashboardFilters
+                    years={dashboard.years}
+                    agents={dashboard.agents}
+                    filters={filters}
+                    minContracts={dashboard.minContracts}
+                    periodEnd={data?.summary.status === "ready" ? data.summary.data.periodo.al_n : null}
+                    onYearChange={dashboard.setYear}
+                    onAgentChange={dashboard.setAgent}
+                    onMonthFromChange={dashboard.setMonthFrom}
+                    onMonthToChange={dashboard.setMonthTo}
+                    onMinContractsChange={dashboard.setMinContracts}
+                />
 
                 {data === null ? (
                     <Spinner />
@@ -89,10 +130,10 @@ export function DashboardTab(): ReactElement {
                     // Section order follows the reference analysis report: company overview, monthly trend,
                     // agents, the per-agent splits, previous supplier, products.
                     <>
-                        <Reveal index={1}>
+                        <Reveal>
                             <DashboardKpis summary={data.summary} revenue={data.revenue} loading={loading} />
                         </Reveal>
-                        <Reveal index={2} className="grid gap-4 lg:grid-cols-2">
+                        <div className="grid gap-4 lg:grid-cols-2">
                             <MonthlyComparisonChart
                                 title={t("dashboardSalesTrend")}
                                 section={data.monthlySales}
@@ -120,24 +161,30 @@ export function DashboardTab(): ReactElement {
                                 // Green keeps money visually apart from contract counts.
                                 color={SERIES_COLORS[2]}
                             />
-                        </Reveal>
-                        <Reveal index={3}>
-                            <ContractMixChart section={data.summary} loading={loading} />
-                        </Reveal>
-                        <Reveal index={4} className="space-y-4">
-                            <h2 className="pt-2 font-display text-2xl text-foreground">{t("dashboardAgentsSection")}</h2>
-                            <AgentComparison section={data.agents} selectedAgent={filters.agent} loading={agentsLoading} />
+                        </div>
+                        <ContractMixChart section={data.summary} loading={loading} />
+                        <div className="space-y-4">
+                            <Reveal>
+                                <h2 className="pt-2 font-display text-2xl text-foreground">
+                                    {t("dashboardAgentsSection")}
+                                </h2>
+                            </Reveal>
+                            <AgentComparison
+                                section={data.agents}
+                                selectedAgent={filters.agent}
+                                loading={agentsLoading}
+                            />
                             <div className="grid gap-4 lg:grid-cols-2">
                                 <AgentBreakdownChart kind="supply" section={data.agents} loading={agentsLoading} />
                                 <AgentBreakdownChart kind="customer" section={data.agents} loading={agentsLoading} />
                             </div>
                             {/* Two bars per agent, so it takes the full width like the comparison above. */}
                             <AgentBreakdownChart kind="sepa" section={data.agents} loading={agentsLoading} />
-                        </Reveal>
-                        <Reveal index={5} className="grid gap-4 lg:grid-cols-2">
+                        </div>
+                        <div className="grid gap-4 lg:grid-cols-2">
                             <PreviousSellersChart section={data.previousSellers} loading={loading} />
                             <ProductsByAgentChart section={data.productsByAgent} loading={loading} />
-                        </Reveal>
+                        </div>
                     </>
                 )}
             </>
@@ -155,15 +202,16 @@ export function DashboardTab(): ReactElement {
                     type="button"
                     variant="ghost"
                     className="gap-2 self-start rounded-full"
-                    onClick={handleExport}
-                    disabled={data === null || loading || agentsLoading}
+                    onClick={() => void handleExport()}
+                    disabled={data === null || loading || agentsLoading || exporting}
                     data-export-exclude
                 >
-                    <Download className="h-4 w-4" />
+                    {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                     {t("dashboardExportHtml")}
                 </Button>
             </div>
-            {body()}
+            {/* Charts the export mounts draw straight to their final state, so it isn't held up by their intros. */}
+            <MotionConfig skipAnimations={exporting}>{body()}</MotionConfig>
         </div>
     );
 }

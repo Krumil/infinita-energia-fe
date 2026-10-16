@@ -1,3 +1,5 @@
+import animate from "tailwindcss-animate";
+
 /** @type {import('tailwindcss').Config} */
 export default {
     darkMode: ["class"],
@@ -57,16 +59,27 @@ export default {
                 sm: "calc(var(--radius) - 4px)",
             },
             animation: {
-                "fade-up": "fadeUp 0.6s ease-out forwards",
+                // Dashboard cards; useReveal holds the play state paused until the card scrolls into view.
+                "card-land": "cardLand 480ms cubic-bezier(0.16, 1, 0.3, 1) both",
+                "kpi-roll": "kpiRoll 560ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both",
+                "kpi-meta": "fadeIn 320ms ease-out 240ms both",
+                "fade-quick": "fadeIn 200ms ease-out both",
+                // Late, so a fast response never flashes the spinner.
+                "fade-in-late": "fadeIn 300ms ease-out 250ms both",
                 "fade-in": "fadeIn 0.4s ease-out forwards",
                 "slide-in": "slideIn 0.5s ease-out forwards",
                 "number-roll": "numberRoll 0.8s ease-out forwards",
                 "pulse-soft": "pulseSoft 2s ease-in-out infinite",
             },
             keyframes: {
-                fadeUp: {
-                    "0%": { opacity: "0", transform: "translateY(20px)" },
-                    "100%": { opacity: "1", transform: "translateY(0)" },
+                cardLand: {
+                    "0%": { opacity: "0", transform: "translateY(12px) scale(0.985)" },
+                    "100%": { opacity: "1", transform: "none" },
+                },
+                // The figure starts below its clipped slot, like a counter wheel turning to the new value.
+                kpiRoll: {
+                    "0%": { transform: "translateY(100%)" },
+                    "100%": { transform: "none" },
                 },
                 fadeIn: {
                     "0%": { opacity: "0" },
@@ -87,5 +100,5 @@ export default {
             },
         },
     },
-    plugins: [],
+    plugins: [animate],
 };

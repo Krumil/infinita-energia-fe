@@ -1,11 +1,24 @@
-import { useState, type ReactElement, type ReactNode } from "react";
+import {
+    createContext,
+    useContext,
+    useId,
+    useState,
+    type CSSProperties,
+    type ReactElement,
+    type ReactNode,
+} from "react";
 import { AlertCircle, BarChart3, Info, Table2 } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "@/hooks/useTranslation";
 import { fillTemplate } from "@/lib/dashboardFormat";
 import { cn } from "@/lib/utils";
+import { useReveal } from "./useReveal";
+
+// True outside a card, so a slot used on its own still shows its chart.
+const CardLanded = createContext(true);
 
 interface DashboardCardProps {
     title: string;
@@ -33,17 +46,39 @@ export function DashboardCard({
     const { t } = useTranslation();
     const [view, setView] = useState<"chart" | "table">("chart");
     const showTable = view === "table" && table !== undefined;
+    // Cards with a table hold an evilchart, which shows its own skeleton while loading instead of dimming.
+    const chartShown = !showTable && table !== undefined;
+    const { attach, landed, className: landClass, style: landStyle } = useReveal<HTMLDivElement>();
+    const thumbId = useId();
+    const reduceMotion = useReducedMotion();
 
     const toggleClass = (active: boolean): string =>
         cn(
-            "h-7 gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground",
-            active && "bg-background text-foreground shadow-sm hover:bg-background",
+            "relative h-7 rounded-full px-2.5 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground",
+            active && "text-foreground",
         );
+
+    const toggleThumb = (
+        <motion.span
+            layoutId={thumbId}
+            className="absolute inset-0 rounded-full bg-background shadow-sm"
+            transition={{
+                duration: reduceMotion ? 0 : 0.22,
+                ease: [0.16, 1, 0.3, 1],
+            }}
+        />
+    );
 
     return (
         // Soft surface: no border, tinted card on the page wash, the brand's quiet shadow.
         <Card
-            className={cn("flex min-w-0 flex-col rounded-2xl border-0 shadow-[shadow:var(--ledger-card-shadow)]", className)}
+            ref={attach}
+            className={cn(
+                "flex min-w-0 flex-col rounded-2xl border-0 shadow-[shadow:var(--ledger-card-shadow)]",
+                landClass,
+                className,
+            )}
+            style={landStyle}
             aria-busy={loading}
         >
             {/* The info button sits outside the wrapping row, so it stays top right even when the toggle wraps under the title. */}
@@ -69,8 +104,11 @@ export function DashboardCard({
                                 aria-pressed={!showTable}
                                 onClick={() => setView("chart")}
                             >
-                                <BarChart3 className="h-3.5 w-3.5" />
-                                {t("dashboardShowChart")}
+                                {!showTable && toggleThumb}
+                                <span className="relative flex items-center gap-1.5">
+                                    <BarChart3 className="h-3.5 w-3.5" />
+                                    {t("dashboardShowChart")}
+                                </span>
                             </Button>
                             <Button
                                 type="button"
@@ -80,8 +118,11 @@ export function DashboardCard({
                                 aria-pressed={showTable}
                                 onClick={() => setView("table")}
                             >
-                                <Table2 className="h-3.5 w-3.5" />
-                                {t("dashboardShowTable")}
+                                {showTable && toggleThumb}
+                                <span className="relative flex items-center gap-1.5">
+                                    <Table2 className="h-3.5 w-3.5" />
+                                    {t("dashboardShowTable")}
+                                </span>
                             </Button>
                         </div>
                     )}
@@ -106,11 +147,53 @@ export function DashboardCard({
                     </Popover>
                 )}
             </CardHeader>
-            <CardContent className={cn("flex-1 space-y-3 px-5 pb-5 transition-opacity sm:px-6 sm:pb-6", loading && "opacity-60")}>
-                {showTable ? table : children}
-                {notes && <div className="space-y-1 text-xs text-muted-foreground">{notes}</div>}
+            <CardContent className="flex-1 space-y-3 px-5 pb-5 sm:px-6 sm:pb-6">
+                <div
+                    key={showTable ? "table" : "chart"}
+                    className={cn(
+                        "animate-fade-quick space-y-3 transition-opacity",
+                        loading && !chartShown && "opacity-60",
+                    )}
+                >
+                    {showTable ? (
+                        table
+                    ) : (
+                        // Remounting replays evilchart's intro when new figures replace the loading skeleton.
+                        <CardLanded.Provider key={String(loading)} value={landed}>
+                            {children}
+                        </CardLanded.Provider>
+                    )}
+                </div>
+                {notes && (
+                    <div
+                        className={cn(
+                            "space-y-1 text-xs text-muted-foreground transition-opacity",
+                            loading && "opacity-60",
+                        )}
+                    >
+                        {notes}
+                    </div>
+                )}
             </CardContent>
         </Card>
+    );
+}
+
+interface ChartSlotProps {
+    /** Sizes the slot, so the card keeps its height before the chart mounts. */
+    className?: string;
+    style?: CSSProperties;
+    children: ReactNode;
+}
+
+/** Holds a chart back until its card lands, so evilchart's intro plays where it can be seen. */
+export function ChartSlot({ className, style, children }: ChartSlotProps): ReactElement {
+    const landed = useContext(CardLanded);
+
+    return (
+        <div className={className} style={style}>
+            {landed && children}
+        </div>
     );
 }
 

@@ -17,3 +17,5 @@ export { ProductsByAgentChart } from "./ProductsByAgentChart";
 export { SectionMessage } from "./DashboardCard";
 
 export { Reveal } from "./DashboardBars";
+
+export { landPending } from "./useReveal";

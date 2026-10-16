@@ -15,6 +15,11 @@ export interface SeededOrder {
     payment?: PaymentMethod;
 }
 
+export interface SeededOrders {
+    /** Every order's technical data names this supplier as the one the customer left. */
+    previousSeller: string;
+}
+
 export interface DashboardAgent {
     id: number;
     name: string;
@@ -67,10 +72,11 @@ export class DashboardSeed {
     }
 
     // Each order gets its own POD, because orders join their technical data on it.
-    async insertOrders(agent: DashboardAgent, orders: SeededOrder[]): Promise<void> {
+    async insertOrders(agent: DashboardAgent, orders: SeededOrder[]): Promise<SeededOrders> {
         const token = uniqueToken();
         const taxId = token;
         const product = `Prodotto ${token}`;
+        const previousSeller = `Fornitore ${token}`;
         const client = new pg.Client({ connectionString: DATABASE_URL });
 
         await client.connect();
@@ -88,7 +94,7 @@ export class DashboardSeed {
 
                 await client.query(
                     "INSERT INTO dati_tecnici (pod__pdr, udm, tipologia_utenza, venditore_precedente) VALUES ($1, 'kWh', 'Domestico', $2)",
-                    [pod, `Fornitore ${token}`],
+                    [pod, previousSeller],
                 );
                 this.podIds.push(pod);
                 await client.query(
@@ -110,6 +116,8 @@ export class DashboardSeed {
             }
 
             await client.query("COMMIT");
+
+            return { previousSeller };
         } catch (error) {
             await client.query("ROLLBACK");
 

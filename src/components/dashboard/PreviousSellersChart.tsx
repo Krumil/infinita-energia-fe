@@ -14,7 +14,7 @@ import {
     share,
 } from "@/lib/dashboardFormat";
 import type { DashboardPreviousSellers } from "@/types";
-import { DashboardCard, SectionMessage } from "./DashboardCard";
+import { ChartSlot, DashboardCard, SectionMessage } from "./DashboardCard";
 
 interface PreviousSellersChartProps {
     section: DashboardSection<DashboardPreviousSellers>;
@@ -86,10 +86,11 @@ export function PreviousSellersChart({ section, loading }: PreviousSellersChartP
 
     return (
         <DashboardCard title={title} period={period} description={description} loading={loading} table={table} notes={notes}>
-            <div style={{ height: barChartHeight(venditori.length, false) }}>
+            <ChartSlot style={{ height: barChartHeight(venditori.length, false) }}>
                 <EvilBarChart
                     config={chartConfig}
                     data={venditori}
+                    isLoading={loading}
                     layout="horizontal"
                     className="aspect-auto h-full w-full"
                     chartProps={{ margin: { top: 0, right: 12, left: 0 } }}
@@ -100,7 +101,7 @@ export function PreviousSellersChart({ section, loading }: PreviousSellersChartP
                     <EvilBarChart.Tooltip valueFormatter={(value) => formatCount(value, language)} />
                     <EvilBarChart.Bar dataKey="contratti" />
                 </EvilBarChart>
-            </div>
+            </ChartSlot>
         </DashboardCard>
     );
 }

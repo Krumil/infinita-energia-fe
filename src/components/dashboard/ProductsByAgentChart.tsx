@@ -15,7 +15,7 @@ import {
     formatPeriod,
 } from "@/lib/dashboardFormat";
 import type { DashboardProductsByAgent } from "@/types";
-import { DashboardCard, SectionMessage } from "./DashboardCard";
+import { ChartSlot, DashboardCard, SectionMessage } from "./DashboardCard";
 
 interface StackSeries {
     // Agent names can contain dots, which Recharts would read as a nested path, so series get index keys.
@@ -129,10 +129,11 @@ export function ProductsByAgentChart({ section, loading }: ProductsByAgentChartP
 
     return (
         <DashboardCard title={title} period={period} description={description} loading={loading} table={table}>
-            <div style={{ height: barChartHeight(prodotti.length, true) }}>
+            <ChartSlot style={{ height: barChartHeight(prodotti.length, true) }}>
                 <EvilBarChart
                     config={chartConfig}
                     data={rows}
+                    isLoading={loading}
                     layout="horizontal"
                     stackType="stacked"
                     className="aspect-auto h-full w-full"
@@ -147,7 +148,7 @@ export function ProductsByAgentChart({ section, loading }: ProductsByAgentChartP
                         <EvilBarChart.Bar key={entry.key} dataKey={entry.key} />
                     ))}
                 </EvilBarChart>
-            </div>
+            </ChartSlot>
         </DashboardCard>
     );
 }

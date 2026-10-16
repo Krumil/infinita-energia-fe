@@ -18,7 +18,7 @@ import {
 } from "@/lib/dashboardFormat";
 import { cn } from "@/lib/utils";
 import type { DashboardAgentComparison } from "@/types";
-import { DashboardCard, SectionMessage } from "./DashboardCard";
+import { ChartSlot, DashboardCard, SectionMessage } from "./DashboardCard";
 
 type AgentSort = DashboardAgentComparison["ordina_per"];
 
@@ -180,10 +180,11 @@ export function AgentComparison({ section, selectedAgent, loading }: AgentCompar
             notes={notes}
         >
             {/* Two bars per agent, so each row needs twice the single-bar height. */}
-            <div style={{ height: barChartHeight(sorted.length * 2, true) }}>
+            <ChartSlot style={{ height: barChartHeight(sorted.length * 2, true) }}>
                 <EvilBarChart
                     config={chartConfig}
                     data={chartData}
+                    isLoading={loading}
                     layout="horizontal"
                     stackType="default"
                     className="aspect-auto h-full w-full"
@@ -200,7 +201,7 @@ export function AgentComparison({ section, selectedAgent, loading }: AgentCompar
                     <EvilBarChart.Bar dataKey="n" />
                     <EvilBarChart.Bar dataKey="n_1" />
                 </EvilBarChart>
-            </div>
+            </ChartSlot>
         </DashboardCard>
     );
 }

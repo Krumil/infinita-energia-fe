@@ -50,8 +50,13 @@ interface KpiBodyProps {
 function KpiBody({ value, change, previous, note }: KpiBodyProps): ReactElement {
     return (
         <>
-            <p className="font-mono text-3xl tabular-nums text-[hsl(var(--metric-value))]">{value}</p>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            {/* The slot clips the figure, so each new value rolls up into place like a counter. */}
+            <p className="overflow-hidden font-mono text-3xl tabular-nums text-[hsl(var(--metric-value))]">
+                <span key={value} className="block animate-kpi-roll motion-reduce:animate-fade-quick">
+                    {value}
+                </span>
+            </p>
+            <div key={value} className="flex animate-kpi-meta flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                 {change && <Delta value={change.amount} label={change.label} />}
                 <span className="text-muted-foreground">{previous}</span>
             </div>
@@ -116,7 +121,9 @@ export function DashboardKpis({ summary, revenue, loading }: DashboardKpisProps)
                     }
                     previous={
                         sepaN1 === null
-                            ? fillTemplate(t("dashboardKpiNoBase"), { year: periodo.anno_n_1 })
+                            ? fillTemplate(t("dashboardKpiNoBase"), {
+                                  year: periodo.anno_n_1,
+                              })
                             : previous(formatPercent(sepaN1, language), periodo.anno_n_1)
                     }
                 />

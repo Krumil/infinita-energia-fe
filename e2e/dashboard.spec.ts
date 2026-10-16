@@ -49,7 +49,7 @@ test.describe("dashboard", () => {
     }) => {
         const agent = await seed.createStatisticsAgent();
 
-        await seed.insertOrders(agent, [
+        const { previousSeller } = await seed.insertOrders(agent, [
             { date: `${PAST_YEAR}-03-05`, payment: "SEPA Direct Debit" },
             { date: `${PAST_YEAR}-04-10`, payment: "SEPA Direct Debit" },
             { date: `${PAST_YEAR}-04-20` },
@@ -72,6 +72,8 @@ test.describe("dashboard", () => {
         await expect(contracts.getByText(`1 nel ${PAST_YEAR - 1}`)).toBeVisible();
         await expect(tile(page, "Pagati con SEPA").getByText("66,7%", { exact: true })).toBeVisible();
         await expect(contracts).toHaveAttribute("aria-busy", "false");
+        // The previous-supplier card sits below the fold, and a chart only draws once its card scrolls into view.
+        await expect(page.getByText(previousSeller, { exact: true })).toHaveCount(0);
 
         const exportButton = page.getByRole("button", { name: "Esporta HTML" });
 
@@ -107,6 +109,7 @@ test.describe("dashboard", () => {
         }
 
         await expect(tile(reader, "Contratti firmati").getByText("3", { exact: true })).toBeVisible();
+        await expect(reader.getByText(previousSeller, { exact: true }), "export holds the chart the user never scrolled to").toBeVisible();
         await expect(reader.getByRole("combobox")).toHaveCount(0);
         await expect(reader.getByRole("button")).toHaveCount(0);
 

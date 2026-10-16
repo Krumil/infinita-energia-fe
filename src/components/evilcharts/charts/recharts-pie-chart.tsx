@@ -33,7 +33,7 @@ import {
 } from "@/components/evilcharts/ui/recharts-chart";
 import { ChartLegend, ChartLegendContent, type ChartLegendVariant } from "@/components/evilcharts/ui/recharts-legend";
 import { ChartBackground, type BackgroundVariant } from "@/components/evilcharts/ui/recharts-background";
-import { motion } from "motion/react";
+import { motion, MotionConfigContext } from "motion/react";
 
 // Constants
 const LOADING_SECTORS = 5;
@@ -204,6 +204,10 @@ function Pie({
 }: PieProps) {
   const { config, data, dataKey, nameKey, isLoading, selectedSector, selectSector } = usePieChart();
   const id = useId().replace(/:/g, ""); // unique id scopes this pie's style defs
+  // Like motion's own skipAnimations, but read once at mount, so a pie already drawn never replays its intro
+  // when the setting flips back.
+  const { skipAnimations } = use(MotionConfigContext);
+  const [animateIntro] = useState(!skipAnimations);
 
   if (isLoading) {
     return (
@@ -244,7 +248,7 @@ function Pie({
         startAngle={startAngle}
         endAngle={endAngle}
         strokeWidth={0}
-        isAnimationActive
+        isAnimationActive={animateIntro}
         style={isClickable ? { cursor: "pointer" } : undefined}
         onClick={(_, index) => {
           if (!isClickable) return;

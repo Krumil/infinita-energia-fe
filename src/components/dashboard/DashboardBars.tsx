@@ -1,17 +1,13 @@
-import type { CSSProperties, ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useReveal } from "./useReveal";
 
-/**
- * Fades a dashboard section up once on mount. The delay staggers sections; fill-mode "both" holds the
- * first frame during the delay, so no opacity-0 class is needed and the HTML export (which turns
- * animations off) never captures a hidden section.
- */
-export function Reveal({ index, className, children }: { index: number; className?: string; children: ReactNode }): ReactElement {
-    const style: CSSProperties = { animationDelay: `${index * 70}ms`, animationFillMode: "both" };
+export function Reveal({ className, children }: { className?: string; children: ReactNode }): ReactElement {
+    const { attach, className: landClass, style } = useReveal<HTMLDivElement>();
 
     return (
-        <div className={cn("animate-fade-up motion-reduce:animate-none", className)} style={style}>
+        <div ref={attach} className={cn(landClass, className)} style={style}>
             {children}
         </div>
     );

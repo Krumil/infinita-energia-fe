@@ -1,5 +1,6 @@
 import * as RechartsPrimitive from "recharts";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/useTranslation";
 import * as React from "react";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
@@ -127,6 +128,8 @@ function ChartContainer({
 }
 
 function LoadingIndicator({ isLoading }: { isLoading: boolean }) {
+  const { t } = useTranslation();
+
   if (!isLoading) {
     return null;
   }
@@ -135,7 +138,7 @@ function LoadingIndicator({ isLoading }: { isLoading: boolean }) {
     <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
       <div className="text-primary-text bg-background flex items-center justify-center gap-2 rounded-md border px-2 py-0.5 text-sm">
         <div className="border-border border-t-primary h-3 w-3 animate-spin rounded-full border" />
-        <span>Loading</span>
+        <span>{t("loading")}</span>
       </div>
     </div>
   );

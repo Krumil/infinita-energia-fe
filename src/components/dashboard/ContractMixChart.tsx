@@ -5,9 +5,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useTranslation } from "@/hooks/useTranslation";
 import type { DashboardSection } from "@/hooks/useDashboard";
 import { MUTED_SERIES, SERIES_COLORS, formatCount, formatPercent, formatPeriod, share } from "@/lib/dashboardFormat";
+import { cn } from "@/lib/utils";
 import type { TranslationKey } from "@/translations";
 import type { DashboardSalesSplit, DashboardSalesSummary } from "@/types";
-import { DashboardCard, SectionMessage } from "./DashboardCard";
+import { ChartSlot, DashboardCard, SectionMessage } from "./DashboardCard";
 
 type SplitKey = Exclude<keyof DashboardSalesSplit, "pct_sepa">;
 
@@ -121,32 +122,45 @@ export function ContractMixChart({ section, loading }: ContractMixChartProps): R
                         <figure key={group.title} className="min-w-0 space-y-3">
                             <figcaption className="text-sm text-muted-foreground">{t(group.title)}</figcaption>
                             <p className="flex items-baseline gap-2">
-                                <span className="font-mono text-3xl font-light tabular-nums text-foreground">
-                                    {formatPercent(share(split_n[lead.key], total), language)}
+                                <span className="overflow-hidden font-mono text-3xl font-light tabular-nums text-foreground">
+                                    {/* DashboardCard remounts this when new figures arrive, so the roll replays. */}
+                                    <span
+                                        className={cn(
+                                            "block transition-opacity",
+                                            loading
+                                                ? "opacity-60"
+                                                : "animate-kpi-roll motion-reduce:animate-fade-quick",
+                                        )}
+                                    >
+                                        {formatPercent(share(split_n[lead.key], total), language)}
+                                    </span>
                                 </span>
                                 <span className="text-sm text-muted-foreground">{t(lead.label)}</span>
                             </p>
-                            <EvilPieChart
-                                config={
-                                    Object.fromEntries(
-                                        parts.map((part) => [
-                                            part.key,
-                                            { label: t(part.label), colors: { light: [part.color] } },
-                                        ]),
-                                    ) satisfies ChartConfig
-                                }
-                                data={parts.map((part) => ({
-                                    part: part.key,
-                                    count: split_n[part.key],
-                                }))}
-                                dataKey="count"
-                                nameKey="part"
-                                className="aspect-auto h-[220px] w-full"
-                            >
-                                <EvilPieChart.Pie innerRadius="60%" outerRadius="90%" />
-                                <EvilPieChart.Tooltip valueFormatter={(value) => formatCount(value, language)} />
-                                <EvilPieChart.Legend />
-                            </EvilPieChart>
+                            <ChartSlot className="h-[220px]">
+                                <EvilPieChart
+                                    config={
+                                        Object.fromEntries(
+                                            parts.map((part) => [
+                                                part.key,
+                                                { label: t(part.label), colors: { light: [part.color] } },
+                                            ]),
+                                        ) satisfies ChartConfig
+                                    }
+                                    data={parts.map((part) => ({
+                                        part: part.key,
+                                        count: split_n[part.key],
+                                    }))}
+                                    dataKey="count"
+                                    nameKey="part"
+                                    isLoading={loading}
+                                    className="aspect-auto h-full w-full"
+                                >
+                                    <EvilPieChart.Pie innerRadius="60%" outerRadius="90%" />
+                                    <EvilPieChart.Tooltip valueFormatter={(value) => formatCount(value, language)} />
+                                    <EvilPieChart.Legend />
+                                </EvilPieChart>
+                            </ChartSlot>
                         </figure>
                     );
                 })}

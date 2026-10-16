@@ -6,7 +6,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import type { DashboardSection } from "@/hooks/useDashboard";
 import { MUTED_SERIES, SERIES_COLORS, formatPercent, formatPeriodComparison, monthName } from "@/lib/dashboardFormat";
 import type { DashboardMonthlySales } from "@/types";
-import { DashboardCard, SectionMessage } from "./DashboardCard";
+import { ChartSlot, DashboardCard, SectionMessage } from "./DashboardCard";
 
 interface MonthlyComparisonChartProps {
     title: string;
@@ -97,24 +97,31 @@ export function MonthlyComparisonChart({
             loading={loading}
             table={table}
         >
-            <EvilLineChart
-                config={chartConfig}
-                data={chartData}
-                className="aspect-auto h-[240px] w-full"
-                chartProps={{ margin: { top: 8, right: 12, left: 0 } }}
-            >
-                <EvilLineChart.Grid strokeDasharray="2 4" />
-                <EvilLineChart.XAxis dataKey="label" minTickGap={5} />
-                <EvilLineChart.YAxis domain={[0, "auto"]} allowDecimals={allowDecimals} tickFormatter={formatTick} />
-                <EvilLineChart.Tooltip valueFormatter={formatValue} />
-                <EvilLineChart.Legend />
-                {/* Previous year: dashed and dot-less, so it reads as the reference rather than the subject. */}
-                <EvilLineChart.Line dataKey="n_1" strokeVariant="dashed" strokeWidth={2} />
-                <EvilLineChart.Line dataKey="n" strokeWidth={2.5}>
-                    <EvilLineChart.Dot />
-                    <EvilLineChart.ActiveDot variant="border" />
-                </EvilLineChart.Line>
-            </EvilLineChart>
+            <ChartSlot className="h-[240px]">
+                <EvilLineChart
+                    config={chartConfig}
+                    data={chartData}
+                    isLoading={loading}
+                    className="aspect-auto h-full w-full"
+                    chartProps={{ margin: { top: 8, right: 12, left: 0 } }}
+                >
+                    <EvilLineChart.Grid strokeDasharray="2 4" />
+                    <EvilLineChart.XAxis dataKey="label" minTickGap={5} />
+                    <EvilLineChart.YAxis
+                        domain={[0, "auto"]}
+                        allowDecimals={allowDecimals}
+                        tickFormatter={formatTick}
+                    />
+                    <EvilLineChart.Tooltip valueFormatter={formatValue} />
+                    <EvilLineChart.Legend />
+                    {/* Previous year: dashed and dot-less, so it reads as the reference rather than the subject. */}
+                    <EvilLineChart.Line dataKey="n_1" strokeVariant="dashed" strokeWidth={2} />
+                    <EvilLineChart.Line dataKey="n" strokeWidth={2.5}>
+                        <EvilLineChart.Dot />
+                        <EvilLineChart.ActiveDot variant="border" />
+                    </EvilLineChart.Line>
+                </EvilLineChart>
+            </ChartSlot>
         </DashboardCard>
     );
 }

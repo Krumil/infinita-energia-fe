@@ -231,7 +231,7 @@ The dashboard is the one sanctioned exception. Its chart cards are soft (borderl
 - Two brand hues with fixed jobs: Sky commits, Leaf signals.
 - Flat at rest, with a whisper of cool shadow under cards. Depth comes from paper tone, not from lift.
 - A 17px root, so every rem in the system is 17px.
-- Motion is short and functional: 150 to 300ms ease-out color and opacity changes, one fade-up as dashboard sections arrive, and none of it when reduced motion is requested.
+- Motion is short and functional: 150 to 300ms ease-out color and opacity changes. Dashboard cards land (a 12px rise and fade) the first time they scroll into view, in reading order, and KPI figures roll up into a clipped slot when new numbers arrive. Chart motion belongs to evilcharts: its loading skeleton while a request runs, its intro when the figures land. A chart mounts only when its card lands, so the intro plays where it can be seen; the HTML export mounts the rest already drawn. Reduced motion swaps the movement for a short fade.
 - Light, dark and system themes, all driven by the same semantic tokens.
 
 ## Colors

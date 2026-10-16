@@ -20,7 +20,7 @@ import {
 } from "@/lib/dashboardFormat";
 import type { TranslationKey } from "@/translations";
 import type { DashboardAgentComparison, DashboardAgentMetrics, DashboardAgentRow } from "@/types";
-import { DashboardCard, SectionMessage } from "./DashboardCard";
+import { ChartSlot, DashboardCard, SectionMessage } from "./DashboardCard";
 
 type CountKey = "luce" | "gas" | "altro_udm" | "domestico" | "non_domestico";
 
@@ -182,10 +182,11 @@ export function AgentBreakdownChart({ kind, section, loading }: AgentBreakdownCh
                 table={table}
             >
                 {/* Two bars per agent, so each row needs twice the single-bar height. */}
-                <div style={{ height: barChartHeight(sorted.length * 2, true) }}>
+                <ChartSlot style={{ height: barChartHeight(sorted.length * 2, true) }}>
                     <EvilBarChart
                         config={sepaConfig}
                         data={sepaRows}
+                        isLoading={loading}
                         layout="horizontal"
                         stackType="default"
                         className="aspect-auto h-full w-full"
@@ -202,7 +203,7 @@ export function AgentBreakdownChart({ kind, section, loading }: AgentBreakdownCh
                         <EvilBarChart.Bar dataKey="n" />
                         <EvilBarChart.Bar dataKey="n_1" />
                     </EvilBarChart>
-                </div>
+                </ChartSlot>
             </DashboardCard>
         );
     }
@@ -275,10 +276,11 @@ export function AgentBreakdownChart({ kind, section, loading }: AgentBreakdownCh
             loading={loading}
             table={table}
         >
-            <div style={{ height: barChartHeight(agenti.length, true) }}>
+            <ChartSlot style={{ height: barChartHeight(agenti.length, true) }}>
                 <EvilBarChart
                     config={partsConfig}
                     data={partsRows}
+                    isLoading={loading}
                     layout="horizontal"
                     stackType="stacked"
                     className="aspect-auto h-full w-full"
@@ -300,7 +302,7 @@ export function AgentBreakdownChart({ kind, section, loading }: AgentBreakdownCh
                         />
                     ))}
                 </EvilBarChart>
-            </div>
+            </ChartSlot>
         </DashboardCard>
     );
 }

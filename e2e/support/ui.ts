@@ -64,6 +64,9 @@ export async function openSettlements(page: Page, month: string): Promise<Locato
     await expect(dialog.getByRole("heading", { name: "Gestisci liquidazioni" })).toBeVisible();
     await pickMonth(page, dialog.getByRole("group", { name: "Mese di competenza" }), month);
 
+    // The month picker's popover is also a dialog, and it stays on the page until its exit animation ends.
+    await expect(dialog).toHaveCount(1);
+
     return dialog;
 }
 
