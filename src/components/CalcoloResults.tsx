@@ -17,6 +17,9 @@ import type { TranslationKey } from "@/translations";
 
 const EMPTY_VALUE = "—";
 
+// A month can hold thousands of unmatched rows, and mounting them all freezes the page on open and on every draft edit.
+const UNMATCHED_PAGE_SIZE = 100;
+
 // Sorting and filtering return the same row objects, so a row keeps its identity whatever the operator sees.
 function sortByCustomer(rows: DraftRow[]): DraftRow[] {
     return [...rows].sort((a, b) => (a.detail.cliente ?? "").localeCompare(b.detail.cliente ?? "", "it"));
@@ -39,6 +42,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
     const [expandedAgentId, setExpandedAgentId] = useState<number | null>(null);
     const [filterQuery, setFilterQuery] = useState<string>("");
     const [unmatchedOpen, setUnmatchedOpen] = useState(false);
+    const [unmatchedShown, setUnmatchedShown] = useState(UNMATCHED_PAGE_SIZE);
 
     const agentNames = useMemo(() => new Map(agents.map((agent) => [agent.id, agent.nome_cognome])), [agents]);
     const periodDisplay = formatMonthLabel(month, language);
@@ -400,7 +404,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {unmatched.map((row, idx) => (
+                                    {unmatched.slice(0, unmatchedShown).map((row, idx) => (
                                         <TableRow key={idx}>
                                             <TableCell className="font-medium">{row.venditore ?? EMPTY_VALUE}</TableCell>
                                             <TableCell>{row.cliente ?? EMPTY_VALUE}</TableCell>
@@ -417,6 +421,21 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                     ))}
                                 </TableBody>
                             </Table>
+                            {unmatched.length > unmatchedShown && (
+                                <div className="flex items-center justify-between gap-3 border-t px-4 py-2 text-xs text-muted-foreground">
+                                    <span>
+                                        {t("unmatchedRowsShown")
+                                            .replace("{shown}", unmatchedShown.toLocaleString(language))
+                                            .replace("{count}", unmatched.length.toLocaleString(language))}
+                                    </span>
+                                    <Button variant="outline" size="sm" onClick={() => setUnmatchedShown(unmatchedShown + UNMATCHED_PAGE_SIZE)}>
+                                        {t("unmatchedRowsShowMore").replace(
+                                            "{count}",
+                                            Math.min(UNMATCHED_PAGE_SIZE, unmatched.length - unmatchedShown).toLocaleString(language),
+                                        )}
+                                    </Button>
+                                </div>
+                            )}
                         </CollapsibleContent>
                     </section>
                 </Collapsible>

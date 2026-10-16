@@ -290,6 +290,39 @@ test.describe("calculation preview", () => {
         await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toHaveCount(0);
     });
 
+    test("should show the unmatched rows a hundred at a time when the month has more than a hundred", async ({ page, backend }) => {
+        await backend.claimMonth(MONTH);
+
+        const token = uniqueToken();
+
+        const rows: SettlementRow[] = Array.from({ length: 250 }, (_, index) => ({
+            seller: `${token} MASSIVO`,
+            rule: "Gettone Residenziale Standard",
+            amount: 10 + index,
+            customer: `Cliente Massivo ${index + 1} ${token}`,
+            orderId: 997_000 + index,
+        }));
+
+        await backend.importRows(MONTH, rows);
+        await page.goto("/");
+        await openPreview(page, MONTH);
+        await previewButton(page).click();
+
+        const unmatched = page.getByRole("region", { name: "250 righe non associate, escluse dal calcolo" });
+
+        await unmatched.getByRole("button", { name: "Mostra righe" }).click();
+        await expect(recordRow(unmatched, token)).toHaveCount(100);
+        await expect(unmatched.getByText("100 righe mostrate su 250")).toBeVisible();
+
+        await unmatched.getByRole("button", { name: "Mostra altre 100" }).click();
+        await expect(recordRow(unmatched, token)).toHaveCount(200);
+
+        await unmatched.getByRole("button", { name: "Mostra altre 50" }).click();
+        await expect(recordRow(unmatched, token)).toHaveCount(250);
+        await expect(unmatched.getByText(/righe mostrate su/)).toHaveCount(0);
+        await expect(unmatched.getByRole("button")).toHaveText(["Nascondi righe"]);
+    });
+
     test("should show the same results and write nothing when the preview is requested again", async ({ page, backend }) => {
         await backend.claimMonth(MONTH);
 
