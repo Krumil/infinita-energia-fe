@@ -279,9 +279,9 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                     <TableRow>
                                         <TableHead className="w-12"></TableHead>
                                         <TableHead className="w-16">{t("previewIncludeColumn")}</TableHead>
-                                        <TableHead>{t("beneficiary")}</TableHead>
-                                        <TableHead className="text-right">{t("records")}</TableHead>
-                                        <TableHead className="text-right">{t("totalCommission")}</TableHead>
+                                        <TableHead className="w-full">{t("beneficiary")}</TableHead>
+                                        <TableHead className="text-right whitespace-nowrap">{t("records")}</TableHead>
+                                        <TableHead className="text-right whitespace-nowrap">{t("totalCommission")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
