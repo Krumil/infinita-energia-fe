@@ -3,7 +3,7 @@ import { Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { cn, matchesSearch } from "@/lib/utils";
 
 export interface SearchableSelectOption {
     value: string;
@@ -24,11 +24,10 @@ interface SearchableSelectProps {
     className?: string;
 }
 
+const CLEAR_ITEM = "clear";
+
 function matchesQuery(option: SearchableSelectOption, query: string): boolean {
-    return [option.label, option.value, ...(option.keywords ?? [])]
-        .join(" ")
-        .toLowerCase()
-        .includes(query.trim().toLowerCase());
+    return matchesSearch(query, [option.label, option.value, ...(option.keywords ?? [])]);
 }
 
 export function SearchableSelect({
@@ -50,10 +49,20 @@ export function SearchableSelect({
     const selectedOption = options.find((option) => option.value === value);
     const filteredOptions = useMemo(() => options.filter((option) => matchesQuery(option, query)), [options, query]);
 
+    const isClearVisible = (search: string): boolean => clearLabel !== undefined && matchesSearch(search, [clearLabel]);
+
     const handleOpenChange = (nextOpen: boolean): void => {
         setOpen(nextOpen);
         setQuery("");
-        setActiveItem(selectedOption ? `option:${selectedOption.value}` : options[0] ? `option:${options[0].value}` : "");
+        setActiveItem(
+            selectedOption
+                ? `option:${selectedOption.value}`
+                : clearLabel
+                  ? CLEAR_ITEM
+                  : options[0]
+                    ? `option:${options[0].value}`
+                    : "",
+        );
     };
 
     const selectValue = (nextValue: string | undefined): void => {
@@ -95,25 +104,22 @@ export function SearchableSelect({
                         onValueChange={(nextQuery) => {
                             setQuery(nextQuery);
                             const firstMatch = options.find((option) => matchesQuery(option, nextQuery));
-                            setActiveItem(firstMatch ? `option:${firstMatch.value}` : "");
+                            setActiveItem(isClearVisible(nextQuery) ? CLEAR_ITEM : firstMatch ? `option:${firstMatch.value}` : "");
                         }}
                         placeholder={searchPlaceholder}
                         aria-label={searchPlaceholder}
                         className="font-body"
                     />
                     <CommandList className="max-h-64 p-1">
-                        {clearLabel && (
-                            <Button
-                                type="button"
-                                variant="unstyled"
-                                size="unstyled"
-                                onClick={() => selectValue(undefined)}
-                                onKeyDown={(event) => event.stopPropagation()}
-                                className={cn("flex w-full justify-between rounded-sm px-3 py-2 text-left text-sm font-normal font-body hover:bg-muted/60", !value && "bg-muted/40")}
+                        {clearLabel && isClearVisible(query) && (
+                            <CommandItem
+                                value={CLEAR_ITEM}
+                                onSelect={() => selectValue(undefined)}
+                                className={cn("justify-between px-3 py-2 font-body hover:bg-muted/60", !value && "bg-muted/40")}
                             >
                                 <span>{clearLabel}</span>
                                 {!value && <Check className="h-4 w-4 text-energia-accent" />}
-                            </Button>
+                            </CommandItem>
                         )}
                         {filteredOptions.map((option) => (
                             <CommandItem
@@ -126,7 +132,7 @@ export function SearchableSelect({
                                 {option.value === value && <Check className="h-4 w-4 text-energia-accent" />}
                             </CommandItem>
                         ))}
-                        {filteredOptions.length === 0 && (
+                        {filteredOptions.length === 0 && !isClearVisible(query) && (
                             <p role="status" className="px-3 py-2 text-sm font-body text-muted-foreground">{emptyMessage}</p>
                         )}
                     </CommandList>

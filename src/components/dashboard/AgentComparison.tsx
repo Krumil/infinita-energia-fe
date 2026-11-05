@@ -10,7 +10,6 @@ import {
     SERIES_COLORS,
     barChartHeight,
     bySepaShare,
-    displayName,
     fillTemplate,
     formatCount,
     formatPercent,
@@ -87,7 +86,7 @@ export function AgentComparison({ section, selectedAgent, loading }: AgentCompar
     } satisfies ChartConfig;
 
     const chartData = sorted.map((agent) => ({
-        agent: displayName(agent.agente),
+        agent: agent.agente,
         n: agent.n.contratti_totali,
         n_1: agent.n_1.contratti_totali,
     }));

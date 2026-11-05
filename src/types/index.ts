@@ -1,4 +1,4 @@
-export type { Agent, Rule, Tier, Settlement, RuleConfiguration, RuleConfigurationResponse, InvoiceRequest } from "./domain";
+export type { Agent, Rule, Tier, Settlement, RuleConfiguration, RuleConfigurationResponse, ParentRuleConfiguration, ParentRuleConfigurationResponse, InvoiceRequest } from "./domain";
 
 export type {
     DeleteSettlementsResponse,
@@ -33,6 +33,7 @@ export type {
     UpdateTierRequest,
     ImportTiersResponse,
     SaveRuleConfigurationRequest,
+    SaveParentRuleConfigurationRequest,
     ImportExcelResponse,
     ImportSettlementsResponse,
     CommissionData,

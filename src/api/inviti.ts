@@ -1,5 +1,5 @@
 import type { InvoiceRequestDetailsResponse, InvoiceRequest, UpdateInvoiceRequestPayload } from "@/types";
-import { authFetch, getApiUrl, handleResponse } from "./client";
+import { ApiError, authFetch, createApiUrl, getApiUrl, handleResponse } from "./client";
 
 interface GetInvoiceRequestsParams {
     agente_id?: number;
@@ -10,7 +10,7 @@ interface GetInvoiceRequestsParams {
 }
 
 export async function getInvoiceRequests(params?: GetInvoiceRequestsParams): Promise<InvoiceRequest[]> {
-    const url = new URL(getApiUrl("/storico-inviti"));
+    const url = createApiUrl("/storico-inviti");
 
     if (params?.agente_id) url.searchParams.set("agente_id", String(params.agente_id));
 
@@ -41,4 +41,11 @@ export async function getInvoiceRequestDetails(id: number, signal?: AbortSignal)
     const res = await authFetch(getApiUrl(`/storico-inviti/${id}/dettaglio`), { signal });
 
     return handleResponse<InvoiceRequestDetailsResponse>(res);
+}
+
+// A 500 body is the server's raw status text, which means nothing to the operator.
+export function apiErrorMessage(error: Error, fallback: string, serverError: string): string {
+    if (!(error instanceof ApiError)) return fallback;
+
+    return error.status >= 500 ? serverError : error.message;
 }

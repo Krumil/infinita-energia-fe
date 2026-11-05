@@ -1,7 +1,7 @@
 import { uniqueToken, type SettlementRow } from "./support/backend";
 import { recordApiWrites } from "./support/network";
 import { expect, test } from "./support/test";
-import { attachWorkbook, openSettlements } from "./support/ui";
+import { attachWorkbook, openSettlements, pickMonth } from "./support/ui";
 
 // Covers docs/frontend-calcolo-refactor/test-guides/02-liquidation-import-and-deletion.md.
 const MONTH = "2031-07";
@@ -324,5 +324,62 @@ test.describe("liquidation import and deletion", () => {
         await expect(dialog.getByRole("alert")).toHaveText("Nessuna riga del file ha un ID Ordine, quindi non c'è niente da importare.");
         expect(writes).toEqual([]);
         expect(await backend.storedUnmatchedRows(MONTH)).toBe(0);
+    });
+
+    test("should keep each row's Comp. dal and Comp. al from the file when the file also settles an earlier month", async ({ page, backend }) => {
+        await backend.claimMonth(MONTH);
+        await page.goto("/");
+
+        const token = uniqueToken();
+        const [julyRow, juneRow] = sellerRows(token, 2, 990_900);
+        const dialog = await openSettlements(page, MONTH);
+        const imported = page.waitForRequest((request) => request.method() === "POST" && request.url().endsWith("/api/importa-liquidazioni"));
+
+        await attachWorkbook(dialog, MONTH, `periodi-${token}.xlsx`, [julyRow, { ...juneRow, periodEnd: "30/06/2031" }]);
+        await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
+
+        await expect(dialog.getByRole("status")).toContainText("2 record elaborati · Importazione completata. Inserite 2 righe.");
+
+        const sentRows: Array<{ comp_dal: string; comp_al: string; competenza_liquidazione: string }> = (await imported).postDataJSON();
+
+        expect(sentRows.map(({ comp_dal, comp_al, competenza_liquidazione }) => [comp_dal, comp_al, competenza_liquidazione])).toEqual([
+            ["2031-07-01", "2031-07-28", "07/2031"],
+            ["2031-06-01", "2031-06-30", "07/2031"],
+        ]);
+        expect(await backend.storedPeriodEnds(MONTH)).toEqual(["2031-06-30", "2031-07-28"]);
+    });
+
+    test("should refuse the file and import it after the month is changed when its latest Comp. al is in another month", async ({ page, backend }) => {
+        const fileMonth = "2031-06";
+
+        await backend.claimMonth(MONTH);
+        await backend.claimMonth(fileMonth);
+        await page.goto("/");
+
+        const token = uniqueToken();
+        const fileName = `giugno-${token}.xlsx`;
+        const dialog = await openSettlements(page, MONTH);
+
+        await attachWorkbook(dialog, fileMonth, fileName, sellerRows(token, 2, 991_000));
+
+        const writes = recordApiWrites(page);
+
+        await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
+
+        await expect(dialog.getByRole("alert")).toHaveText(
+            "L'ultima data Comp. al del file è in 06/2031, ma il mese scelto è 07/2031. Scegli il mese del file e importa di nuovo.",
+        );
+        expect(writes).toEqual([]);
+
+        await pickMonth(page, dialog.getByRole("group", { name: "Mese di competenza" }), fileMonth);
+
+        await expect(dialog.getByRole("alert")).toHaveCount(0);
+        await expect(dialog.getByText(fileName)).toBeVisible();
+
+        await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
+
+        await expect(dialog.getByRole("status")).toContainText("2 record elaborati · Importazione completata. Inserite 2 righe.");
+        expect(await backend.storedUnmatchedRows(MONTH)).toBe(0);
+        expect(await backend.storedUnmatchedRows(fileMonth)).toBe(2);
     });
 });

@@ -16,6 +16,8 @@ export interface DraftAgent {
 
 export interface CalculationDraft {
     agents: DraftAgent[];
+    // What the server returned (or the last save sent), so an edit that is undone stops counting as a change.
+    baseline: DraftAgent[];
     dirty: boolean;
 }
 
@@ -63,7 +65,7 @@ export function createDraft(preview: PreviewResponse): CalculationDraft {
             })),
         }));
 
-    return { agents, dirty: false };
+    return { agents, baseline: agents, dirty: false };
 }
 
 // The backend rounds each row to cents before summing, so finer amounts would make the reviewed total differ from the saved one.
@@ -113,8 +115,33 @@ export function summarizeDraft(draft: CalculationDraft): DraftSummary {
     return summary;
 }
 
+function sameRow(a: DraftRow, b: DraftRow): boolean {
+    if (a.id !== b.id) return false;
+
+    const amountA = rowAmount(a);
+
+    // "12,5" and "12,50" are the same amount.
+    return amountA !== undefined ? amountA === rowAmount(b) : a.amountText === b.amountText;
+}
+
+function sameAgents(a: DraftAgent[], b: DraftAgent[]): boolean {
+    return (
+        a.length === b.length &&
+        a.every(
+            (agent, index) =>
+                agent === b[index] ||
+                (agent.agente_id === b[index].agente_id &&
+                    agent.included === b[index].included &&
+                    agent.rows.length === b[index].rows.length &&
+                    agent.rows.every((row, rowIndex) => sameRow(row, b[index].rows[rowIndex]))),
+        )
+    );
+}
+
 function editAgent(draft: CalculationDraft, agentId: number, edit: (agent: DraftAgent) => DraftAgent): CalculationDraft {
-    return { agents: draft.agents.map((agent) => (agent.agente_id === agentId ? edit(agent) : agent)), dirty: true };
+    const agents = draft.agents.map((agent) => (agent.agente_id === agentId ? edit(agent) : agent));
+
+    return { agents, baseline: draft.baseline, dirty: !sameAgents(agents, draft.baseline) };
 }
 
 export function setDraftRowAmount(draft: CalculationDraft, agentId: number, rowId: string, amountText: string): CalculationDraft {

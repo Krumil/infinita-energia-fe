@@ -16,6 +16,14 @@ export const invoiceRequestsEn = {
     taxId: "Tax ID",
     commissionAmount: "Commission amount",
     total: "Total",
+    searchAgent: "Search agent...",
+    noAgentFound: "No agent found",
+    paymentBeforeInvoice: "The payment date can't be earlier than the invoice date.",
+    serverError: "The server hit an error. Try again in a moment.",
+    clearMonth: "Clear",
+    pickerYear: "Year",
+    pickerPreviousYear: "Previous year",
+    pickerNextYear: "Next year",
 } as const;
 
 export const invoiceRequestsIt = {
@@ -36,6 +44,14 @@ export const invoiceRequestsIt = {
     taxId: "CF/P.IVA",
     commissionAmount: "Importo provvigione",
     total: "Totale",
+    searchAgent: "Cerca agente...",
+    noAgentFound: "Nessun agente trovato",
+    paymentBeforeInvoice: "La data di pagamento non può essere precedente alla data fattura.",
+    serverError: "Il server ha riscontrato un errore. Riprova tra poco.",
+    clearMonth: "Cancella",
+    pickerYear: "Anno",
+    pickerPreviousYear: "Anno precedente",
+    pickerNextYear: "Anno successivo",
 } as const;
 
 export type InvoiceRequestsTranslationKey = keyof typeof invoiceRequestsEn;
@@ -58,4 +74,5 @@ export interface InvoiceRequestsTranslations {
     taxId: string;
     commissionAmount: string;
     total: string;
+    serverError: string;
 }

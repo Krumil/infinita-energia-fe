@@ -7,6 +7,11 @@ type UnauthorizedCallback = () => void;
 const apiErrorResponseSchema = z.object({
     error: z.string().optional().catch(undefined),
     message: z.string().optional().catch(undefined),
+    // The backend's validation errors, one per invalid field; campo is "body" when the error isn't tied to one field.
+    dettagli: z
+        .array(z.object({ campo: z.string(), errore: z.string() }))
+        .optional()
+        .catch(undefined),
 });
 
 let onUnauthorized: UnauthorizedCallback | null = null;
@@ -20,7 +25,8 @@ export function getApiUrl(path: string): string {
 }
 
 export function createApiUrl(path: string): URL {
-    return new URL(getApiUrl(path));
+    // The origin lets a relative VITE_API_BASE such as /api resolve; an absolute base ignores it.
+    return new URL(getApiUrl(path), window.location.origin);
 }
 
 export class ApiError extends Error {
@@ -69,7 +75,16 @@ async function getErrorMessage(res: Response): Promise<string> {
 
         if (!parsed.success) return fallback;
 
-        return firstNonblankString(parsed.data.error, parsed.data.message) ?? fallback;
+        const message = firstNonblankString(parsed.data.error, parsed.data.message) ?? fallback;
+
+        const details = (parsed.data.dettagli ?? []).map(({ campo, errore }) => {
+            // Pydantic puts "Value error, " before the text of the backend's own validators.
+            const text = errore.replace(/^Value error, /, "");
+
+            return campo === "body" ? text : `${campo}: ${text}`;
+        });
+
+        return details.length > 0 ? `${message} (${details.join("; ")})` : message;
     } catch {
         return fallback;
     }

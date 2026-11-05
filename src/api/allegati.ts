@@ -83,7 +83,7 @@ export async function deleteAttachment(invoiceRequestId: number, attachmentId: n
     await handleResponse<{ message: string }>(await authFetch(attachmentPath(invoiceRequestId, `/${attachmentId}`), { method: "DELETE" }));
 }
 
-function toError(cause: unknown): Error {
+export function toError(cause: unknown): Error {
     return cause instanceof Error ? cause : new Error(String(cause));
 }
 
@@ -121,7 +121,8 @@ export async function uploadAttachment(
         const error = toError(cause);
 
         if (attachmentId === undefined) {
-            return { ok: false, phase, error, cleanup: cause instanceof ApiError && cause.status < 500 ? "not-needed" : "unresolved" };
+            // Nothing was handed to storage before the upload URL existed, so there is nothing to verify.
+            return { ok: false, phase, error, cleanup: "not-needed" };
         }
 
         if (phase === "uploading" && (!(cause instanceof ApiError) || cause.status >= 500)) {

@@ -73,6 +73,8 @@ export async function parseSettlementsExcel(file: File): Promise<Settlement[]> {
             ["prezzo", ["prezzo", "Prezzo"]],
             ["udm", ["udm", "Udm", "UdM", "UDM"]],
             ["importo_euro", ["importo_euro", "importo_€", "Importo €", "Importo Euro"]],
+            ["comp_dal", ["comp_dal", "Comp. Dal", "Comp. dal"]],
+            ["comp_al", ["comp_al", "Comp. Al", "Comp. al"]],
             ["scaglione_consumo", ["scaglione_consumo", "Scaglione Consumo", "Scaglione consumo"]],
             ["scaglione_anno", ["scaglione_anno", "Scaglione Anno", "Scaglione anno"]],
             ["pod_pdr", ["pod_pdr", "podpdr", "POD/PDR", "Pod/Pdr"]],
@@ -104,7 +106,7 @@ export async function parseSettlementsExcel(file: File): Promise<Settlement[]> {
             if (value !== undefined) {
                 if (key === "consumo" || key === "quantita" || key === "prezzo" || key === "importo_euro" || key === "scaglione_anno" || key === "id_ordine" || key === "id") {
                     settlement[key] = parseEuroNumber(value);
-                } else if (key === "inizio_forn" || key === "fine_forn" || key === "data_firma" || key === "data_prima_accettazione") {
+                } else if (key === "comp_dal" || key === "comp_al" || key === "inizio_forn" || key === "fine_forn" || key === "data_firma" || key === "data_prima_accettazione") {
                     settlement[key] = parseAndFormatDate(value);
                 } else {
                     settlement[key] = String(value);

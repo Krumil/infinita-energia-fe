@@ -16,19 +16,17 @@ import {
 } from "./support/calculation";
 import { recordApiRequests } from "./support/network";
 import { expect, test } from "./support/test";
-import { attachWorkbook, importCompetence, monthLabel, openSettlements, openTab, pickMonth } from "./support/ui";
+import { attachWorkbook, importCompetence, monthButtonName, monthLabel, openSettlements, openTab, pickMonth } from "./support/ui";
 
 // Covers docs/frontend-calcolo-refactor/test-guides/04-review-and-editing.md.
 const MONTH = "2031-10";
 
 const OTHER_MONTH = "2031-11";
 
-const MONTH_BUTTONS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
-
 const EXCLUSION_NOTE =
     "Gli agenti esclusi non vengono salvati. Gli inviti già salvati per loro restano come sono: non vengono eliminati né azzerati.";
 
-const STALE_MESSAGE = "Le liquidazioni di questa competenza sono cambiate dopo l'anteprima. Ricalcola prima di salvare.";
+const STALE_MESSAGE = "Liquidazioni, agenti, regole o scaglioni usati da questa anteprima sono cambiati dopo il calcolo. Ricalcola prima di salvare.";
 
 interface Fixture {
     twins: TestAgent;
@@ -49,11 +47,12 @@ async function createFixture(backend: Backend): Promise<Fixture> {
         ruleValues: { "Gettone Residenziale Standard": 150, "Rinnovo Residenziale": 20 },
     });
 
-    const parent = await backend.createAgent({ name: `Padre ${token}`, childShare: 50, ruleValues: { "Gettone Residenziale Standard": 10 } });
+    const parent = await backend.createAgent({ name: `Padre ${token}`, ruleValues: { "Gettone Residenziale Standard": 10 } });
 
     const child = await backend.createAgent({
         name: `Figlio ${token}`,
         parentName: parent.name,
+        parentShare: 50,
         ruleValues: { "Gettone Residenziale Standard": 6 },
     });
 
@@ -140,7 +139,7 @@ function detailRows(page: Page): Locator {
 // Unlike pickMonth, this doesn't expect the month to change, because the discard prompt may keep the current one.
 async function chooseMonth(page: Page, month: string): Promise<void> {
     await monthGroup(page).getByRole("button", { name: /^[a-z]+ \d{4}$/ }).click();
-    await page.getByRole("button", { name: MONTH_BUTTONS[Number(month.slice(5, 7)) - 1], exact: true }).click();
+    await page.getByRole("button", { name: monthButtonName(month), exact: true }).click();
 }
 
 test.describe("preview review and editing", () => {
@@ -377,6 +376,26 @@ test.describe("preview review and editing", () => {
         expect(requests.filter((request) => !request.startsWith("GET "))).toEqual([]);
     });
 
+    test("should change the month without asking to discard when an edited amount is restored to its original value", async ({
+        page,
+        backend,
+    }) => {
+        await backend.claimMonth(OTHER_MONTH);
+
+        const fixture = await loadPreview(page, backend);
+
+        await expand(page, fixture.twins);
+        await amountInputs(page, fixture.twinCustomer).first().fill("175,50");
+        await expect(overallTotal(page)).toHaveText("364,50 €");
+        await amountInputs(page, fixture.twinCustomer).first().fill("150");
+        await expect(overallTotal(page)).toHaveText("339,00 €");
+
+        await chooseMonth(page, OTHER_MONTH);
+
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
+        await expect(monthGroup(page)).toContainText(monthLabel(OTHER_MONTH));
+    });
+
     test("should replace the edits with fresh backend rows and totals when the discard prompt is confirmed", async ({ page, backend }) => {
         await backend.claimMonth(OTHER_MONTH);
 
@@ -516,12 +535,13 @@ test.describe("preview review and editing", () => {
         await expect(status).toBeVisible();
         await expect(page.getByText("Totale: 300,00 €", { exact: true })).toBeVisible();
 
-        // Customers 140 to 149 are past the first hundred, so the filter has to search the rows that aren't shown.
-        await page.getByRole("textbox", { name: "Filtra..." }).fill("Cliente 14");
+        // Customer 145 is past the first hundred, so the filter has to search the rows that aren't shown.
+        // The filter matches each word anywhere in the row, so the full name keeps "145" from also matching other rows.
+        await page.getByRole("textbox", { name: "Filtra..." }).fill(customers[145]);
 
-        await expect(details).toHaveCount(10);
-        await expect(details.first().getByRole("cell").first()).toHaveText(customers[140]);
-        await expect(page.getByText("Totale: 20,00 €", { exact: true })).toBeVisible();
+        await expect(details).toHaveCount(1);
+        await expect(details.first().getByRole("cell").first()).toHaveText(customers[145]);
+        await expect(page.getByText("Totale: 2,00 €", { exact: true })).toBeVisible();
         await expect(page.getByText(/righe mostrate su/)).toHaveCount(0);
 
         await page.getByRole("button", { name: "Cancella filtro" }).click();

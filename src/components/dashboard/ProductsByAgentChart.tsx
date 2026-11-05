@@ -9,7 +9,6 @@ import {
     OTHER_AGENTS_LABEL,
     SERIES_COLORS,
     barChartHeight,
-    displayName,
     fillTemplate,
     formatCount,
     formatPeriod,
@@ -75,6 +74,8 @@ export function ProductsByAgentChart({ section, loading }: ProductsByAgentChartP
 
     const series = stackSeries(section.data);
 
+    const seriesLabel = (agent: string): string => (agent === OTHER_AGENTS_LABEL ? t("dashboardOtherAgents") : agent);
+
     const contractsFor = (product: DashboardProductsByAgent["prodotti"][number], agent: string): number | undefined =>
         product.per_agente.find((entry) => entry.agente === agent)?.contratti;
 
@@ -86,7 +87,7 @@ export function ProductsByAgentChart({ section, loading }: ProductsByAgentChartP
                     <TableHead className="text-right">{t("total")}</TableHead>
                     {series.map((entry) => (
                         <TableHead key={entry.key} className="text-right">
-                            {entry.agent}
+                            {seriesLabel(entry.agent)}
                         </TableHead>
                     ))}
                 </TableRow>
@@ -121,7 +122,7 @@ export function ProductsByAgentChart({ section, loading }: ProductsByAgentChartP
         series.map((entry) => [
             entry.key,
             {
-                label: entry.agent === OTHER_AGENTS_LABEL ? entry.agent : displayName(entry.agent),
+                label: seriesLabel(entry.agent),
                 colors: { light: [entry.color] },
             },
         ]),

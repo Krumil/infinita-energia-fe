@@ -13,14 +13,8 @@ export async function uploadExcel(file: File): Promise<ImportExcelResponse> {
     return handleResponse<ImportExcelResponse>(res);
 }
 
-export async function getPendingOrders(startDate?: string, endDate?: string): Promise<PendingOrdersResponse> {
-    const url = createApiUrl("/ordini-non-evasi");
-
-    if (startDate) url.searchParams.set("start_date", startDate);
-
-    if (endDate) url.searchParams.set("end_date", endDate);
-
-    const res = await authFetch(url);
+export async function getPendingOrders(): Promise<PendingOrdersResponse> {
+    const res = await authFetch(createApiUrl("/ordini-non-evasi"));
 
     return handleResponse<PendingOrdersResponse>(res);
 }

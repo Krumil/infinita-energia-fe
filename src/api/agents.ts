@@ -5,6 +5,8 @@ import type {
     AgentCreateResponse,
     AgentMessageResponse,
     SaveRuleConfigurationRequest,
+    ParentRuleConfigurationResponse,
+    SaveParentRuleConfigurationRequest,
 } from "@/types";
 import { authFetch, getApiUrl, handleResponse } from "./client";
 
@@ -57,4 +59,23 @@ export async function saveRuleConfiguration(
     });
 
     return handleResponse<AgentMessageResponse>(res);
+}
+
+export async function getParentRuleConfiguration(agentId: number): Promise<ParentRuleConfigurationResponse> {
+    const res = await authFetch(getApiUrl(`/${agentId}/configurazione-regole-padre`));
+
+    return handleResponse<ParentRuleConfigurationResponse>(res);
+}
+
+export async function saveParentRuleConfiguration(
+    agentId: number,
+    data: SaveParentRuleConfigurationRequest,
+): Promise<ParentRuleConfigurationResponse> {
+    const res = await authFetch(getApiUrl(`/${agentId}/configurazione-regole-padre`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+
+    return handleResponse<ParentRuleConfigurationResponse>(res);
 }

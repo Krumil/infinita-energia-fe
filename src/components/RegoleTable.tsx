@@ -15,6 +15,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCurrency, cn } from "@/lib/utils";
 import { parseEuroNumber } from "@/lib/numbers";
@@ -44,6 +46,7 @@ export function RulesTable({
     onUpdateServiceType,
 }: RulesTableProps) {
     const { t } = useTranslation();
+    const { toast } = useToast();
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState("");
     const [popoverState, setPopoverState] = useState<{ ruleId: number; activated: boolean } | null>(null);
@@ -81,18 +84,22 @@ export function RulesTable({
         (rule: Rule) => {
             const parsed = parseEuroNumber(editValue);
 
-            if (parsed !== undefined && parsed !== rule.valore_default) {
+            if (parsed === undefined) {
+                toast({ title: t("error"), description: t("invalidDefaultValue"), variant: "destructive" });
+            } else if (parsed !== rule.valore_default) {
                 setPendingChange({ rule, field: "valore_default", value: parsed });
             }
 
             setEditingId(null);
         },
-        [editValue],
+        [editValue, toast, t],
     );
 
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent, rule: Rule) => {
             if (e.key === "Enter") {
+                // Otherwise the same Enter lands on the confirm dialog that opens and presses its Cancel.
+                e.preventDefault();
                 commitEdit(rule);
             } else if (e.key === "Escape") {
                 setEditingId(null);
@@ -123,14 +130,31 @@ export function RulesTable({
         setPendingChange(null);
     }, [pendingChange, onUpdateCustomerType, onUpdateServiceType, onUpdateDefault]);
 
+    const typeLabel = (value: Rule["tipo_utenza"] | Rule["tipo_servizio"]): string => t(value ?? "typeNotSet");
+
+    const changeDetail = (change: PendingChange): string => {
+        const { rule } = change;
+
+        const [label, oldValue, newValue] =
+            change.field === "valore_default"
+                ? [t("ruleDefaultValue"), formatCurrency(rule.valore_default), formatCurrency(change.value)]
+                : [t(change.field === "tipo_utenza" ? "tipoUtenza" : "tipoServizio"), typeLabel(rule[change.field]), typeLabel(change.value)];
+
+        return t("confirmRuleChangeDetail")
+            .replace("{rule}", rule.descrizione)
+            .replace("{field}", label)
+            .replace("{old}", oldValue)
+            .replace("{new}", newValue);
+    };
+
     return (
         <div className="border border-border/50 overflow-x-auto rounded-sm shadow-sm">
-            <Table appearance="plain" className="ledger-table w-full">
+            <Table appearance="plain" className="ledger-table w-full table-fixed">
                 <TableHeader>
                     <TableRow>
                         <TableHead className="font-medium text-sm normal-case tracking-normal">{t("ruleDescription")}</TableHead>
-                        <TableHead className="w-40 font-medium text-sm normal-case tracking-normal">{t("tipoUtenza")}</TableHead>
-                        <TableHead className="w-40 font-medium text-sm normal-case tracking-normal">{t("tipoServizio")}</TableHead>
+                        <TableHead className="w-48 font-medium text-sm normal-case tracking-normal">{t("tipoUtenza")}</TableHead>
+                        <TableHead className="w-48 font-medium text-sm normal-case tracking-normal">{t("tipoServizio")}</TableHead>
                         <TableHead className="!text-right font-medium text-sm normal-case tracking-normal">{t("ruleDefault")}</TableHead>
                         <TableHead className="text-center w-28 font-medium text-sm normal-case tracking-normal">{t("ruleActive")}</TableHead>
                     </TableRow>
@@ -156,7 +180,7 @@ export function RulesTable({
                                     isIncomplete && "bg-amber-500/5",
                                 )}
                             >
-                                <TableCell className="font-body font-medium">
+                                <TableCell className="font-body font-medium leading-snug">
                                     <span className="inline-flex items-center gap-2">
                                         {isIncomplete && <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />}
                                         {rule.descrizione}
@@ -164,14 +188,8 @@ export function RulesTable({
                                 </TableCell>
                                 <TableCell>
                                     <Select
-                                        value={rule.tipo_utenza ?? "__none__"}
+                                        value={rule.tipo_utenza ?? ""}
                                         onValueChange={(value) => {
-                                            if (value === "__none__") {
-                                                handleFieldChange(rule, "tipo_utenza", null);
-
-                                                return;
-                                            }
-
                                             const parsedValue = customerTypeSchema.safeParse(value);
 
                                             if (parsedValue.success) {
@@ -179,11 +197,10 @@ export function RulesTable({
                                             }
                                         }}
                                     >
-                                        <SelectTrigger className={cn("h-8 text-sm", isIncomplete && rule.tipo_utenza === null && "border-amber-500 ring-1 ring-amber-500/30")}>
+                                        <SelectTrigger className={cn("h-8 gap-2 text-sm", isIncomplete && rule.tipo_utenza === null && "border-amber-500 ring-1 ring-amber-500/30")}>
                                             <SelectValue placeholder="—" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {rule.tipo_utenza === null && <SelectItem value="__none__">—</SelectItem>}
                                             <SelectItem value="residenziale">{t("residenziale")}</SelectItem>
                                             <SelectItem value="business">{t("business")}</SelectItem>
                                         </SelectContent>
@@ -191,7 +208,7 @@ export function RulesTable({
                                 </TableCell>
                                 <TableCell>
                                     <Select
-                                        value={rule.tipo_servizio ?? "__none__"}
+                                        value={rule.tipo_servizio ?? ""}
                                         onValueChange={(value) => {
                                             if (value === "__none__") {
                                                 setPendingChange({ rule, field: "tipo_servizio", value: null });
@@ -206,11 +223,11 @@ export function RulesTable({
                                             }
                                         }}
                                     >
-                                        <SelectTrigger className="h-8 text-sm">
+                                        <SelectTrigger className="h-8 gap-2 text-sm">
                                             <SelectValue placeholder="—" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="__none__">—</SelectItem>
+                                            {rule.tipo_servizio !== null && <SelectItem value="__none__">—</SelectItem>}
                                             <SelectItem value="gas">{t("gas")}</SelectItem>
                                             <SelectItem value="luce">{t("luce")}</SelectItem>
                                         </SelectContent>
@@ -244,15 +261,25 @@ export function RulesTable({
                                         <Popover open={popoverState?.ruleId === rule.id}>
                                             <PopoverTrigger asChild>
                                                 <div>
-                                                    <Switch
-                                                        checked={rule.utilizzato}
-                                                        onCheckedChange={(checked) =>
-                                                            handleToggle(rule, checked)
-                                                        }
-                                                        disabled={rule.tipo_utenza === null}
-                                                        aria-label={`${t("ruleActive")} ${rule.descrizione}`}
-                                                        className="data-[state=checked]:bg-energia-accent"
-                                                    />
+                                                    {/* A disabled switch gets no pointer events, so the tooltip hangs on a wrapper. */}
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="inline-flex" tabIndex={rule.tipo_utenza === null ? 0 : undefined}>
+                                                                <Switch
+                                                                    checked={rule.utilizzato}
+                                                                    onCheckedChange={(checked) =>
+                                                                        handleToggle(rule, checked)
+                                                                    }
+                                                                    disabled={rule.tipo_utenza === null}
+                                                                    aria-label={`${t("ruleActive")} ${rule.descrizione}`}
+                                                                    className="data-[state=checked]:bg-energia-accent"
+                                                                />
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        {rule.tipo_utenza === null && (
+                                                            <TooltipContent>{t("ruleNeedsCustomerType")}</TooltipContent>
+                                                        )}
+                                                    </Tooltip>
                                                 </div>
                                             </PopoverTrigger>
                                             <PopoverContent
@@ -289,6 +316,7 @@ export function RulesTable({
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("confirmRuleChangeTitle")}</AlertDialogTitle>
                         <AlertDialogDescription>
+                            {pendingChange && <span className="block font-medium text-foreground">{changeDetail(pendingChange)}</span>}
                             {t("confirmRuleChangeDescription")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>

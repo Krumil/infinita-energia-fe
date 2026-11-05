@@ -3,7 +3,7 @@ import { ApiError } from "@/api/client";
 import { deleteSettlements, importSettlements } from "@/api/liquidazioni";
 import { useTranslation } from "@/hooks/useTranslation";
 import { parseSettlementsExcel } from "@/importers/liquidazioni";
-import { monthToEndDate, monthToImportCompetence, monthToStartDate } from "@/lib/competenceDates";
+import { monthToImportCompetence } from "@/lib/competenceDates";
 import type { ImportSettlementsResponse, Settlement } from "@/types";
 
 export interface UseSettlementsOptions {
@@ -60,12 +60,21 @@ function hasNewRules(message: string): boolean {
     return match !== null && Number(match[1]) > 0;
 }
 
+// Comp. dal and Comp. al stay as in the file, because a month's file also settles earlier periods.
 function prepareRows(rows: Settlement[], month: string): Settlement[] {
     const competence = monthToImportCompetence(month);
-    const start = monthToStartDate(month);
-    const end = monthToEndDate(month);
 
-    return rows.map((row) => ({ ...row, competenza_liquidazione: competence, comp_dal: start, comp_al: end }));
+    return rows.map((row) => ({ ...row, competenza_liquidazione: competence }));
+}
+
+// The supplier's file has no competence column, but its latest Comp. al falls in the month it settles.
+// shortcut: a Comp. al the importer can't turn into YYYY-MM-DD is ignored, so such a file isn't checked; read Excel's date serial if a supplier file ever uses another date format.
+function latestPeriodEnd(rows: Settlement[]): string | null {
+    return rows.reduce<string | null>((latest, { comp_al: end }) => {
+        if (end === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return latest;
+
+        return latest === null || end > latest ? end : latest;
+    }, null);
 }
 
 export function useSettlements({ onSourceChanged, onImported }: UseSettlementsOptions): UseSettlementsResult {
@@ -127,6 +136,18 @@ export function useSettlements({ onSourceChanged, onImported }: UseSettlementsOp
 
             if (importableRows.length === 0) {
                 setState({ status: "error", message: t("settlementNoOrderIds"), ...noProgress });
+
+                return;
+            }
+
+            const periodEnd = latestPeriodEnd(importableRows);
+            const chosenCompetence = monthToImportCompetence(month);
+            const fileCompetence = periodEnd === null ? chosenCompetence : monthToImportCompetence(periodEnd);
+
+            if (fileCompetence !== chosenCompetence) {
+                const message = t("settlementMonthMismatch").replace("{file}", fileCompetence).replace("{month}", chosenCompetence);
+
+                setState({ status: "error", message, ...noProgress });
 
                 return;
             }

@@ -5,7 +5,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Tier } from "@/types";
 
-export function useTiers() {
+interface Options {
+    // Called after a change that can alter commission amounts, so an open preview can be marked stale.
+    onChanged?: () => void;
+}
+
+export function useTiers({ onChanged }: Options = {}) {
     const { toast } = useToast();
     const { t } = useTranslation();
 
@@ -39,6 +44,7 @@ export function useTiers() {
 
         try {
             await apiImportTiers();
+            onChanged?.();
             toast({ title: t("success"), description: t("importScaglioniSuccess") });
             await loadTiers();
         } catch (error) {
@@ -47,7 +53,7 @@ export function useTiers() {
         } finally {
             setImporting(false);
         }
-    }, [loadTiers, toast, t]);
+    }, [loadTiers, onChanged, toast, t]);
 
     const updateCustomerType = useCallback(
         async (tier: Tier, value: "residenziale" | "business" | null): Promise<void> => {
@@ -56,7 +62,8 @@ export function useTiers() {
 
             try {
                 await updateTier(tier.id, { tipo_utenza: value });
-                toast({ title: t("success"), description: t("defaultUpdated") });
+                onChanged?.();
+                toast({ title: t("success"), description: t("typeUpdated") });
             } catch (error) {
                 setTiers((prev) =>
                     prev.map((s) => (s.id === tier.id ? { ...s, tipo_utenza: previousValue } : s)),
@@ -65,7 +72,7 @@ export function useTiers() {
                 toast({ title: t("error"), description: errorMsg, variant: "destructive" });
             }
         },
-        [toast, t],
+        [onChanged, toast, t],
     );
 
     const updateServiceType = useCallback(
@@ -75,7 +82,8 @@ export function useTiers() {
 
             try {
                 await updateTier(tier.id, { tipo_servizio: value });
-                toast({ title: t("success"), description: t("defaultUpdated") });
+                onChanged?.();
+                toast({ title: t("success"), description: t("typeUpdated") });
             } catch (error) {
                 setTiers((prev) =>
                     prev.map((s) => (s.id === tier.id ? { ...s, tipo_servizio: previousValue } : s)),
@@ -84,7 +92,7 @@ export function useTiers() {
                 toast({ title: t("error"), description: errorMsg, variant: "destructive" });
             }
         },
-        [toast, t],
+        [onChanged, toast, t],
     );
 
     return {

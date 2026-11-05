@@ -52,7 +52,7 @@ export function RulesTab({
                         <h2 className="font-display text-2xl">{t("regole")}</h2>
                         {rules.length > 0 && (
                             <span className="text-sm text-muted-foreground">
-                                {activeCount}/{rules.length} {t("ruleActive").toLowerCase()}
+                                {activeCount}/{rules.length} {t("rulesActiveSuffix")}
                             </span>
                         )}
                     </div>

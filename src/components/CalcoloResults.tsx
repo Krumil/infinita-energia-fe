@@ -11,7 +11,7 @@ import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { rowAmount, type DraftAgent, type DraftRow } from "@/lib/calculationDraft";
 import { formatMonthLabel } from "@/lib/competenceDates";
-import { formatCurrency, normalizeName } from "@/lib/utils";
+import { formatCurrency, matchesSearch, normalizeName } from "@/lib/utils";
 import type { CalculationResultsProps } from "@/types/components";
 import type { CalculationDetail } from "@/types";
 import type { TranslationKey } from "@/translations";
@@ -28,14 +28,10 @@ function sortByCustomer(rows: DraftRow[]): DraftRow[] {
 }
 
 function filterRows(rows: DraftRow[], query: string): DraftRow[] {
-    const lowerQuery = query.trim().toLowerCase();
-
-    if (!lowerQuery) return rows;
+    if (!query.trim()) return rows;
 
     return rows.filter(({ detail }) =>
-        [detail.cliente, detail.pod_pdr, detail.regola, detail.venditore, detail.cf_piva].some((value) =>
-            value?.toLowerCase().includes(lowerQuery),
-        ),
+        matchesSearch(query, [detail.cliente, detail.pod_pdr, detail.regola, detail.venditore, detail.cf_piva]),
     );
 }
 

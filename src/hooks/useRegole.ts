@@ -5,7 +5,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Rule } from "@/types";
 
-export function useRules() {
+interface Options {
+    // Called after a change that can alter commission amounts, so an open preview can be marked stale.
+    onChanged?: () => void;
+}
+
+export function useRules({ onChanged }: Options = {}) {
     const { toast } = useToast();
     const { t } = useTranslation();
 
@@ -39,6 +44,7 @@ export function useRules() {
 
         try {
             await apiImportRules();
+            onChanged?.();
             toast({ title: t("success"), description: t("importRulesSuccess") });
             await loadRules();
         } catch (error) {
@@ -47,7 +53,7 @@ export function useRules() {
         } finally {
             setImporting(false);
         }
-    }, [loadRules, toast, t]);
+    }, [loadRules, onChanged, toast, t]);
 
     const toggleEnabled = useCallback(
         async (rule: Rule, value: boolean): Promise<void> => {
@@ -55,6 +61,7 @@ export function useRules() {
 
             try {
                 await updateRule(rule.id, { utilizzato: value });
+                onChanged?.();
                 toast({ title: t("success"), description: value ? t("ruleActivated") : t("ruleDeactivated") });
             } catch (error) {
                 setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, utilizzato: rule.utilizzato } : r)));
@@ -62,7 +69,7 @@ export function useRules() {
                 toast({ title: t("error"), description: errorMsg, variant: "destructive" });
             }
         },
-        [toast, t],
+        [onChanged, toast, t],
     );
 
     const updateDefault = useCallback(
@@ -72,6 +79,7 @@ export function useRules() {
 
             try {
                 await updateRule(rule.id, { valore_default: value });
+                onChanged?.();
                 toast({ title: t("success"), description: t("defaultUpdated") });
             } catch (error) {
                 setRules((prev) =>
@@ -81,7 +89,7 @@ export function useRules() {
                 toast({ title: t("error"), description: errorMsg, variant: "destructive" });
             }
         },
-        [toast, t],
+        [onChanged, toast, t],
     );
 
     const updateCustomerType = useCallback(
@@ -91,7 +99,8 @@ export function useRules() {
 
             try {
                 await updateRule(rule.id, { tipo_utenza: value });
-                toast({ title: t("success"), description: t("defaultUpdated") });
+                onChanged?.();
+                toast({ title: t("success"), description: t("typeUpdated") });
             } catch (error) {
                 setRules((prev) =>
                     prev.map((r) => (r.id === rule.id ? { ...r, tipo_utenza: previousValue } : r)),
@@ -100,7 +109,7 @@ export function useRules() {
                 toast({ title: t("error"), description: errorMsg, variant: "destructive" });
             }
         },
-        [toast, t],
+        [onChanged, toast, t],
     );
 
     const updateServiceType = useCallback(
@@ -110,7 +119,8 @@ export function useRules() {
 
             try {
                 await updateRule(rule.id, { tipo_servizio: value });
-                toast({ title: t("success"), description: t("defaultUpdated") });
+                onChanged?.();
+                toast({ title: t("success"), description: t("typeUpdated") });
             } catch (error) {
                 setRules((prev) =>
                     prev.map((r) => (r.id === rule.id ? { ...r, tipo_servizio: previousValue } : r)),
@@ -119,7 +129,7 @@ export function useRules() {
                 toast({ title: t("error"), description: errorMsg, variant: "destructive" });
             }
         },
-        [toast, t],
+        [onChanged, toast, t],
     );
 
     return {

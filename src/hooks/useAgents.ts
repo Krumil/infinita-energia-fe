@@ -12,7 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Agent, RuleConfiguration, CreateAgentRequest } from "@/types";
 
-export function useAgents() {
+interface Options {
+    // Called after a change that can alter commission amounts, so an open preview can be marked stale.
+    onChanged?: () => void;
+}
+
+export function useAgents({ onChanged }: Options = {}) {
     const { toast } = useToast();
     const { t } = useTranslation();
 
@@ -84,6 +89,7 @@ export function useAgents() {
                         await saveRuleConfiguration(editingAgent.id, { valori: customValues });
                     }
 
+                    onChanged?.();
                     toast({ title: t("success"), description: t("agentUpdated") });
                     setDialogOpen(false);
                     await loadAgents();
@@ -91,6 +97,7 @@ export function useAgents() {
                     return t("agentUpdated");
                 } else {
                     await createAgent(data);
+                    onChanged?.();
                     toast({ title: t("success"), description: t("agentCreated") });
                     setDialogOpen(false);
                     await loadAgents();
@@ -106,7 +113,7 @@ export function useAgents() {
                 setSaving(false);
             }
         },
-        [editingAgent, loadAgents, toast, t],
+        [editingAgent, loadAgents, onChanged, toast, t],
     );
 
     const deleteAgent = useCallback(
@@ -115,6 +122,7 @@ export function useAgents() {
 
             try {
                 await deleteAgentApi(agent.id);
+                onChanged?.();
                 toast({ title: t("success"), description: t("agentDeleted") });
                 setDialogOpen(false);
                 await loadAgents();
@@ -129,7 +137,7 @@ export function useAgents() {
                 setDeleting(false);
             }
         },
-        [loadAgents, toast, t],
+        [loadAgents, onChanged, toast, t],
     );
 
     const toggleStatistics = useCallback(

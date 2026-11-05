@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from "react";
-import { getInvoiceRequests, updateInvoiceRequest as updateInvoiceRequestApi } from "@/api/inviti";
-import { ApiError } from "@/api/client";
+import { toError } from "@/api/allegati";
+import { apiErrorMessage, getInvoiceRequests, updateInvoiceRequest as updateInvoiceRequestApi } from "@/api/inviti";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { InvoiceRequest, UpdateInvoiceRequestPayload } from "@/types";
@@ -81,7 +81,7 @@ export function useInvoiceRequests(): UseInvoiceRequestsResult {
             const data = await getInvoiceRequests(params);
             setInvoiceRequests(data);
         } catch (err) {
-            const errorMsg = err instanceof ApiError ? err.message : tRef.current("fetchError");
+            const errorMsg = apiErrorMessage(toError(err), tRef.current("fetchError"), tRef.current("serverError"));
             toastRef.current({ title: tRef.current("error"), description: errorMsg, variant: "destructive" });
         } finally {
             setLoading(false);
@@ -111,7 +111,7 @@ export function useInvoiceRequests(): UseInvoiceRequestsResult {
                 return { ok: true, invoiceRequest: updated };
             } catch (err) {
                 setInvoiceRequests(previous);
-                const errorMsg = err instanceof ApiError ? err.message : tRef.current("invitationUpdateFailed");
+                const errorMsg = apiErrorMessage(toError(err), tRef.current("invitationUpdateFailed"), tRef.current("serverError"));
                 toastRef.current({ title: tRef.current("error"), description: errorMsg, variant: "destructive" });
 
                 return { ok: false, error: errorMsg };

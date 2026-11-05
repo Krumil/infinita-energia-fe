@@ -3,6 +3,7 @@ import { Loader2, ChevronRight, Home, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "@/hooks/useTranslation";
+import { parseEuroNumber } from "@/lib/numbers";
 import { cn } from "@/lib/utils";
 import type { RuleConfiguration, Rule } from "@/types/domain";
 
@@ -51,6 +52,7 @@ function TierRow({
                 inputMode="decimal"
                 value={currentVal}
                 onChange={(e) => onValueChange(ruleId, tier.tierId, e.target.value)}
+                aria-invalid={parseEuroNumber(currentVal) === undefined}
                 className="font-mono text-right h-7 px-2 text-xs border-border/50"
             />
         </div>

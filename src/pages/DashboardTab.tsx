@@ -15,9 +15,10 @@ import {
     Reveal,
     SectionMessage,
 } from "@/components/dashboard";
-import { useDashboard, useToast, useTranslation } from "@/hooks";
+import { useDashboard, useToast, useTranslation, type DashboardSection } from "@/hooks";
 import { SERIES_COLORS, fillTemplate, formatCount, formatEuro, formatPeriodDate } from "@/lib/dashboardFormat";
 import { exportElementAsHtml } from "@/lib/htmlExport";
+import type { DashboardRevenue } from "@/types";
 
 function fileNamePart(text: string): string {
     return text
@@ -72,6 +73,8 @@ export function DashboardTab(): ReactElement {
     const { filters, data, loading, agentsLoading } = dashboard;
     const exportRef = useRef<HTMLDivElement>(null);
     const [exporting, setExporting] = useState(false);
+    // An export of failed sections would only hold the error messages.
+    const hasError = data !== null && Object.values(data).some((section) => section.status === "error");
 
     async function handleExport(): Promise<void> {
         const element = exportRef.current;
@@ -107,7 +110,21 @@ export function DashboardTab(): ReactElement {
 
         if (!filters) return <SectionMessage tone="empty" message={t("dashboardNoYears")} />;
 
-        const revenue = data?.revenue;
+        const revenue: DashboardSection<DashboardRevenue> | undefined =
+            data?.revenue.status === "notImported"
+                ? {
+                      status: "empty",
+                      message: fillTemplate(
+                          t(data.revenue.move === "start" ? "dashboardRevenueNotImported" : "dashboardRevenueNotImportedEnd"),
+                          {
+                              // Intl rather than monthName, because the month sits mid-sentence and Italian writes it lowercase.
+                              from: new Intl.DateTimeFormat(language, { month: "long", year: "numeric" }).format(
+                                  new Date(data.revenue.year, data.revenue.month - 1, 1),
+                              ),
+                          },
+                      ),
+                  }
+                : data?.revenue;
 
         return (
             <>
@@ -124,16 +141,17 @@ export function DashboardTab(): ReactElement {
                     onMinContractsChange={dashboard.setMinContracts}
                 />
 
-                {data === null ? (
+                {data === null || revenue === undefined ? (
                     <Spinner />
                 ) : (
                     // Section order follows the reference analysis report: company overview, monthly trend,
                     // agents, the per-agent splits, previous supplier, products.
                     <>
                         <Reveal>
-                            <DashboardKpis summary={data.summary} revenue={data.revenue} loading={loading} />
+                            <DashboardKpis summary={data.summary} revenue={revenue} loading={loading} />
                         </Reveal>
-                        <div className="grid gap-4 lg:grid-cols-2">
+                        {/* items-start: a card that only holds a message must not stretch to the height of its chart neighbour. */}
+                        <div className="grid items-start gap-4 lg:grid-cols-2">
                             <MonthlyComparisonChart
                                 title={t("dashboardSalesTrend")}
                                 section={data.monthlySales}
@@ -152,7 +170,7 @@ export function DashboardTab(): ReactElement {
                                           })
                                         : undefined
                                 }
-                                section={data.revenue}
+                                section={revenue}
                                 loading={loading}
                                 emptyMessage={t("dashboardNoRevenue")}
                                 formatValue={(value) => formatEuro(value, language)}
@@ -203,7 +221,7 @@ export function DashboardTab(): ReactElement {
                     variant="ghost"
                     className="gap-2 self-start rounded-full"
                     onClick={() => void handleExport()}
-                    disabled={data === null || loading || agentsLoading || exporting}
+                    disabled={data === null || loading || agentsLoading || exporting || hasError}
                     data-export-exclude
                 >
                     {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}

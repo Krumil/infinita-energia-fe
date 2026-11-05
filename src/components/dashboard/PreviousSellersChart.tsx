@@ -34,6 +34,8 @@ export function PreviousSellersChart({ section, loading }: PreviousSellersChartP
     }
 
     const { periodo, venditori, totale_contratti, senza_dato } = section.data;
+    // The total counts the contracts left out too, which no seller in the chart holds.
+    const withSeller = totale_contratti - senza_dato;
     const period = formatPeriod(periodo, language);
     const description = fillTemplate(t("dashboardSellersTop"), { count: venditori.length });
 
@@ -76,7 +78,7 @@ export function PreviousSellersChart({ section, loading }: PreviousSellersChartP
                             {formatCount(seller.contratti, language)}
                         </TableCell>
                         <TableCell className="py-2 text-right tabular-nums">
-                            {formatPercent(share(seller.contratti, totale_contratti), language)}
+                            {formatPercent(share(seller.contratti, withSeller), language)}
                         </TableCell>
                     </TableRow>
                 ))}

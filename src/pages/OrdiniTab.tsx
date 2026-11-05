@@ -24,10 +24,11 @@ import { DatePicker } from "@/components/DatePicker";
 import { OrdersImportDialog } from "@/components/OrdersImportDialog";
 import { SettlementsDialog } from "@/components/SettlementsDialog";
 import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
+import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { UseSettlementsResult } from "@/hooks/useLiquidazioni";
 import { exportPendingOrdersExcel } from "@/lib/exportUtils";
-import { formatDate } from "@/lib/utils";
+import { formatDate, matchesSearch } from "@/lib/utils";
 import type { ImportExcelResponse, ExcludedOrder, PendingOrder } from "@/types";
 import { z } from "zod";
 
@@ -35,6 +36,7 @@ interface OrdersTabProps {
     ordersImporting: boolean;
     ordersProgress: number;
     ordersResult: ImportExcelResponse | null;
+    ordersError: string | null;
     onOrdersUpload: (files: File[]) => void;
     settlements: UseSettlementsResult;
     pendingOrders: PendingOrder[];
@@ -46,7 +48,7 @@ interface OrdersTabProps {
     excludedOrdersError: string | null;
     mutatingRowId: string | null;
     mutationError: string | null;
-    onRefreshOrders: (startDate?: string, endDate?: string) => Promise<void>;
+    onRefreshOrders: () => Promise<void>;
     onExcludeOrder: (orderLineId: string, reason: string) => Promise<boolean>;
     onRestoreOrder: (orderLineId: string) => Promise<boolean>;
     startDate: string;
@@ -71,17 +73,26 @@ const ALL_STATUSES = "all";
 
 function filterOrders(orders: PendingOrder[], query: string): PendingOrder[] {
     if (!query.trim()) return orders;
-    const lowerQuery = query.toLowerCase();
 
-    return orders.filter(
-        (order) =>
-            order.cliente_nome?.toLowerCase().includes(lowerQuery) ||
-            order.pod_pdr.toLowerCase().includes(lowerQuery) ||
-            order.agente?.toLowerCase().includes(lowerQuery) ||
-            order.prodotto.toLowerCase().includes(lowerQuery) ||
-            order.cod_fisc.toLowerCase().includes(lowerQuery) ||
-            String(order.id_ordine).includes(lowerQuery),
+    return orders.filter((order) =>
+        matchesSearch(query, [
+            order.cliente_nome,
+            order.pod_pdr,
+            order.agente,
+            order.prodotto,
+            order.cod_fisc,
+            String(order.id_ordine),
+        ]),
     );
+}
+
+// Same rule as the backend's date filter: inclusive bounds, and an order without a signature date never matches. ISO dates compare as text.
+function isSignedWithin(order: PendingOrder, startDate: string, endDate: string): boolean {
+    if (!startDate && !endDate) return true;
+
+    const signed = order.data_firma;
+
+    return signed !== null && (!startDate || signed >= startDate) && (!endDate || signed <= endDate);
 }
 
 function sortOrders(orders: PendingOrder[], field: SortField, direction: SortDirection): PendingOrder[] {
@@ -136,20 +147,17 @@ function sortOrders(orders: PendingOrder[], field: SortField, direction: SortDir
 
 function filterExcludedOrders(orders: ExcludedOrder[], query: string): ExcludedOrder[] {
     if (!query.trim()) return orders;
-    const lowerQuery = query.toLowerCase();
 
-    return orders.filter((excludedOrder) => {
-        const order = excludedOrder.ordine;
-
-        return (
-            excludedOrder.motivo.toLowerCase().includes(lowerQuery) ||
-            excludedOrder.id_riga_ordine.toLowerCase().includes(lowerQuery) ||
-            String(order?.id_ordine ?? "").includes(lowerQuery) ||
-            order?.cliente_nome?.toLowerCase().includes(lowerQuery) ||
-            order?.pod_pdr.toLowerCase().includes(lowerQuery) ||
-            order?.cod_fisc.toLowerCase().includes(lowerQuery)
-        );
-    });
+    return orders.filter(({ motivo, id_riga_ordine, ordine }) =>
+        matchesSearch(query, [
+            motivo,
+            id_riga_ordine,
+            String(ordine?.id_ordine ?? ""),
+            ordine?.cliente_nome,
+            ordine?.pod_pdr,
+            ordine?.cod_fisc,
+        ]),
+    );
 }
 
 function sortExcludedOrders(orders: ExcludedOrder[]): ExcludedOrder[] {
@@ -236,6 +244,7 @@ export function OrdersTab({
     ordersImporting,
     ordersProgress,
     ordersResult,
+    ordersError,
     onOrdersUpload,
     settlements,
     pendingOrders,
@@ -256,12 +265,13 @@ export function OrdersTab({
     onEndDateChange,
 }: OrdersTabProps): ReactElement {
     const { t } = useTranslation();
+    const { toast } = useToast();
     const [filterQuery, setFilterQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState(ALL_STATUSES);
     const [sortField, setSortField] = useState<SortField>("cliente_nome");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
     const [ordersView, setOrdersView] = useState<"pending" | "excluded">("pending");
-    const [shownRows, setShownRows] = useState(ROWS_PAGE_SIZE);
+    const [shown, setShown] = useState({ filters: "", rows: ROWS_PAGE_SIZE });
     const [importOpen, setImportOpen] = useState(false);
     const [settlementsOpen, setSettlementsOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<PendingOrder | null>(null);
@@ -281,30 +291,19 @@ export function OrdersTab({
     // A refresh can drop the filtered status from the data; fall back to all rather than showing an empty select.
     const effectiveStatus = statuses.includes(statusFilter) ? statusFilter : ALL_STATUSES;
     const hasFilters = Boolean(filterQuery || startDate || endDate || effectiveStatus !== ALL_STATUSES);
+    // ISO dates compare as text.
+    const invertedRange = Boolean(startDate && endDate && startDate > endDate);
 
-    const handleRefreshWithDates = (): void => {
-        void onRefreshOrders(startDate || undefined, endDate || undefined);
-    };
-
-    const changeStartDate = (value: string): void => {
-        onStartDateChange(value);
-        void onRefreshOrders(value || undefined, endDate || undefined);
-    };
-
-    const changeEndDate = (value: string): void => {
-        onEndDateChange(value);
-        void onRefreshOrders(startDate || undefined, value || undefined);
-    };
+    // Any filter or view change starts the list again from the first page of rows.
+    const filters = JSON.stringify([ordersView, filterQuery, effectiveStatus, startDate, endDate]);
+    const shownRows = shown.filters === filters ? shown.rows : ROWS_PAGE_SIZE;
+    const setShownRows = (rows: number): void => setShown({ filters, rows });
 
     const resetFilters = (): void => {
         setFilterQuery("");
         setStatusFilter(ALL_STATUSES);
-
-        if (startDate || endDate) {
-            onStartDateChange("");
-            onEndDateChange("");
-            void onRefreshOrders();
-        }
+        onStartDateChange("");
+        onEndDateChange("");
     };
 
     const handleSort = (field: SortField): void => {
@@ -324,9 +323,10 @@ export function OrdersTab({
 
     const processedOrders = useMemo(() => {
         const byStatus = effectiveStatus === ALL_STATUSES ? pendingOrders : pendingOrders.filter((order) => order.stato === effectiveStatus);
+        const filtered = byStatus.filter((order) => isSignedWithin(order, startDate, endDate));
 
-        return sortOrders(filterOrders(byStatus, filterQuery), sortField, sortDirection);
-    }, [pendingOrders, effectiveStatus, filterQuery, sortField, sortDirection]);
+        return sortOrders(filterOrders(filtered, filterQuery), sortField, sortDirection);
+    }, [pendingOrders, effectiveStatus, startDate, endDate, filterQuery, sortField, sortDirection]);
 
     const processedExcludedOrders = useMemo(
         () => sortExcludedOrders(filterExcludedOrders(excludedOrders, filterQuery)),
@@ -403,7 +403,6 @@ export function OrdersTab({
 
                         if (parsedView.success) {
                             setOrdersView(parsedView.data);
-                            setShownRows(ROWS_PAGE_SIZE);
                         }
                     }}>
                         <TabsList className="h-auto gap-1 bg-transparent p-0">
@@ -418,14 +417,18 @@ export function OrdersTab({
                         </TabsList>
                     </Tabs>
                     <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={handleRefreshWithDates} disabled={loading} aria-label={t("refresh")}>
+                        <Button variant="ghost" size="sm" onClick={() => void onRefreshOrders()} disabled={loading} aria-label={t("refresh")}>
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                         </Button>
                         {isPending && (
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => exportPendingOrdersExcel(processedOrders)}
+                                onClick={() => {
+                                    exportPendingOrdersExcel(processedOrders)
+                                        .then(() => toast({ title: t("success"), description: t("ordersExported").replace("{count}", String(processedOrders.length)) }))
+                                        .catch(() => toast({ title: t("error"), description: t("ordersExportFailed"), variant: "destructive" }));
+                                }}
                                 disabled={pendingOrdersLoading || processedOrders.length === 0}
                             >
                                 <Download className="h-4 w-4" />
@@ -471,8 +474,8 @@ export function OrdersTab({
                             </Select>
                             <div className="flex flex-wrap items-center gap-2 sm:ml-2" role="group" aria-label={t("signaturePeriod")}>
                                 <span className="mr-1 text-xs text-muted-foreground">{t("signatureDate")}</span>
-                                <DatePicker value={startDate} onChange={changeStartDate} placeholder={t("startDate")} className="h-9" />
-                                <DatePicker value={endDate} onChange={changeEndDate} placeholder={t("endDate")} className="h-9" />
+                                <DatePicker value={startDate} onChange={onStartDateChange} placeholder={t("startDate")} className="h-9" />
+                                <DatePicker value={endDate} onChange={onEndDateChange} placeholder={t("endDate")} className="h-9" openOn={startDate} />
                             </div>
                         </>
                     )}
@@ -481,6 +484,9 @@ export function OrdersTab({
                             {t("resetFilters")}
                             <X className="h-3 w-3" />
                         </Button>
+                    )}
+                    {isPending && invertedRange && (
+                        <p role="alert" className="basis-full text-xs text-destructive">{t("signatureRangeInverted")}</p>
                     )}
                 </div>
 
@@ -617,6 +623,7 @@ export function OrdersTab({
                 importing={ordersImporting}
                 progress={ordersProgress}
                 result={ordersResult}
+                error={ordersError}
                 onUpload={onOrdersUpload}
             />
 
@@ -626,6 +633,13 @@ export function OrdersTab({
                         <DialogTitle>{t("excludeOrderTitle")}</DialogTitle>
                         <DialogDescription>{t("excludeOrderDescription")}</DialogDescription>
                     </DialogHeader>
+                    {selectedOrder && (
+                        <div className="rounded-md border bg-secondary/30 p-3 text-sm">
+                            <p className="font-medium">#{selectedOrder.id_ordine} {selectedOrder.cliente_nome || "—"}</p>
+                            <p className="font-mono text-xs text-muted-foreground">{selectedOrder.pod_pdr}</p>
+                            <p className="text-xs text-muted-foreground">{selectedOrder.prodotto} · {selectedOrder.agente || "—"}</p>
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <label htmlFor="exclusion-reason" className="text-sm font-medium">{t("exclusionReason")}</label>
                         <Textarea id="exclusion-reason" value={exclusionReason} onChange={(event) => { setExclusionReason(event.target.value); setExclusionReasonError(null); }} placeholder={t("exclusionReasonPlaceholder")} disabled={mutatingRowId !== null} />

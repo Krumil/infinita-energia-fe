@@ -13,6 +13,8 @@ export interface SeededOrder {
     // Only these states count as contracts.
     state?: "Accettato" | "Annullato";
     payment?: PaymentMethod;
+    // The order's technical data has no previous supplier recorded.
+    withoutPreviousSeller?: boolean;
 }
 
 export interface SeededOrders {
@@ -49,7 +51,7 @@ export class DashboardSeed {
         const name = `Dash${uniqueToken()}`;
 
         const created = await this.api.post("/api/agenti", {
-            data: { nome_cognome: name, agente_padre: null, mail: null, statistiche: true, percentuale_provvigione_figlio: null },
+            data: { nome_cognome: name, agente_padre: null, mail: null, statistiche: true },
         });
 
         expect(created.status(), `POST /api/agenti for ${name}: ${await created.text()}`).toBe(201);
@@ -94,7 +96,7 @@ export class DashboardSeed {
 
                 await client.query(
                     "INSERT INTO dati_tecnici (pod__pdr, udm, tipologia_utenza, venditore_precedente) VALUES ($1, 'kWh', 'Domestico', $2)",
-                    [pod, previousSeller],
+                    [pod, order.withoutPreviousSeller ? null : previousSeller],
                 );
                 this.podIds.push(pod);
                 await client.query(
@@ -122,6 +124,24 @@ export class DashboardSeed {
             await client.query("ROLLBACK");
 
             throw new Error(`Inserting dashboard orders for agent ${agent.name} failed`, { cause: error });
+        } finally {
+            await client.end();
+        }
+    }
+
+    /** The latest month of `year` that has imported settlements, or null when the year has none. */
+    async lastSettlementMonth(year: number): Promise<number | null> {
+        const client = new pg.Client({ connectionString: DATABASE_URL });
+
+        await client.connect();
+
+        try {
+            const result = await client.query<{ month: number | null }>(
+                "SELECT max(extract(month FROM competenza_liquidazione))::int AS month FROM liquidazioni WHERE extract(year FROM competenza_liquidazione) = $1",
+                [year],
+            );
+
+            return result.rows[0].month;
         } finally {
             await client.end();
         }

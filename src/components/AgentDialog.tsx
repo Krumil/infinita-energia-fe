@@ -1,10 +1,11 @@
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import { Loader2, CheckCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Dialog,
     DialogContent,
@@ -22,13 +23,33 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useTranslation } from "@/hooks/useTranslation";
+import { ApiError } from "@/api/client";
+import { saveParentRuleConfiguration } from "@/api/agents";
 import { parseEuroNumber } from "@/lib/numbers";
+import { ParentValuesPanel, type ParentValueEdit } from "./ParentValuesPanel";
 import { RuleValuesEditor } from "./RuleValuesEditor";
 import { SearchableSelect } from "./SearchableSelect";
 import type { AgentDialogProps } from "@/types/components";
 import type { CreateAgentRequest } from "@/types/api";
+
+const tabTriggerClass =
+    "min-h-10 gap-2 rounded-none border-b-2 border-transparent px-0 focus-visible:ring-inset focus-visible:ring-offset-0 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none";
+
+// Sized to the agent values editor (45vh plus its header), so a shorter tab doesn't shrink the dialog.
+const tabContentClass = "mt-4 min-h-[calc(45vh+6rem)] data-[state=inactive]:hidden";
+
+function InvalidCount({ count }: { count: number }): React.JSX.Element | null {
+    const { t } = useTranslation();
+
+    return count > 0 ? (
+        <span className="rounded-sm bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive">
+            {t("invalidValuesCount").replace("{count}", String(count))}
+        </span>
+    ) : null;
+}
 
 function createInitialFormData(agent: AgentDialogProps["agent"]): CreateAgentRequest {
     return {
@@ -58,10 +79,16 @@ export function AgentDialog({
     const [formData, setFormData] = useState<CreateAgentRequest>(() => createInitialFormData(agent));
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [editedValues, setEditedValues] = useState<Map<string, string>>(new Map());
-
-    const [percentageInput, setPercentageInput] = useState<string>(
-        agent?.percentuale_provvigione_figlio != null ? String(agent.percentuale_provvigione_figlio) : "",
-    );
+    const [parentEdits, setParentEdits] = useState<Map<string, ParentValueEdit>>(new Map());
+    const [parentSaving, setParentSaving] = useState(false);
+    const [tab, setTab] = useState<"agent" | "parent">("agent");
+    // The parent tab stays mounted once opened, so a Save with errors can focus its input right away.
+    const [parentTabOpened, setParentTabOpened] = useState(false);
+    const formRef = useRef<HTMLFormElement>(null);
+    // Radix returns focus to its trigger, and this dialog opens from state, so the opener is kept here.
+    const openerRef = useRef<HTMLElement | null>(null);
+    // Shown inside the dialog because a modal hides the toasts from assistive technology.
+    const [parentSaveError, setParentSaveError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!open) {
@@ -72,9 +99,10 @@ export function AgentDialog({
         setFormData(nextInitialFormData);
         setEditedValues(new Map());
         setConfirmingDelete(false);
-        setPercentageInput(
-            agent?.percentuale_provvigione_figlio != null ? String(agent.percentuale_provvigione_figlio) : "",
-        );
+        setParentEdits(new Map());
+        setParentSaveError(null);
+        setTab("agent");
+        setParentTabOpened(false);
     }, [agent, open]);
 
     const handleValueChange = useCallback((ruleId: number, tierId: number, value: string) => {
@@ -92,38 +120,61 @@ export function AgentDialog({
         });
     }, []);
 
-    const hasInvalidEditedValues = useMemo(
-        () => Array.from(editedValues.values()).some((value) => parseEuroNumber(value) === undefined),
+    const invalidEditedCount = useMemo(
+        () => Array.from(editedValues.values()).filter((value) => parseEuroNumber(value) === undefined).length,
         [editedValues],
     );
 
-    const parsedPercentage = useMemo(() => {
-        const trimmed = percentageInput.trim();
+    const savedParent = agent?.agente_padre ?? null;
+    const formParent = formData.agente_padre ?? null;
+    // The values belong to the saved parent, so they can be edited only while the form still shows it.
+    const parentValuesEditable = savedParent !== null && savedParent === formParent;
 
-        if (trimmed === "") {
-            return { kind: "empty" } as const;
-        }
+    // Edits made before the parent changed are dropped with the table, not sent to the old parent.
+    const parentValues = parentValuesEditable ? Array.from(parentEdits.values()) : [];
+    const invalidParentCount = parentValues.filter((edit) => edit.valore_padre === undefined).length;
 
-        if (!/^\d+$/.test(trimmed)) {
-            return { kind: "invalid" } as const;
-        }
+    const focusFirstInvalid = (): void => {
+        const target = invalidEditedCount > 0 ? "agent" : "parent";
 
-        const value = parseInt(trimmed, 10);
+        flushSync(() => setTab(target));
 
-        if (value < 0 || value > 100) {
-            return { kind: "invalid" } as const;
-        }
+        const panel = formRef.current?.querySelector('[role="tabpanel"][data-state="active"]');
 
-        return { kind: "valid", value } as const;
-    }, [percentageInput]);
+        const input = panel?.querySelector<HTMLInputElement>(
+            target === "agent" ? 'input[aria-invalid="true"]' : 'table input[aria-invalid="true"]',
+        );
 
-    const isPercentageInvalid = parsedPercentage.kind === "invalid";
+        input?.focus();
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (hasInvalidEditedValues || isPercentageInvalid) {
+        if (invalidEditedCount > 0 || invalidParentCount > 0) {
+            focusFirstInvalid();
+
             return;
+        }
+
+        // Parent values go first: the agent save closes the dialog, and it may also remove the parent they belong to.
+        if (agent && parentValues.length > 0) {
+            setParentSaving(true);
+            setParentSaveError(null);
+
+            try {
+                await saveParentRuleConfiguration(agent.id, {
+                    valori: parentValues.flatMap(({ regola_id, scaglione_id, valore_padre }) =>
+                        valore_padre === undefined ? [] : [{ regola_id, scaglione_id, valore_padre }],
+                    ),
+                });
+            } catch (error) {
+                setParentSaveError(error instanceof ApiError ? error.message : t("error"));
+
+                return;
+            } finally {
+                setParentSaving(false);
+            }
         }
 
         const values =
@@ -137,23 +188,28 @@ export function AgentDialog({
                   })
                 : undefined;
 
-        const body: CreateAgentRequest = {
-            ...formData,
-            percentuale_provvigione_figlio: parsedPercentage.kind === "valid" ? parsedPercentage.value : undefined,
-        };
-
-        await onSave(body, values);
+        // The backend keeps any field the body leaves out, so a cleared parent or email has to go as null.
+        await onSave({ ...formData, agente_padre: formData.agente_padre ?? null, mail: formData.mail ?? null }, values);
     };
 
-    const availableParents = useMemo(
-        () =>
-            agents
-                .filter((candidate) => !agent || candidate.id !== agent.id)
-                .sort((left, right) =>
-                    left.nome_cognome.localeCompare(right.nome_cognome, undefined, { sensitivity: "base" }),
-                ),
-        [agent, agents],
-    );
+    const availableParents = useMemo(() => {
+        // A descendant as parent would close a loop, which the backend rejects after the parent values are already saved.
+        const excluded = new Set<string>(agent ? [agent.nome_cognome] : []);
+        const queue = agent ? [agent.nome_cognome] : [];
+
+        for (let name = queue.pop(); name !== undefined; name = queue.pop()) {
+            for (const candidate of agents) {
+                if (candidate.agente_padre === name && !excluded.has(candidate.nome_cognome)) {
+                    excluded.add(candidate.nome_cognome);
+                    queue.push(candidate.nome_cognome);
+                }
+            }
+        }
+
+        return agents
+            .filter((candidate) => !excluded.has(candidate.nome_cognome))
+            .sort((left, right) => left.nome_cognome.localeCompare(right.nome_cognome, undefined, { sensitivity: "base" }));
+    }, [agent, agents]);
 
     const parentOptions = useMemo(
         () => availableParents.map((candidate) => ({ value: candidate.nome_cognome, label: candidate.nome_cognome })),
@@ -162,14 +218,23 @@ export function AgentDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden dialog-ledger">
+            <DialogContent
+                className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden dialog-ledger"
+                onOpenAutoFocus={() => {
+                    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                }}
+                onCloseAutoFocus={(event) => {
+                    event.preventDefault();
+                    openerRef.current?.focus();
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle className="font-display text-2xl">
                         {isEdit ? t("editAgent") : t("addAgent")}
                     </DialogTitle>
-                    <DialogDescription className="font-body">{t("agentsListDesc")}</DialogDescription>
+                    <DialogDescription className="font-body">{t("agentDialogDescription")}</DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+                <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
                     <div className="flex-1 overflow-y-auto px-1 pt-4 pb-4">
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
@@ -194,7 +259,7 @@ export function AgentDialog({
                                     </Label>
                                     <SearchableSelect
                                         id="agente_padre"
-                                        value={formData.agente_padre}
+                                        value={formData.agente_padre ?? undefined}
                                         onValueChange={(value) =>
                                             setFormData((prev) => ({
                                                 ...prev,
@@ -210,31 +275,7 @@ export function AgentDialog({
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-end">
-                                <div className="space-y-1.5">
-                                    <Label
-                                        htmlFor="percentuale_provvigione_figlio"
-                                        className="editorial-caps text-muted-foreground"
-                                    >
-                                        {t("childCommissionPercent")}
-                                    </Label>
-                                    <InputGroup
-                                        className="w-28"
-                                        aria-invalid={isPercentageInvalid}
-                                    >
-                                        <InputGroupInput
-                                            id="percentuale_provvigione_figlio"
-                                            type="text"
-                                            inputMode="numeric"
-                                            value={percentageInput}
-                                            onChange={(e) => setPercentageInput(e.target.value)}
-                                            placeholder="100"
-                                            className="font-body pr-0 text-right"
-                                            aria-invalid={isPercentageInvalid}
-                                        />
-                                        <InputGroupAddon align="inline-end" className="ml-1">%</InputGroupAddon>
-                                    </InputGroup>
-                                </div>
+                            <div className="grid grid-cols-[1fr_auto] gap-4 items-end">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="mail" className="editorial-caps text-muted-foreground">
                                         {t("email")}
@@ -270,34 +311,70 @@ export function AgentDialog({
                             </div>
                         </div>
 
-                        {isEdit && (
-                            <>
-                                <div className="mt-4" />
-                                <RuleValuesEditor
-                                    configuration={configuration}
-                                    rules={rules}
-                                    loading={configLoading}
-                                    editedValues={editedValues}
-                                    onValueChange={handleValueChange}
-                                />
-                            </>
+                        {agent !== null && (
+                            <Tabs
+                                value={tab}
+                                onValueChange={(next) => {
+                                    setTab(next === "parent" ? "parent" : "agent");
+
+                                    if (next === "parent") setParentTabOpened(true);
+                                }}
+                                className="mt-4"
+                            >
+                                <TabsList className="h-auto w-full justify-start gap-5 rounded-none border-b border-border/60 bg-transparent p-0">
+                                    <TabsTrigger value="agent" className={tabTriggerClass}>
+                                        {t("agentValues")}
+                                        <InvalidCount count={invalidEditedCount} />
+                                    </TabsTrigger>
+                                    <TabsTrigger value="parent" className={tabTriggerClass}>
+                                        {t("parentValues")}
+                                        <InvalidCount count={invalidParentCount} />
+                                    </TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="agent" forceMount className={tabContentClass}>
+                                    <RuleValuesEditor
+                                        configuration={configuration}
+                                        rules={rules}
+                                        loading={configLoading}
+                                        editedValues={editedValues}
+                                        onValueChange={handleValueChange}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="parent" forceMount={parentTabOpened || undefined} className={tabContentClass}>
+                                    {parentValuesEditable ? (
+                                        <ParentValuesPanel
+                                            agent={agent}
+                                            agentEdits={editedValues}
+                                            edits={parentEdits}
+                                            onEditsChange={setParentEdits}
+                                        />
+                                    ) : (
+                                        <p className="py-10 text-center text-sm italic text-muted-foreground">
+                                            {formParent === null ? t("parentValuesNeedParent") : t("parentValuesNewParent")}
+                                        </p>
+                                    )}
+                                </TabsContent>
+                            </Tabs>
                         )}
                     </div>
+
+                    {parentSaveError && <p role="alert" className="pb-3 text-sm text-destructive">{parentSaveError}</p>}
 
                     <DialogFooter className="shrink-0 pt-4 border-t border-border/50 flex items-center gap-2">
                         {isEdit && onDelete && (
                             <div className="flex-1">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setConfirmingDelete(true)}
-                                    disabled={saving || deleting}
-                                    className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    {t("deleteAgent")}
-                                </Button>
                                 <AlertDialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
+                                    <AlertDialogTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            disabled={saving || deleting}
+                                            className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            {t("deleteAgent")}
+                                        </Button>
+                                    </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle className="font-display text-xl">
@@ -330,7 +407,7 @@ export function AgentDialog({
                             type="button"
                             variant="outline"
                             onClick={() => onOpenChange(false)}
-                            disabled={saving || deleting}
+                            disabled={saving || parentSaving || deleting}
                             className="btn-ghost"
                         >
                             {t("cancel")}
@@ -339,14 +416,13 @@ export function AgentDialog({
                             type="submit"
                             disabled={
                                 saving ||
+                                parentSaving ||
                                 deleting ||
-                                !formData.nome_cognome.trim() ||
-                                hasInvalidEditedValues ||
-                                isPercentageInvalid
+                                !formData.nome_cognome.trim()
                             }
                             className="btn-primary"
                         >
-                            {saving ? (
+                            {saving || parentSaving ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     {t("saving")}

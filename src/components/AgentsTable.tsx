@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "@/hooks/useTranslation";
+import { matchesSearch } from "@/lib/utils";
 import { SearchableSelect } from "./SearchableSelect";
 import type { AgentsTableProps } from "@/types/components";
 import type { Agent } from "@/types/domain";
@@ -33,14 +34,8 @@ export function AgentsTable({ data, onEdit, onToggleStatistics }: AgentsTablePro
     }, [data]);
 
     const filtered = useMemo(() => {
-        const lowerFilter = filter.trim().toLowerCase();
-
         return data.filter((item) => {
-            const matchesText =
-                lowerFilter === "" ||
-                item.nome_cognome.toLowerCase().includes(lowerFilter) ||
-                item.agente_padre?.toLowerCase().includes(lowerFilter) ||
-                item.mail?.toLowerCase().includes(lowerFilter);
+            const matchesText = matchesSearch(filter, [item.nome_cognome, item.agente_padre, item.mail]);
 
             const matchesParent = !parentFilter || item.agente_padre === parentFilter;
 
@@ -179,7 +174,18 @@ export function AgentsTable({ data, onEdit, onToggleStatistics }: AgentsTablePro
                                     <TableCell className="font-body font-medium overflow-hidden">
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <span className="block line-clamp-2 leading-snug">{row.nome_cognome}</span>
+                                                <Button
+                                                    type="button"
+                                                    variant="unstyled"
+                                                    size="unstyled"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onEdit(row);
+                                                    }}
+                                                    className="block whitespace-normal text-left font-[inherit] font-medium line-clamp-2 leading-snug hover:underline"
+                                                >
+                                                    {row.nome_cognome}
+                                                </Button>
                                             </TooltipTrigger>
                                             <TooltipContent>{row.nome_cognome}</TooltipContent>
                                         </Tooltip>

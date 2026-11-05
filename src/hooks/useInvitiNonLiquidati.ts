@@ -30,11 +30,22 @@ function sanitizeFilename(name: string): string {
 // The origin goes last so the shared commission columns keep their order and meaning.
 const UNPAID_REPORT_HEADERS: string[] = [...COMMISSION_HEADERS, "Origine"];
 
+// Excel reads dd/mm/yyyy as a date in the Italian locale, while an ISO string stays text.
+function csvDate(isoDate: string | null): string {
+    if (!isoDate) return "";
+
+    const [year, month, day] = isoDate.slice(0, 10).split("-");
+
+    return `${day}/${month}/${year}`;
+}
+
 // The backend returns the agent's own sales and, for a parent, only its share of each child sale under the child's name.
 function unpaidReportRow(item: CommissionData, agentKey: string): (string | number | null)[] {
     const origin = normalizeName(item.venditore) === agentKey ? "Vendita diretta" : "Provvigione figlio";
 
-    return [...commissionToRow(item), origin];
+    const row = commissionToRow({ ...item, comp_al: csvDate(item.comp_al) });
+
+    return [...row, origin];
 }
 
 export function useUnpaidInvoiceRequests() {

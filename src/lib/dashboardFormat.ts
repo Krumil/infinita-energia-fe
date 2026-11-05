@@ -26,7 +26,8 @@ export function fillTemplate(template: string, values: Record<string, string | n
 }
 
 export function formatCount(value: number, language: Language): string {
-    return value.toLocaleString(language);
+    // Italian skips the thousands separator below 10,000 unless grouping is forced.
+    return value.toLocaleString(language, { useGrouping: "always" });
 }
 
 export function formatEuro(value: number, language: Language, wholeEuros = false): string {
@@ -37,6 +38,7 @@ export function formatEuro(value: number, language: Language, wholeEuros = false
         currency: "EUR",
         minimumFractionDigits: digits,
         maximumFractionDigits: digits,
+        useGrouping: "always",
     }).format(value);
 }
 
@@ -84,13 +86,6 @@ export function formatPeriod(periodo: DashboardPeriod, language: Language): stri
 /** "Gen–Ago 2026 vs 2025", for charts that compare the period with the same months a year earlier. */
 export function formatPeriodComparison(periodo: DashboardPeriod, language: Language): string {
     return `${formatPeriod(periodo, language)} vs ${periodo.anno_n_1}`;
-}
-
-/** The backend upper-cases agent names; "ROSSI MARCO" reads as "Rossi Marco" in lists. */
-export function displayName(name: string): string {
-    return name
-        .toLocaleLowerCase("it")
-        .replace(/(^|[\s'’-])(\p{L})/gu, (_, sep: string, letter: string) => sep + letter.toLocaleUpperCase("it"));
 }
 
 /**

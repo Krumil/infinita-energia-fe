@@ -26,8 +26,11 @@ const MONTH = "2031-05";
 // The Liquidazioni dialog and the Provvigioni tab open on the current month, which the fixed clock puts in June 2031.
 const CURRENT_MONTH = "2031-06";
 
-// The import replaces each row's Comp. al with the last day of the competence month, as it did before this rework.
-const COMP_AL = "2031-05-31";
+// The workbook's Comp. al, which the import keeps as it is.
+const COMP_AL = "2031-05-28";
+
+// The unpaid CSV writes Comp. al day first, so Italian Excel reads it as a date.
+const COMP_AL_CELL = "28/05/2031";
 
 const TAX_ID = "E2ETST80A01H501A";
 
@@ -223,12 +226,12 @@ async function runRelease(page: Page, backend: Backend): Promise<void> {
             [release.unoStandard, TAX_ID, pod(0), COMP_AL, STANDARD, 175.5, release.uno.name],
             [release.unoRenewal, TAX_ID, pod(1), COMP_AL, RENEWAL, 20, release.uno.name],
         ],
-        ["TOTALE", "", "", "", "", 195.5, release.uno.name],
+        ["TOTALE", "", "", "", "", 195.5, ""],
     );
     expectWorkbook(
         workbooks.get(dueMember),
         [[release.dueCustomer, TAX_ID, pod(2), COMP_AL, STANDARD, 40, release.due.name]],
-        ["TOTALE", "", "", "", "", 40, release.due.name],
+        ["TOTALE", "", "", "", "", 40, ""],
     );
 
     await outcome(page).getByRole("button", { name: "Apri Inviti" }).click();
@@ -255,8 +258,8 @@ async function runRelease(page: Page, backend: Backend): Promise<void> {
     expect([header, ...lines.sort()]).toEqual([
         UNPAID_HEADER,
         ...[
-            [release.unoStandard, TAX_ID, pod(0), COMP_AL, STANDARD, "150", release.uno.name, "Vendita diretta"].join(";"),
-            [release.unoRenewal, TAX_ID, pod(1), COMP_AL, RENEWAL, "20", release.uno.name, "Vendita diretta"].join(";"),
+            [release.unoStandard, TAX_ID, pod(0), COMP_AL_CELL, STANDARD, "150", release.uno.name, "Vendita diretta"].join(";"),
+            [release.unoRenewal, TAX_ID, pod(1), COMP_AL_CELL, RENEWAL, "20", release.uno.name, "Vendita diretta"].join(";"),
         ].sort(),
     ]);
 

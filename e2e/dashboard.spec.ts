@@ -144,6 +144,144 @@ test.describe("dashboard", () => {
         await expect(page.getByRole("option", { name: monthName(LAST_COMPLETE_MONTH + 1), exact: true })).toBeDisabled();
     });
 
+    test("should say the settlements aren't imported yet when the start month is past the last imported month", async ({ page, seed }) => {
+        // Settlements are shared data the test can only add to, so it needs a complete month that has none yet.
+        const lastImported = await seed.lastSettlementMonth(CURRENT_YEAR);
+
+        test.skip(
+            lastImported === null || lastImported >= LAST_COMPLETE_MONTH,
+            `Settlements of ${CURRENT_YEAR} run to month ${lastImported}, so no complete month is missing them`,
+        );
+
+        const firstMissing = (lastImported ?? 0) + 1;
+        const agent = await seed.createStatisticsAgent();
+
+        await seed.insertOrders(agent, [{ date: `${CURRENT_YEAR}-01-01` }]);
+
+        await openDashboard(page);
+        await selectAgentAndYear(page, agent, CURRENT_YEAR);
+        await pick(page, "Da", monthName(firstMissing));
+
+        const revenue = tile(page, "Fatturato");
+        const missingFrom = new Intl.DateTimeFormat("it", { month: "long", year: "numeric" }).format(new Date(CURRENT_YEAR, firstMissing - 1, 1));
+
+        await expect(revenue).toHaveAttribute("aria-busy", "false");
+        await expect(revenue).toContainText(
+            `Le liquidazioni da ${missingFrom} non sono ancora state importate. Scegli un mese di inizio precedente per vedere il fatturato.`,
+        );
+        await expect(page.getByRole("alert")).toHaveCount(0);
+
+        await pick(page, "Da", monthName(firstMissing - 1));
+
+        await expect(revenue).toContainText("Liquidazioni dal");
+        await expect(revenue).not.toContainText("non sono ancora state importate");
+    });
+
+    test("should say the settlements aren't imported yet when the end month is past the last imported month", async ({ page, seed }) => {
+        // The end month picker stops at the last complete month, so the test needs a month up to it with no settlements yet.
+        const lastImported = await seed.lastSettlementMonth(CURRENT_YEAR);
+
+        test.skip(
+            lastImported === null || lastImported >= LAST_COMPLETE_MONTH,
+            `Settlements of ${CURRENT_YEAR} run to month ${lastImported}, so no month the end picker offers is missing them`,
+        );
+
+        const lastMonth = lastImported ?? 0;
+        const agent = await seed.createStatisticsAgent();
+
+        await seed.insertOrders(agent, [{ date: `${CURRENT_YEAR}-01-01` }]);
+
+        await openDashboard(page);
+        await selectAgentAndYear(page, agent, CURRENT_YEAR);
+        await pick(page, "Da", monthName(lastMonth));
+        await pick(page, "A", monthName(lastMonth + 1));
+
+        const revenue = tile(page, "Fatturato");
+        const missingFrom = new Intl.DateTimeFormat("it", { month: "long", year: "numeric" }).format(new Date(CURRENT_YEAR, lastMonth, 1));
+
+        await expect(revenue).toHaveAttribute("aria-busy", "false");
+        await expect(revenue).toContainText(
+            `Le liquidazioni da ${missingFrom} non sono ancora state importate. Scegli un mese di fine precedente per vedere il fatturato.`,
+        );
+        await expect(revenue).not.toContainText("Nessun fatturato liquidato");
+
+        await pick(page, "A", monthName(lastMonth));
+
+        await expect(revenue).toContainText("Liquidazioni dal");
+        await expect(revenue).not.toContainText("non sono ancora state importate");
+    });
+
+    test("should show the backend's reason in the cards when the user picks a year after the current one", async ({ page, seed }) => {
+        const agent = await seed.createStatisticsAgent();
+
+        // The year picker lists every year with a signed order, and the backend refuses future years.
+        await seed.insertOrders(agent, [{ date: `${CURRENT_YEAR + 1}-01-15` }]);
+
+        await openDashboard(page);
+        await selectAgentAndYear(page, agent, CURRENT_YEAR + 1);
+
+        await expect(tile(page, "Contratti firmati").getByRole("alert")).toHaveText("Parametri non validi (L'anno non può essere nel futuro.)");
+    });
+
+    test("should disable the HTML export when a section shows an error", async ({ page, seed }) => {
+        const agent = await seed.createStatisticsAgent();
+
+        await seed.insertOrders(agent, [{ date: `${CURRENT_YEAR + 1}-01-15` }]);
+
+        await openDashboard(page);
+        await selectAgentAndYear(page, agent, CURRENT_YEAR + 1);
+
+        await expect(tile(page, "Contratti firmati").getByRole("alert")).toBeVisible();
+        await expect(page.getByRole("button", { name: "Esporta HTML" })).toBeDisabled();
+    });
+
+    test("should open on the current year when the orders include a year after it", async ({ page, seed }) => {
+        const agent = await seed.createStatisticsAgent();
+
+        await seed.insertOrders(agent, [{ date: `${CURRENT_YEAR}-01-15` }, { date: `${CURRENT_YEAR + 1}-01-15` }]);
+
+        await openDashboard(page);
+
+        await expect(page.getByRole("combobox", { name: "Anno", exact: true })).toHaveText(String(CURRENT_YEAR));
+        await expect(tile(page, "Contratti firmati")).toHaveAttribute("aria-busy", "false");
+        await expect(page.getByRole("alert")).toHaveCount(0);
+    });
+
+    test("should not offer the current month as the end month when the user picks the current year", async ({ page, seed }) => {
+        const agent = await seed.createStatisticsAgent();
+
+        await seed.insertOrders(agent, [{ date: `${CURRENT_YEAR}-01-15` }]);
+
+        await openDashboard(page);
+        await selectAgentAndYear(page, agent, CURRENT_YEAR);
+        await page.getByRole("combobox", { name: "A", exact: true }).click();
+
+        await expect(page.getByRole("option", { name: monthName(LAST_COMPLETE_MONTH), exact: true })).toBeEnabled();
+        await expect(page.getByRole("option", { name: monthName(LAST_COMPLETE_MONTH + 1), exact: true })).toBeDisabled();
+    });
+
+    test("should count only contracts with a previous supplier in the shares when some contracts have none", async ({ page, seed }) => {
+        const agent = await seed.createStatisticsAgent();
+
+        const { previousSeller } = await seed.insertOrders(agent, [
+            { date: `${PAST_YEAR}-03-05` },
+            { date: `${PAST_YEAR}-03-06` },
+            { date: `${PAST_YEAR}-03-07` },
+            { date: `${PAST_YEAR}-03-08`, withoutPreviousSeller: true },
+        ]);
+
+        await openDashboard(page);
+        await selectAgentAndYear(page, agent, PAST_YEAR);
+
+        const card = tile(page, "Venditore precedente: contratti acquisiti");
+
+        await expect(card).toContainText("Contratti senza venditore precedente, esclusi: 1 su 4.");
+
+        await card.getByRole("button", { name: "Tabella" }).click();
+
+        await expect(card.getByRole("row", { name: new RegExp(previousSeller) })).toContainText("100%");
+    });
+
     test("should show the no-contracts message when the agent sold nothing in the picked months", async ({ page, seed }) => {
         const agent = await seed.createStatisticsAgent();
 
@@ -207,5 +345,39 @@ test.describe("dashboard", () => {
         release();
 
         await expect(exportButton).toBeEnabled();
+    });
+
+    test.describe("in English", () => {
+        test.use({ appLanguage: "en" });
+
+        test("should mark the exported page as English when the app language is English", async ({ page, seed }) => {
+            const agent = await seed.createStatisticsAgent();
+
+            await seed.insertOrders(agent, [{ date: `${PAST_YEAR}-06-15` }]);
+            await page.clock.setFixedTime(REAL_NOW);
+            await page.goto("/#dashboard");
+            await pick(page, "Agent", agent.name);
+            await pick(page, "Year", PAST_YEAR);
+
+            const exportButton = page.getByRole("button", { name: "Export HTML" });
+
+            await expect(exportButton).toBeEnabled();
+
+            const file = page.waitForEvent("download");
+
+            await exportButton.click();
+
+            const html = await readFile(await (await file).path(), "utf8");
+            const reader = await page.context().newPage();
+
+            await reader.route("**/*", (route) => (route.request().url().startsWith("file:") ? route.continue() : route.abort()));
+            await reader.setContent(html, { waitUntil: "domcontentloaded" });
+
+            await expect(tile(reader, "Signed contracts").getByText("1", { exact: true })).toBeVisible();
+            // Screen readers pick their voice from the document language, which has no user-facing locator.
+            await expect(reader.locator("html")).toHaveAttribute("lang", "en");
+
+            await reader.close();
+        });
     });
 });

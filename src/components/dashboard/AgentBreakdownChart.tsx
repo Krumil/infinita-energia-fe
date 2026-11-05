@@ -11,7 +11,6 @@ import {
     SERIES_COLORS,
     barChartHeight,
     bySepaShare,
-    displayName,
     fillTemplate,
     formatCount,
     formatPercent,
@@ -163,7 +162,7 @@ export function AgentBreakdownChart({ kind, section, loading }: AgentBreakdownCh
 
         // An agent with no contracts in a year has no share, so that year's bar is left out rather than drawn at 0%.
         const sepaRows = sorted.map((agent) => ({
-            agent: displayName(agent.agente),
+            agent: agent.agente,
             n: agent.n.pct_sepa,
             n_1: agent.n_1.pct_sepa,
         }));
@@ -256,7 +255,7 @@ export function AgentBreakdownChart({ kind, section, loading }: AgentBreakdownCh
     // Dynamic series keys, so rows are a string-keyed record.
     const partsRows = agenti.map((agent) =>
         Object.fromEntries([
-            ["agent", displayName(agent.agente)],
+            ["agent", agent.agente],
             ...parts.flatMap((part) => [
                 [part.key, agent.n[part.key]],
                 [`${part.key}_share`, shareLabel(agent, part.key)],

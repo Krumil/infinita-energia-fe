@@ -27,6 +27,8 @@ export const ordersEn = {
     signaturePeriod: "Signature period",
     resetFilters: "Reset",
     exportOrders: "Export",
+    ordersExported: "Exported {count} orders to ordini-inevasi.xlsx.",
+    ordersExportFailed: "The orders could not be exported.",
     pendingOrdersFooter: "{shown} of {total} orders to settle",
     excludedOrdersFooter: "{shown} of {total} excluded orders",
     excludeOrder: "Exclude",
@@ -41,6 +43,8 @@ export const ordersEn = {
     noExcludedOrders: "No excluded orders found.",
     unavailableOrder: "Order details are no longer available",
     pendingOrdersEmptyDescription: "There are no orders matching the selected filters.",
+    ordersImportNothing: "No order was imported or updated. Check that the file is the orders export and that its columns are the expected ones.",
+    signatureRangeInverted: "The start date is after the end date, so no order can match. Change one of the two dates.",
 } as const;
 
 export const ordersIt = {
@@ -72,6 +76,8 @@ export const ordersIt = {
     signaturePeriod: "Periodo di firma",
     resetFilters: "Reimposta",
     exportOrders: "Esporta",
+    ordersExported: "Esportati {count} ordini in ordini-inevasi.xlsx.",
+    ordersExportFailed: "Non è stato possibile esportare gli ordini.",
     pendingOrdersFooter: "{shown} di {total} ordini da liquidare",
     excludedOrdersFooter: "{shown} di {total} ordini esclusi",
     excludeOrder: "Escludi",
@@ -86,4 +92,6 @@ export const ordersIt = {
     noExcludedOrders: "Nessun ordine escluso trovato.",
     unavailableOrder: "I dettagli dell'ordine non sono più disponibili",
     pendingOrdersEmptyDescription: "Non ci sono ordini corrispondenti ai filtri selezionati.",
+    ordersImportNothing: "Nessun ordine importato o aggiornato. Controlla che il file sia l'export degli ordini, con le colonne previste.",
+    signatureRangeInverted: "La data di inizio è dopo la data di fine, quindi nessun ordine corrisponde. Cambia una delle due date.",
 } as const;

@@ -15,6 +15,9 @@ type TestMonth = typeof FEBRUARY | typeof JANUARY;
 
 const COMP_AL = { [FEBRUARY]: "2031-02-28", [JANUARY]: "2031-01-31" };
 
+// The CSV writes Comp. al as the day-first date Italian Excel reads as a date, not as ISO text.
+const COMP_AL_CELL = { [FEBRUARY]: "28/02/2031", [JANUARY]: "31/01/2031" };
+
 const FEBRUARY_LABEL = "Febbraio 2031";
 
 const JANUARY_LABEL = "Gennaio 2031";
@@ -99,15 +102,15 @@ async function seedDraft(backend: Backend, month: TestMonth, agent: TestAgent): 
     );
 }
 
-// Padre keeps a quarter of Figlio's commissions. Expected: Padre 100 + 20 direct plus 12,5 + 12,5 + 2,5 + 2,5 of override,
+// Padre gets a quarter of each of Figlio's rule values. Expected: Padre 100 + 20 direct plus 12,5 + 12,5 + 2,5 + 2,5 of override,
 // Figlio 50 + 50 + 10 + 10, Solo 70 + 12,5.
 async function createHierarchy(backend: Backend): Promise<Hierarchy> {
     await backend.claimMonth(FEBRUARY);
     await backend.claimMonth(JANUARY);
 
     const token = uniqueToken();
-    const padre = await backend.createAgent({ name: `Padre ${token}`, childShare: 25, ruleValues: { [STANDARD]: 100, [RENEWAL]: 20 } });
-    const figlio = await backend.createAgent({ name: `Figlio ${token}`, parentName: padre.name, ruleValues: { [STANDARD]: 50, [RENEWAL]: 10 } });
+    const padre = await backend.createAgent({ name: `Padre ${token}`, ruleValues: { [STANDARD]: 100, [RENEWAL]: 20 } });
+    const figlio = await backend.createAgent({ name: `Figlio ${token}`, parentName: padre.name, parentShare: 25, ruleValues: { [STANDARD]: 50, [RENEWAL]: 10 } });
     const solo = await backend.createAgent({ name: `Solo ${token}`, ruleValues: { [STANDARD]: 70, [SDD]: 12.5 } });
 
     const sale = (month: TestMonth, seller: TestAgent, rule: RuleName, customer: string, pod: string): Sale => ({
@@ -153,8 +156,8 @@ async function createHierarchy(backend: Backend): Promise<Hierarchy> {
 }
 
 // A CSV line as the report writes it, with the amount as the file shows it.
-function csvLine(sale: Sale, amount: string, origin: string): string {
-    return [sale.customer, TAX_ID, sale.pod, COMP_AL[sale.month], sale.rule, amount, sale.seller.name, origin].join(";");
+function csvLine(sale: Sale, amount: string, origin: string, compAl: string = COMP_AL_CELL[sale.month]): string {
+    return [sale.customer, TAX_ID, sale.pod, compAl, sale.rule, amount, sale.seller.name, origin].join(";");
 }
 
 function reportName(agentName: string): string {
@@ -392,6 +395,27 @@ test.describe("Unpaid report", () => {
         const { download } = await runAndDownload(page);
 
         await expectReport(download, agent.name, [csvLine(sale, "30", DIRECT)]);
+        await expectSelectionClosed(page, 1, agent.name);
+    });
+
+    test("should leave Comp. al empty and still download the report when a settlement has no Comp. al", async ({ page, backend }) => {
+        await backend.claimMonth(FEBRUARY);
+
+        const token = uniqueToken();
+        const agent = await backend.createAgent({ name: `Senza data ${token}`, ruleValues: { [STANDARD]: 30 } });
+        const sale: Sale = { month: FEBRUARY, seller: agent, rule: STANDARD, customer: `Cliente Vuoto ${token}`, pod: "IT001E07000011" };
+
+        await backend.importRows(FEBRUARY, [
+            { seller: agent.name, rule: STANDARD, amount: 100, customer: sale.customer, orderId: 996_011, pod: sale.pod, withoutPeriodEnd: true },
+        ]);
+        await seedDraft(backend, FEBRUARY, agent);
+
+        await openUnpaidSelection(page);
+        await selectAgent(page, agent.name, [FEBRUARY_LABEL]);
+
+        const { download } = await runAndDownload(page);
+
+        await expectReport(download, agent.name, [csvLine(sale, "30", DIRECT, "")]);
         await expectSelectionClosed(page, 1, agent.name);
     });
 });

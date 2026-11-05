@@ -2,10 +2,9 @@ import type { Rule } from "./domain";
 
 export interface CreateAgentRequest {
     nome_cognome: string;
-    agente_padre?: string;
-    mail?: string;
+    agente_padre?: string | null;
+    mail?: string | null;
     statistiche?: boolean;
-    percentuale_provvigione_figlio?: number;
 }
 
 export interface AgentCreateResponse {
@@ -49,6 +48,10 @@ export interface SaveRuleConfigurationRequest {
     valori: Array<{ regola_id: number; scaglione_id: number; valore: number }>;
 }
 
+export interface SaveParentRuleConfigurationRequest {
+    valori: Array<{ regola_id: number; scaglione_id: number | null; valore_padre: number }>;
+}
+
 export interface ImportExcelResponse {
     message: string;
     details: {
@@ -68,7 +71,7 @@ export interface ImportSettlementsResponse {
 export interface CommissionData {
     cf_piva: string;
     cliente: string;
-    comp_al: string;
+    comp_al: string | null;
     importo_provvigione: number | null;
     pod_pdr: string;
     regola: string;
@@ -279,7 +282,7 @@ export interface DashboardRevenue {
 
 export interface UpdateInvoiceRequestPayload {
     stato?: "bozza" | "inviato" | "approvato";
-    riferimento_fattura?: string;
+    riferimento_fattura?: string | null;
     data_fattura?: string;
     pagato?: boolean;
     data_pagamento?: string;

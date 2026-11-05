@@ -6,6 +6,7 @@ import { confirmationEn, confirmationIt } from "./translations/confirmation";
 import { exportsEn, exportsIt } from "./translations/exports";
 import { previewEn, previewIt } from "./translations/preview";
 import { dashboardEn, dashboardIt } from "./translations/dashboard";
+import { parentValuesEn, parentValuesIt } from "./translations/parentValues";
 
 export type Language = "en" | "it";
 
@@ -18,6 +19,7 @@ const en = {
     ...confirmationEn,
     ...exportsEn,
     ...dashboardEn,
+    ...parentValuesEn,
     // Header
     appTitle: "Commission Calculator",
     settings: "Settings",
@@ -53,7 +55,6 @@ const en = {
     mail: "Email",
     statistics: "Statistics",
     statisticsTooltip: "Include this agent in dashboard statistics and filters",
-    childCommissionPercent: "Commission",
 
     // Regole
     regole: "Regole",
@@ -74,6 +75,16 @@ const en = {
     importRulesSuccess: "Rules imported successfully",
     confirmRuleChangeTitle: "Confirm Change",
     confirmRuleChangeDescription: "This change will affect all agents. Are you sure you want to proceed?",
+    typeUpdated: "Type updated",
+    ruleDefaultValue: "Default value",
+    typeNotSet: "not set",
+    rulesActiveSuffix: "active",
+    invalidDefaultValue: "Enter a valid number, for example 2,50.",
+    confirmRuleChangeDetail: "{rule}: {field} from {old} to {new}.",
+    confirmTierTypeTitle: "Change the tier type?",
+    confirmTierTypeDescription:
+        "{tier}: {field} from {old} to {new}. Agent values for the rules that are no longer compatible with this tier are deleted. For the rules that now have a compatible tier, the Valore Fisso rows of every agent are deleted too, custom values and parent values included. If you change the type back, these rows come back with the default value.",
+    ruleNeedsCustomerType: "Set a user type to activate this rule.",
     scaglioni: "Scaglioni",
     importScaglioni: "Import Scaglioni",
     importScaglioniSuccess: "Scaglioni imported successfully",
@@ -195,6 +206,7 @@ const en = {
     invoiceDate: "Invoice Date",
     paid: "Paid",
     paymentDate: "Payment Date",
+    downloadInviteExcel: "Download Excel",
     status: "Status",
     draft: "Draft",
     sent: "Sent",
@@ -243,6 +255,7 @@ const it: TranslationTable = {
     ...confirmationIt,
     ...exportsIt,
     ...dashboardIt,
+    ...parentValuesIt,
     // Header
     appTitle: "Calcolo Provvigioni",
     settings: "Impostazioni",
@@ -278,7 +291,6 @@ const it: TranslationTable = {
     mail: "Email",
     statistics: "Statistiche",
     statisticsTooltip: "Includi questo agente nelle statistiche e nei filtri della dashboard",
-    childCommissionPercent: "Provvigione",
 
     // Regole
     regole: "Regole",
@@ -300,6 +312,16 @@ const it: TranslationTable = {
     importRulesSuccess: "Regole importate con successo",
     confirmRuleChangeTitle: "Conferma Modifica",
     confirmRuleChangeDescription: "Questa modifica avrà effetto su tutti gli agenti. Sei sicuro di voler procedere?",
+    typeUpdated: "Tipo aggiornato",
+    ruleDefaultValue: "Valore predefinito",
+    typeNotSet: "non impostato",
+    rulesActiveSuffix: "attive",
+    invalidDefaultValue: "Inserisci un numero valido, per esempio 2,50.",
+    confirmRuleChangeDetail: "{rule}: {field} da {old} a {new}.",
+    confirmTierTypeTitle: "Cambiare il tipo dello scaglione?",
+    confirmTierTypeDescription:
+        "{tier}: {field} da {old} a {new}. I valori degli agenti per le regole non più compatibili con questo scaglione vengono eliminati. Per le regole che ora hanno uno scaglione compatibile, vengono eliminate anche le righe Valore Fisso di tutti gli agenti, compresi i valori personalizzati e i valori padre. Se rimetti il tipo precedente, queste righe tornano con il valore predefinito.",
+    ruleNeedsCustomerType: "Imposta il tipo utenza per attivare questa regola.",
     scaglioni: "Scaglioni",
     importScaglioni: "Importa Scaglioni",
     importScaglioniSuccess: "Scaglioni importati con successo",
@@ -423,6 +445,7 @@ const it: TranslationTable = {
     invoiceDate: "Data Fattura",
     paid: "Pagato",
     paymentDate: "Data Pagamento",
+    downloadInviteExcel: "Scarica Excel",
     status: "Stato",
     draft: "Bozza",
     sent: "Inviato",

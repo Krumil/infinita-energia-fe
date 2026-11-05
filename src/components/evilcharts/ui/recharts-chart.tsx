@@ -97,6 +97,19 @@ function ChartContainer({
 }: Readonly<ChartContainerProps>) {
   const uniqueId = React.useId();
   const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`;
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Scrolling moves the chart under a still cursor without a mouse event, so recharts never closes its tooltip.
+  React.useEffect(() => {
+    const hideTooltip = () =>
+      containerRef.current
+        ?.querySelector(".recharts-wrapper")
+        ?.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
+
+    window.addEventListener("scroll", hideTooltip, { capture: true, passive: true });
+
+    return () => window.removeEventListener("scroll", hideTooltip, { capture: true });
+  }, []);
 
   // Validate chart config at runtime
   validateChartConfigColors(config);
@@ -104,11 +117,12 @@ function ChartContainer({
   return (
     <ChartContext.Provider value={{ config }}>
       <div
+        ref={containerRef}
         data-slot="chart"
         data-chart={chartId}
         className={cn(
           "min-h-0 w-full flex-1",
-          "[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border relative flex flex-col justify-center text-xs [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-sector]:outline-none [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-none",
+          "[&_.recharts-cartesian-axis-tick-value]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border relative flex flex-col justify-center text-xs [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-sector]:outline-none [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-none",
           !footer && "aspect-video",
           className,
         )}

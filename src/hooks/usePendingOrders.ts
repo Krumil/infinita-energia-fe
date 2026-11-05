@@ -19,7 +19,7 @@ interface PendingOrdersHook {
     setStartDate: (date: string) => void;
     endDate: string;
     setEndDate: (date: string) => void;
-    refreshOrders: (start?: string, end?: string) => Promise<void>;
+    refreshOrders: () => Promise<void>;
     excludeOrder: (orderLineId: string, reason: string) => Promise<boolean>;
     restoreOrder: (orderLineId: string) => Promise<boolean>;
 }
@@ -43,32 +43,19 @@ export function usePendingOrders(): PendingOrdersHook {
     const [excludedError, setExcludedError] = useState<string | null>(null);
     const [mutatingRowId, setMutatingRowId] = useState<string | null>(null);
     const [mutationError, setMutationError] = useState<string | null>(null);
-    const startDateRef = useRef("");
-    const endDateRef = useRef("");
     const pendingRequestRef = useRef(0);
     const excludedRequestRef = useRef(0);
     const mutatingRowsRef = useRef(new Set<string>());
 
-    const setStartDate = useCallback((date: string) => {
-        startDateRef.current = date;
-        setStartDateState(date);
-    }, []);
-
-    const setEndDate = useCallback((date: string) => {
-        endDateRef.current = date;
-        setEndDateState(date);
-    }, []);
-
     const fetchPendingOrders = useCallback(
-        async (start?: string, end?: string) => {
+        async () => {
             const requestId = ++pendingRequestRef.current;
             setLoading(true);
             setError(null);
 
             try {
-                const effectiveStart = start ?? (startDateRef.current || undefined);
-                const effectiveEnd = end ?? (endDateRef.current || undefined);
-                const response = await getPendingOrders(effectiveStart, effectiveEnd);
+                // The signature dates filter in the tab, so the "to settle" count always covers every pending order.
+                const response = await getPendingOrders();
 
                 if (requestId === pendingRequestRef.current) {
                     setOrders(response.data);
@@ -112,8 +99,8 @@ export function usePendingOrders(): PendingOrdersHook {
     }, [toast, t]);
 
     const refreshOrders = useCallback(
-        async (start?: string, end?: string): Promise<void> => {
-            await Promise.all([fetchPendingOrders(start, end), fetchExcludedOrders()]);
+        async (): Promise<void> => {
+            await Promise.all([fetchPendingOrders(), fetchExcludedOrders()]);
         },
         [fetchExcludedOrders, fetchPendingOrders],
     );
@@ -190,9 +177,9 @@ export function usePendingOrders(): PendingOrdersHook {
         mutatingRowId,
         mutationError,
         startDate,
-        setStartDate,
+        setStartDate: setStartDateState,
         endDate,
-        setEndDate,
+        setEndDate: setEndDateState,
         refreshOrders,
         excludeOrder,
         restoreOrder,

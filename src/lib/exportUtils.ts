@@ -1,5 +1,5 @@
+import type { CellObject } from "xlsx";
 import type { PendingOrder } from "@/types";
-import { formatDate } from "@/lib/utils";
 
 class SpreadsheetExportError extends Error {
     constructor(context: string) {
@@ -18,6 +18,8 @@ export const COMMISSION_HEADERS = [
     "Venditore",
 ] as const;
 
+const COMP_AL_COLUMN = COMMISSION_HEADERS.indexOf("Comp. al");
+
 // Unpaid reports send non-null strings, while preview and saved invite rows may leave any text field empty.
 export interface CommissionRow {
     cliente: string | null;
@@ -34,6 +36,16 @@ export interface AgentWorkbook {
     agentName: string | null;
     rows: CommissionRow[];
     total: number;
+}
+
+// A number with a date format sorts and filters as a date in Excel, while an ISO string stays text.
+function excelDate(isoDate: string | null): CellObject | string {
+    if (!isoDate) return "";
+
+    const [year, month, day] = isoDate.slice(0, 10).split("-").map(Number);
+
+    // Excel counts days from 1899-12-30, which is 25569 days before the Unix epoch.
+    return { t: "n", v: Date.UTC(year, month - 1, day) / 86_400_000 + 25_569, z: "dd/mm/yyyy" };
 }
 
 export function commissionToRow(item: CommissionRow): (string | number | null)[] {
@@ -55,11 +67,17 @@ export function agentWorkbookName(agentId: number, agentName: string | null): st
     return `${name}-${agentId}.xlsx`;
 }
 
-async function createAgentWorkbook(workbook: AgentWorkbook): Promise<Uint8Array> {
+async function createAgentWorkbook(workbook: AgentWorkbook): Promise<Uint8Array<ArrayBuffer>> {
     const XLSX = await import("xlsx");
 
-    const summaryRow = ["TOTALE", "", "", "", "", workbook.total, workbook.agentName ?? ""];
-    const worksheet = XLSX.utils.aoa_to_sheet([[...COMMISSION_HEADERS], ...workbook.rows.map(commissionToRow), summaryRow]);
+    const summaryRow = ["TOTALE", "", "", "", "", workbook.total, ""];
+
+    // The unpaid CSV keeps Comp. al as ISO text, so only the workbook swaps it for a date cell.
+    const dataRows = workbook.rows.map((row) =>
+        commissionToRow(row).map((cell, column) => (column === COMP_AL_COLUMN ? excelDate(row.comp_al) : cell)),
+    );
+
+    const worksheet = XLSX.utils.aoa_to_sheet([[...COMMISSION_HEADERS], ...dataRows, summaryRow]);
 
     worksheet["!cols"] = [
         { wch: 30 }, // Cliente
@@ -95,6 +113,13 @@ export async function zipAgentWorkbooks(month: string, workbooks: AgentWorkbook[
     return zip.generateAsync({ type: "blob" });
 }
 
+// Without the ZIP's month folder, the month goes in the file name.
+export async function downloadAgentWorkbook(month: string, workbook: AgentWorkbook): Promise<void> {
+    const blob = new Blob([await createAgentWorkbook(workbook)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+    downloadBlob(blob, `${month}-${agentWorkbookName(workbook.agentId, workbook.agentName)}`);
+}
+
 export async function exportPendingOrdersExcel(orders: PendingOrder[]): Promise<void> {
     const XLSX = await import("xlsx");
 
@@ -107,7 +132,7 @@ export async function exportPendingOrdersExcel(orders: PendingOrder[]): Promise<
         o.prodotto,
         o.agente || "",
         o.stato || "",
-        formatDate(o.data_firma, ""),
+        excelDate(o.data_firma),
         o.metodo_pagam || "",
     ]);
 

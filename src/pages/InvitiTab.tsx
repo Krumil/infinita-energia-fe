@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import {
     Calculator,
+    Download,
     Paperclip,
     Eye,
     FileText,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { ATTACHMENT_ACCEPT, AttachmentValidationError, uploadAttachment } from "@/api/allegati";
 import { ApiError } from "@/api/client";
+import { getInvoiceRequestDetails } from "@/api/inviti";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,8 +31,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { InvoiceRequestDialog } from "@/components/InvitoDialog";
 import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
 import { useTranslation } from "@/hooks/useTranslation";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, matchesSearch } from "@/lib/utils";
 import { formatMonthLabel } from "@/lib/competenceDates";
+import { downloadAgentWorkbook } from "@/lib/exportUtils";
 import { useInvoiceRequests } from "@/hooks/useInviti";
 import { useUnpaidInvoiceRequests } from "@/hooks/useInvitiNonLiquidati";
 import type { Agent, InvoiceRequest, UpdateInvoiceRequestPayload } from "@/types";
@@ -53,8 +56,8 @@ type SortField =
 type SortDirection = "asc" | "desc";
 
 
-function formatMonth(isoDate: string): string {
-    return formatMonthLabel(isoDate, "it");
+function formatMonth(isoDate: string, language: string): string {
+    return formatMonthLabel(isoDate, language);
 }
 
 function isEligibleInvoiceRequest(invoiceRequest: InvoiceRequest): boolean {
@@ -135,16 +138,16 @@ function SortableHeader({ label, field, currentField, direction, onSort }: Sorta
     );
 }
 
-function filterInvoiceRequests(invoiceRequests: InvoiceRequest[], query: string): InvoiceRequest[] {
+function filterInvoiceRequests(invoiceRequests: InvoiceRequest[], query: string, language: string): InvoiceRequest[] {
     if (!query.trim()) return invoiceRequests;
-    const lowerQuery = query.toLowerCase();
 
-    return invoiceRequests.filter(
-        (invoiceRequest) =>
-            invoiceRequest.nome_agente.toLowerCase().includes(lowerQuery) ||
-            invoiceRequest.riferimento_fattura?.toLowerCase().includes(lowerQuery) ||
-            invoiceRequest.stato.toLowerCase().includes(lowerQuery) ||
-            formatMonth(invoiceRequest.mese_competenza).toLowerCase().includes(lowerQuery),
+    return invoiceRequests.filter((invoiceRequest) =>
+        matchesSearch(query, [
+            invoiceRequest.nome_agente,
+            invoiceRequest.riferimento_fattura,
+            invoiceRequest.stato,
+            formatMonth(invoiceRequest.mese_competenza, language),
+        ]),
     );
 }
 
@@ -199,7 +202,7 @@ function sortInvoiceRequests(invoiceRequests: InvoiceRequest[], field: SortField
 }
 
 export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
 
     const {
         invoiceRequests,
@@ -270,13 +273,39 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
             }
 
             toast({
-                title: `${target.nome_agente} · ${formatMonth(target.mese_competenza)}`,
+                title: `${target.nome_agente} · ${formatMonth(target.mese_competenza, language)}`,
                 description: failures.length ? failures.join("\n") : t("attachmentUploaded"),
                 variant: failures.length ? "destructive" : "default",
             });
         } finally {
             uploadBusyRef.current = false;
             setUploadingId(null);
+        }
+    };
+
+    const [downloadingId, setDownloadingId] = useState<number | null>(null);
+
+    const downloadWorkbook = async (invoiceRequest: InvoiceRequest): Promise<void> => {
+        setDownloadingId(invoiceRequest.id);
+
+        try {
+            const details = await getInvoiceRequestDetails(invoiceRequest.id);
+
+            await downloadAgentWorkbook(invoiceRequest.mese_competenza.slice(0, 7), {
+                agentId: invoiceRequest.agente_id,
+                agentName: invoiceRequest.nome_agente,
+                rows: details.dati,
+                total: details.totale_invito,
+            });
+        } catch (error) {
+            console.error(`Downloading the workbook of invite ${invoiceRequest.id} failed`, error);
+            toast({
+                title: `${invoiceRequest.nome_agente} · ${formatMonth(invoiceRequest.mese_competenza, language)}`,
+                description: error instanceof ApiError ? error.message : t("attachmentDownloadFailed"),
+                variant: "destructive",
+            });
+        } finally {
+            setDownloadingId(null);
         }
     };
 
@@ -290,14 +319,14 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
     };
 
     const processedInvoiceRequests = useMemo(() => {
-        const filtered = filterInvoiceRequests(invoiceRequests, filterQuery);
+        const filtered = filterInvoiceRequests(invoiceRequests, filterQuery, language);
 
         return sortInvoiceRequests(filtered, sortField, sortDirection);
-    }, [invoiceRequests, filterQuery, sortField, sortDirection]);
+    }, [invoiceRequests, filterQuery, language, sortField, sortDirection]);
 
     const eligibleInvoiceRequests = useMemo(
-        () => filterInvoiceRequests(unpaidInvoiceRequests, filterQuery).filter(isEligibleInvoiceRequest),
-        [unpaidInvoiceRequests, filterQuery],
+        () => filterInvoiceRequests(unpaidInvoiceRequests, filterQuery, language).filter(isEligibleInvoiceRequest),
+        [unpaidInvoiceRequests, filterQuery, language],
     );
 
     const agentGroups = useMemo(() => {
@@ -461,8 +490,8 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
                                 options={sortedAgentOptions}
                                 onValueChange={handleAgentFilterChange}
                                 placeholder={t("allAgents")}
-                                searchPlaceholder={t("searchParentAgent")}
-                                emptyMessage={t("noParentAgentsFound")}
+                                searchPlaceholder={t("searchAgent")}
+                                emptyMessage={t("noAgentFound")}
                                 clearLabel={t("allAgents")}
                                 className="h-8 w-44 text-xs"
                             />
@@ -624,14 +653,14 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
                                                         <Checkbox
                                                             checked={selectedInvoiceRequestIds.has(invoiceRequest.id)}
                                                             onCheckedChange={() => toggleInvoiceRequest(invoiceRequest.id)}
-                                                            aria-label={formatMonth(invoiceRequest.mese_competenza)}
+                                                            aria-label={formatMonth(invoiceRequest.mese_competenza, language)}
                                                             className="h-4 w-4 border-2 border-primary/70 data-[state=checked]:border-primary"
                                                         />
                                                     )}
                                                 </TableCell>
                                                 <TableCell />
                                                 <TableCell className="text-muted-foreground">
-                                                    {formatMonth(invoiceRequest.mese_competenza)}
+                                                    {formatMonth(invoiceRequest.mese_competenza, language)}
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono text-xs">
                                                     {formatCurrency(invoiceRequest.totale_invito)}
@@ -750,7 +779,7 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
                                             onSort={handleSort}
                                         />
                                     </TableHead>
-                                    <TableHead className="w-[112px] text-right">{t("attachmentTitle")}</TableHead>
+                                    <TableHead className="w-[160px] text-right">{t("attachmentActions")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -763,7 +792,7 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
                                         >
                                             <TableCell className="font-medium"><Button type="button" variant="unstyled" size="unstyled" className="justify-start whitespace-normal text-left text-[length:inherit] leading-[inherit] underline-offset-4 hover:underline" onClick={(event) => { event.stopPropagation(); handleRowClick(invoiceRequest); }}>{invoiceRequest.nome_agente}</Button></TableCell>
                                             <TableCell className="text-muted-foreground">
-                                                {formatMonth(invoiceRequest.mese_competenza)}
+                                                {formatMonth(invoiceRequest.mese_competenza, language)}
                                             </TableCell>
                                             <TableCell className="text-right font-mono text-xs">
                                                 {formatCurrency(invoiceRequest.totale_invito)}
@@ -782,9 +811,19 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
                                                     <Button type="button" variant="unstyled" size="icon" className="h-11 w-11 text-muted-foreground/70 [&_svg]:size-3.5"
+                                                        disabled={downloadingId === invoiceRequest.id}
+                                                        title={t("downloadInviteExcel")}
+                                                        aria-label={`${t("downloadInviteExcel")}: ${invoiceRequest.nome_agente}, ${formatMonth(invoiceRequest.mese_competenza, language)}`}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            void downloadWorkbook(invoiceRequest);
+                                                        }}>
+                                                        {downloadingId === invoiceRequest.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                                    </Button>
+                                                    <Button type="button" variant="unstyled" size="icon" className="h-11 w-11 text-muted-foreground/70 [&_svg]:size-3.5"
                                                         disabled={uploadingId !== null}
                                                         title={t("attachmentAddFile")}
-                                                        aria-label={`${t("attachmentAddFile")}: ${invoiceRequest.nome_agente}, ${formatMonth(invoiceRequest.mese_competenza)}`}
+                                                        aria-label={`${t("attachmentAddFile")}: ${invoiceRequest.nome_agente}, ${formatMonth(invoiceRequest.mese_competenza, language)}`}
                                                         onClick={(event) => {
                                                             event.stopPropagation();
                                                             attachmentTargetRef.current = invoiceRequest;
@@ -794,7 +833,7 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
                                                     </Button>
                                                     <Button type="button" variant="unstyled" size="icon" className="h-11 w-11 text-muted-foreground/70 [&_svg]:size-3.5"
                                                         disabled={uploadingId !== null} title={t("attachmentView")}
-                                                        aria-label={`${t("attachmentView")}: ${invoiceRequest.nome_agente}, ${formatMonth(invoiceRequest.mese_competenza)}`}
+                                                        aria-label={`${t("attachmentView")}: ${invoiceRequest.nome_agente}, ${formatMonth(invoiceRequest.mese_competenza, language)}`}
                                                         onClick={(event) => {
                                                             event.stopPropagation();
                                                             setDialogInitialTab("attachments");

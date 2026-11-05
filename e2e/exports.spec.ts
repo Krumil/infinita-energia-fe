@@ -128,8 +128,8 @@ function sheetRow(fixture: Fixture, agent: TestAgent, rule: RuleName, amount: nu
     return [customer, TAX_ID, pod, COMP_AL[fixture.month], rule, amount, agent.name];
 }
 
-function totalRow(agent: TestAgent, total: number): SheetRow {
-    return ["TOTALE", "", "", "", "", total, agent.name];
+function totalRow(total: number): SheetRow {
+    return ["TOTALE", "", "", "", "", total, ""];
 }
 
 // The backend stores agent names as sorted uppercase words, and the file name joins them with underscores.
@@ -197,12 +197,12 @@ test.describe("calculation exports", () => {
                 sheetRow(fixture, fixture.uno, STANDARD, 150, fixture.twinCustomer, PODS.twin),
                 sheetRow(fixture, fixture.uno, RENEWAL, 20, fixture.hiddenCustomer, PODS.hidden),
             ],
-            totalRow(fixture.uno, 345.5),
+            totalRow(345.5),
         );
         expectWorkbook(
             workbooks.get(member(fixture, fixture.due)),
             [sheetRow(fixture, fixture.due, STANDARD, 40, fixture.dueACustomer, PODS.dueA)],
-            totalRow(fixture.due, 40),
+            totalRow(40),
         );
         expect(writes).toEqual([]);
     });
@@ -238,7 +238,7 @@ test.describe("calculation exports", () => {
                 sheetRow(fixture, fixture.due, STANDARD, 0.1, fixture.dueACustomer, PODS.dueA),
                 sheetRow(fixture, fixture.due, STANDARD, 0.2, fixture.dueBCustomer, PODS.dueB),
             ],
-            totalRow(fixture.due, 0.3),
+            totalRow(0.3),
         );
         expectWorkbook(
             workbooks.get(member(fixture, fixture.uno)),
@@ -247,7 +247,7 @@ test.describe("calculation exports", () => {
                 sheetRow(fixture, fixture.uno, STANDARD, -40.25, fixture.twinCustomer, PODS.twin),
                 sheetRow(fixture, fixture.uno, RENEWAL, 12.34, fixture.hiddenCustomer, PODS.hidden),
             ],
-            totalRow(fixture.uno, -27.91),
+            totalRow(-27.91),
         );
     });
 
@@ -309,7 +309,7 @@ test.describe("calculation exports", () => {
                 sheetRow(fixture, fixture.uno, STANDARD, 150, fixture.twinCustomer, PODS.twin),
                 sheetRow(fixture, fixture.uno, RENEWAL, 20, fixture.hiddenCustomer, PODS.hidden),
             ],
-            totalRow(fixture.uno, 320),
+            totalRow(320),
         );
 
         // Another save replaces the stored rows of the same draft invite after this confirmation.
@@ -321,7 +321,7 @@ test.describe("calculation exports", () => {
         expectWorkbook(
             workbooks.get(member(fixture, fixture.uno)),
             [sheetRow(fixture, fixture.uno, STANDARD, 99.99, fixture.storedCustomer, PODS.stored)],
-            totalRow(fixture.uno, 99.99),
+            totalRow(99.99),
         );
         await expect(outcomeRow(page, fixture.uno).getByRole("cell")).toHaveText([fixture.uno.name, "Salvato", `#${uno.invito_id}`, "320,00 €", "—"]);
     });
@@ -385,7 +385,7 @@ test.describe("calculation exports", () => {
                 sheetRow(fixture, fixture.due, STANDARD, 40, fixture.dueACustomer, PODS.dueA),
                 sheetRow(fixture, fixture.due, STANDARD, 40, fixture.dueBCustomer, PODS.dueB),
             ],
-            totalRow(fixture.due, 80),
+            totalRow(80),
         );
         await expect(outcome(page).getByRole("alert")).toHaveCount(0);
     });

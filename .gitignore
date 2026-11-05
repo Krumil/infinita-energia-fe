@@ -76,3 +76,8 @@ tools/*
 !tools/oxlint/
 tools/oxlint/*
 !tools/oxlint/anti-slop/
+
+# Impeccable keeps per-machine state next to the shared design.json
+.impeccable/hook.cache.json
+.impeccable/hook.pending.json
+.impeccable/config.local.json

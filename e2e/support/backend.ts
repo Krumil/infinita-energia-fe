@@ -15,13 +15,26 @@ export interface SettlementRow {
     orderId: number | null;
     // Rows get distinct PODs by position unless a test needs two rows with the same one.
     pod?: string;
+    // Comp. al as dd/mm/yyyy in an uploaded workbook, for a row that settles an earlier month.
+    periodEnd?: string;
+    // Stores the row with no Comp. al, as the import does for a workbook row whose cell is empty.
+    withoutPeriodEnd?: boolean;
 }
 
 export interface NewAgent {
     name: string;
     parentName?: string;
-    childShare?: number;
+    // Percentage of each of this agent's rule values that goes to its parent, set through the prefill endpoint.
+    parentShare?: number;
+    mail?: string;
     ruleValues: Partial<Record<RuleName, number>>;
+}
+
+export interface NewOrder {
+    customer: string;
+    orderId: number;
+    // ISO date.
+    signedOn: string;
 }
 
 export interface TestAgent {
@@ -69,7 +82,7 @@ interface ConfirmationBody {
 
 interface PreviewBody {
     agenti: Array<{ agente_id: number }>;
-    non_associati: Array<{ cliente: string | null }>;
+    non_associati: Array<{ cliente: string | null; comp_al: string | null }>;
 }
 
 export function uniqueToken(): string {
@@ -93,7 +106,7 @@ export async function expectBackendDatabase(api: APIRequestContext): Promise<voi
     const token = uniqueToken();
 
     const created = await api.post("/api/agenti", {
-        data: { nome_cognome: `Controllo ${token}`, agente_padre: null, mail: null, statistiche: false, percentuale_provvigione_figlio: null },
+        data: { nome_cognome: `Controllo ${token}`, agente_padre: null, mail: null, statistiche: false },
     });
 
     expect(created.status(), `POST /api/agenti for the database check: ${await created.text()}`).toBe(201);
@@ -128,6 +141,7 @@ export async function expectBackendDatabase(api: APIRequestContext): Promise<voi
 export class Backend {
     private readonly claimedMonths: string[] = [];
     private readonly agentIds: number[] = [];
+    private readonly orderTokens: string[] = [];
 
     constructor(private readonly api: APIRequestContext) {}
 
@@ -160,14 +174,19 @@ export class Backend {
         return preview.non_associati.length;
     }
 
+    async storedPeriodEnds(month: string): Promise<Array<string | null>> {
+        const preview = await this.preview(month);
+
+        return preview.non_associati.map((row) => row.comp_al).sort();
+    }
+
     async createAgent(agent: NewAgent): Promise<TestAgent> {
         const created = await this.api.post("/api/agenti", {
             data: {
                 nome_cognome: agent.name,
                 agente_padre: agent.parentName ?? null,
-                mail: null,
+                mail: agent.mail ?? null,
                 statistiche: false,
-                percentuale_provvigione_figlio: agent.childShare ?? null,
             },
         });
 
@@ -195,7 +214,87 @@ export class Backend {
 
         expect(saved.ok(), `POST configurazione-regole for agent ${id}: ${await saved.text()}`).toBe(true);
 
+        if (agent.parentShare !== undefined) {
+            const prefilled = await this.api.post(`/api/${id}/configurazione-regole-padre/precompila`, {
+                data: { percentuale: agent.parentShare },
+            });
+
+            expect(prefilled.ok(), `POST configurazione-regole-padre/precompila for agent ${id}: ${await prefilled.text()}`).toBe(true);
+        }
+
         return { id, name: config.nome_agente };
+    }
+
+    // No API creates an order, so pending orders are written to the database. Each carries the token in its customer,
+    // product, POD and tax code, which is how cleanup finds them again.
+    async seedOrders(token: string, orders: NewOrder[]): Promise<void> {
+        this.orderTokens.push(token);
+
+        const client = new pg.Client({ connectionString: DATABASE_URL });
+
+        await client.connect();
+
+        try {
+            await client.query("BEGIN");
+            await client.query("INSERT INTO prodotti (prodotto) VALUES ($1)", [`Prodotto ${token}`]);
+
+            for (const [index, order] of orders.entries()) {
+                const pod = `${token}P${index}`;
+                // A tax code holds 16 characters, which leaves room for one digit after the token.
+                const taxCode = `${token}${index}`;
+
+                await client.query("INSERT INTO clienti (cod_fisc, nome, cognome_rag_sociale) VALUES ($1, 'Test', $2)", [taxCode, order.customer]);
+                await client.query("INSERT INTO dati_tecnici (pod__pdr) VALUES ($1)", [pod]);
+                await client.query(
+                    `INSERT INTO ordini (id_riga_ordine, id_ordine, n_riga, data_firma, stato, agente, prodotto, cod_fisc, pod__pdr)
+                     VALUES ($1, $2, 1, $3, 'Accettato', $4, $5, $6, $7)`,
+                    [`${token}R${index}`, order.orderId, order.signedOn, `Agente ${token}`, `Prodotto ${token}`, taxCode, pod],
+                );
+            }
+
+            await client.query("COMMIT");
+        } catch (error) {
+            await client.query("ROLLBACK");
+
+            throw new Error(`Seeding the orders of ${token} failed`, { cause: error });
+        } finally {
+            await client.end();
+        }
+    }
+
+    private async deleteOrders(tokens: string[]): Promise<void> {
+        const client = new pg.Client({ connectionString: DATABASE_URL });
+
+        await client.connect();
+
+        try {
+            await client.query("BEGIN");
+
+            for (const token of tokens) {
+                const like = `${token}%`;
+
+                await client.query("DELETE FROM esclusioni_ordini WHERE id_riga_ordine LIKE $1", [like]);
+                await client.query("DELETE FROM ordini WHERE id_riga_ordine LIKE $1", [like]);
+                await client.query("DELETE FROM dati_tecnici WHERE pod__pdr LIKE $1", [like]);
+                await client.query("DELETE FROM clienti WHERE cod_fisc LIKE $1", [like]);
+                await client.query("DELETE FROM prodotti WHERE prodotto = $1", [`Prodotto ${token}`]);
+            }
+
+            await client.query("COMMIT");
+        } catch (error) {
+            await client.query("ROLLBACK");
+
+            throw new Error(`Deleting the orders of ${tokens.join(", ")} failed`, { cause: error });
+        } finally {
+            await client.end();
+        }
+    }
+
+    // Stands in for another user changing the agent while the page still shows the old parent.
+    async removeParent(agent: TestAgent): Promise<void> {
+        const response = await this.api.put(`/api/agenti/${agent.id}`, { data: { agente_padre: null } });
+
+        expect(response.ok(), `PUT /api/agenti/${agent.id} without a parent: ${await response.text()}`).toBe(true);
     }
 
     async importRows(month: string, rows: SettlementRow[]): Promise<void> {
@@ -209,7 +308,7 @@ export class Backend {
             cliente: row.customer,
             cf_piva: "E2ETST80A01H501A",
             comp_dal: monthStart(month),
-            comp_al: monthEnd(month),
+            comp_al: row.withoutPeriodEnd ? null : monthEnd(month),
             competenza_liquidazione: importCompetence(month),
             id_ordine: row.orderId,
         }));
@@ -306,6 +405,8 @@ export class Backend {
 
     async cleanUp(): Promise<void> {
         const failures: string[] = [];
+
+        if (this.orderTokens.length > 0) await this.deleteOrders(this.orderTokens);
 
         for (const month of this.claimedMonths) {
             const response = await this.api.delete(`/api/liquidazioni/${monthStart(month)}`);

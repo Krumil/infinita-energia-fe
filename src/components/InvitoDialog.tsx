@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
-import { ApiError } from "@/api/client";
-import { getInvoiceRequestDetails } from "@/api/inviti";
+import { apiErrorMessage, getInvoiceRequestDetails } from "@/api/inviti";
 import { InvoiceRequestAttachments } from "@/components/InvitoAttachments";
 import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
 import { Button } from "@/components/ui/button";
@@ -37,7 +36,7 @@ interface InvoiceRequestDialogProps {
 type DialogTab = "edit" | "detail" | "attachments";
 
 function formatCurrency(value: number, language: string): string {
-    return value.toLocaleString(language, { style: "currency", currency: "EUR" });
+    return value.toLocaleString(language, { style: "currency", currency: "EUR", useGrouping: "always" });
 }
 
 function createEditForm(invoiceRequest: InvoiceRequest): EditFormData {
@@ -104,7 +103,7 @@ function DetailPanel({ invoiceRequestId, translations, language }: DetailPanelPr
             </div>
             {error ? (
                 <div role="alert" className="flex min-h-32 flex-col items-center justify-center gap-3 text-center text-sm text-destructive">
-                    <p>{error instanceof ApiError ? error.message : translations.detailLoadFailed}</p>
+                    <p>{apiErrorMessage(error, translations.detailLoadFailed, translations.serverError)}</p>
                     <Button variant="outline" size="sm" onClick={() => void loadDetail()}>{translations.retry}</Button>
                 </div>
             ) : loading && !detail ? (
@@ -113,7 +112,7 @@ function DetailPanel({ invoiceRequestId, translations, language }: DetailPanelPr
                 </div>
             ) : detail && detail.dati.length > 0 ? (
                 <div className="ledger-card max-h-[55dvh] overflow-auto">
-                    <Table className="min-w-[800px] [&_td]:px-3 [&_td]:py-2 [&_th]:h-10 [&_th]:px-3 [&_th]:text-xs">
+                    <Table className="min-w-[800px] [&_td]:whitespace-nowrap [&_td]:px-3 [&_td]:py-2 [&_th]:h-10 [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:text-xs">
                         <TableHeader><TableRow>
                             <TableHead>{translations.seller}</TableHead>
                             <TableHead>{translations.competenceTo}</TableHead>
@@ -155,10 +154,15 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
     const titleRef = useRef<HTMLHeadingElement | null>(null);
     const saveRef = useRef(false);
     const attachmentBusyRef = useRef(false);
+    // The dialog opens from state, so Radix has no trigger to give focus back to. Read before Radix moves focus into the dialog.
+    const [opener] = useState(() => document.activeElement);
     const copy = language === "it" ? invoiceRequestsIt : invoiceRequestsEn;
     const busy = saving || localSaving || attachmentsBusy;
 
     if (!invoiceRequest || !editForm) return null;
+
+    // ISO dates compare correctly as strings.
+    const paymentBeforeInvoice = editForm.paid && !!editForm.paymentDate && !!editForm.invoiceDate && editForm.paymentDate < editForm.invoiceDate;
 
     const dismiss = (): void => {
         if (!saving && !saveRef.current && !attachmentBusyRef.current) onClose();
@@ -166,6 +170,9 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
 
     const save = async (): Promise<void> => {
         if (saving || saveRef.current || attachmentBusyRef.current) return;
+
+        if (paymentBeforeInvoice) return;
+
         saveRef.current = true;
         setLocalSaving(true);
         setSaveError(null);
@@ -173,7 +180,8 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
         try {
             const result = await onSave(invoiceRequest.id, {
                 stato: editForm.status,
-                riferimento_fattura: editForm.invoiceReference || undefined,
+                // null clears the reference. The dates can't be cleared yet: the backend fails on null dates.
+                riferimento_fattura: editForm.invoiceReference || null,
                 data_fattura: editForm.invoiceDate || undefined,
                 pagato: editForm.paid,
                 data_pagamento: editForm.paid ? editForm.paymentDate || undefined : undefined,
@@ -192,6 +200,10 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
             <DialogContent closeLabel={t("close")} closeButtonClassName="right-3 top-3 flex h-11 w-11 items-center justify-center focus:ring-0 focus-visible:ring-2" onOpenAutoFocus={(event) => {
                 event.preventDefault();
                 titleRef.current?.focus();
+            }} onCloseAutoFocus={(event) => {
+                event.preventDefault();
+
+                if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
             }} className="block max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[960px] overflow-y-auto rounded-lg p-0">
                 <DialogHeader className="flex-row flex-wrap items-baseline justify-between gap-x-6 gap-y-2 space-y-0 px-4 py-5 pr-[72px] text-left sm:pl-5">
                     <div className="min-w-0 flex-1 space-y-2">
@@ -237,7 +249,7 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
                             </div>
                             <div className="space-y-1.5">
                                 <label htmlFor="invite-invoice-date" className="text-sm font-medium">{t("invoiceDate")}</label>
-                                <DatePicker id="invite-invoice-date" disabled={busy} value={editForm.invoiceDate} onChange={(value) => setEditForm({ ...editForm, invoiceDate: value })} placeholder={t("invoiceDate")} className="w-full" />
+                                <DatePicker id="invite-invoice-date" side="right" disabled={busy} value={editForm.invoiceDate} onChange={(value) => setEditForm({ ...editForm, invoiceDate: value })} placeholder={t("invoiceDate")} className="w-full" />
                             </div>
                             <div className="flex items-center gap-3 sm:pt-6">
                                 <Checkbox id="invite-paid" disabled={busy} checked={editForm.paid} onCheckedChange={(checked) => setEditForm({ ...editForm, paid: checked === true, paymentDate: checked === true ? editForm.paymentDate : "" })} />
@@ -246,7 +258,8 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
                             {editForm.paid && (
                                 <div className="space-y-1.5">
                                     <label htmlFor="invite-payment-date" className="text-sm font-medium">{t("paymentDate")}</label>
-                                    <DatePicker id="invite-payment-date" disabled={busy} value={editForm.paymentDate} onChange={(value) => setEditForm({ ...editForm, paymentDate: value })} placeholder={t("paymentDate")} className="w-full" />
+                                    <DatePicker id="invite-payment-date" side="right" disabled={busy} value={editForm.paymentDate} onChange={(value) => setEditForm({ ...editForm, paymentDate: value })} placeholder={t("paymentDate")} className="w-full" />
+                                    {paymentBeforeInvoice && <p role="alert" className="text-sm text-destructive">{copy.paymentBeforeInvoice}</p>}
                                 </div>
                             )}
                         </fieldset>

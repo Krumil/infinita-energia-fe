@@ -45,6 +45,7 @@ export interface UseCalculationResult {
     selectMonth: (month: string) => void;
     requestPreview: () => void;
     invalidateMonth: (month: string) => void;
+    invalidateAll: () => void;
     editDraft: DraftActions;
     confirmation: ConfirmationState;
     confirmDraft: () => void;
@@ -124,6 +125,13 @@ export function useCalculation(): UseCalculationResult {
         );
     }, []);
 
+    // Rules, tiers and agent values feed every month's preview, so a change marks whichever one is loaded.
+    const invalidateAll = useCallback((): void => {
+        if (latestRequest.current) latestRequest.current.invalidated = true;
+
+        setPreview((current) => (current.status === "ready" ? { ...current, stale: true } : current));
+    }, []);
+
     // Edits apply only to a loaded draft; a draft shown while its recalculation loads is read-only.
     const updateDraft = useCallback((edit: (draft: CalculationDraft) => CalculationDraft): void => {
         setPreview((current) => (current.status === "ready" ? { ...current, draft: edit(current.draft) } : current));
@@ -159,7 +167,7 @@ export function useCalculation(): UseCalculationResult {
                 setConfirmation({ status: "done", snapshot, results: response.risultati });
                 // Only the draft that was sent is saved; an edit made since then keeps it unsaved.
                 setPreview((current) =>
-                    current.status === "ready" && current.draft === draft ? { ...current, draft: { ...draft, dirty: false } } : current,
+                    current.status === "ready" && current.draft === draft ? { ...current, draft: { ...draft, baseline: draft.agents, dirty: false } } : current,
                 );
             } catch (error) {
                 if (error instanceof ApiError && (error.status === 400 || error.status === 404)) {
@@ -186,5 +194,5 @@ export function useCalculation(): UseCalculationResult {
         setConfirmation({ status: "idle" });
     }, [confirmation.status, preview]);
 
-    return { month, preview, selectMonth, requestPreview, invalidateMonth, editDraft, confirmation, confirmDraft, clearConfirmedPreview };
+    return { month, preview, selectMonth, requestPreview, invalidateMonth, invalidateAll, editDraft, confirmation, confirmDraft, clearConfirmedPreview };
 }

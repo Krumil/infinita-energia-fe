@@ -18,10 +18,18 @@ export function formatDate(isoDate: string | null, fallback = "—"): string {
 export function formatCurrency(amount: number | null, currency: string = "EUR"): string {
     if (amount === null || amount === undefined) return "€ 0,00";
 
-    return new Intl.NumberFormat("it-IT", { style: "currency", currency }).format(amount);
+    // Italian skips the thousands separator below 10,000 unless grouping is forced.
+    return new Intl.NumberFormat("it-IT", { style: "currency", currency, useGrouping: "always" }).format(amount);
 }
 
 // Mirrors the backend's normalize_name: uppercase words sorted alphabetically, so "Rossi Mario" matches "MARIO ROSSI".
 export function normalizeName(name: string): string {
     return name.trim().toUpperCase().split(/\s+/).sort().join(" ");
+}
+
+// Each query word can match anywhere, so "rossi mario" finds "MARIO ROSSI" after the backend reorders the words.
+export function matchesSearch(query: string, fields: ReadonlyArray<string | null | undefined>): boolean {
+    const text = fields.join(" ").toLowerCase();
+
+    return query.toLowerCase().split(/\s+/).every((word) => text.includes(word));
 }

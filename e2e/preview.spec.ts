@@ -16,7 +16,7 @@ const EMPTY_MONTH_MESSAGE = "Nessuna liquidazione importata per questa competenz
 // The exact body the app sends for MONTH: the first day of the competence month and nothing else.
 const PREVIEW_BODY = JSON.stringify({ competenza_liquidazione: "2031-08-01" });
 
-const STALE_MESSAGE = "Le liquidazioni di questa competenza sono cambiate dopo l'anteprima. Ricalcola prima di salvare.";
+const STALE_MESSAGE = "Liquidazioni, agenti, regole o scaglioni usati da questa anteprima sono cambiati dopo il calcolo. Ricalcola prima di salvare.";
 
 interface Family {
     token: string;
@@ -25,8 +25,8 @@ interface Family {
     child: TestAgent;
 }
 
-// The parent keeps 50% of what the child earns. The grandparent has no configured share, so the backend gives it
-// 100% of the parent's own sales and nothing from the child's, because overrides go up one level only.
+// The parent gets half of each of the child's rule values and the grandparent all of the parent's. The grandparent gets
+// nothing from the child's sales, because parent values go up one level only.
 async function createFamily(backend: Backend): Promise<Family> {
     const token = uniqueToken();
     const grandparent = await backend.createAgent({ name: `Nonno ${token}`, ruleValues: {} });
@@ -34,13 +34,14 @@ async function createFamily(backend: Backend): Promise<Family> {
     const parent = await backend.createAgent({
         name: `Padre ${token}`,
         parentName: grandparent.name,
-        childShare: 50,
+        parentShare: 100,
         ruleValues: { "Gettone Residenziale Standard": 10, "Rinnovo Residenziale": 4 },
     });
 
     const child = await backend.createAgent({
         name: `Figlio ${token}`,
         parentName: parent.name,
+        parentShare: 50,
         ruleValues: { "Gettone Residenziale Standard": 6, "Gettone SDD Residenziale": 2 },
     });
 

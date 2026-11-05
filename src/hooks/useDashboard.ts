@@ -32,7 +32,13 @@ export interface DashboardData {
     agents: DashboardSection<DashboardAgentComparison>;
     previousSellers: DashboardSection<DashboardPreviousSellers>;
     productsByAgent: DashboardSection<DashboardProductsByAgent>;
-    revenue: DashboardSection<DashboardRevenue>;
+    /**
+     * notImported: settlements from `month` on aren't imported yet, and the period reaches them. `move` is the filter
+     * the user has to set earlier: the start with the automatic end, which stops at the last imported month, else the end.
+     */
+    revenue:
+        | DashboardSection<DashboardRevenue>
+        | { status: "notImported"; year: number; month: number; move: "start" | "end" };
 }
 
 interface DashboardOptions {
@@ -68,7 +74,7 @@ const PRODUCTS_SHOWN = 10;
 const AGENTS_PER_PRODUCT = 12;
 
 interface MonthLimits {
-    /** The last month either picker offers: the current month this year, December for past years. */
+    /** The last month either picker offers: the last complete month this year, December for past years. */
     lastMonth: number;
     /** The backend's "A: Automatico" end, so the latest start that end allows. */
     lastAutoMonth: number;
@@ -80,7 +86,9 @@ export function monthLimits(year: number): MonthLimits {
     if (year !== today.getFullYear()) return { lastMonth: 12, lastAutoMonth: 12 };
 
     // The automatic end is the last complete month, except in January, where the backend ends at January itself.
-    return { lastMonth: today.getMonth() + 1, lastAutoMonth: Math.max(1, today.getMonth()) };
+    const lastComplete = Math.max(1, today.getMonth());
+
+    return { lastMonth: lastComplete, lastAutoMonth: lastComplete };
 }
 
 /**
@@ -105,6 +113,34 @@ function toSection<T>(name: string, result: PromiseSettledResult<T>): DashboardS
     return { status: "error", message: null };
 }
 
+function toRevenueSection(
+    filters: DashboardPeriodFilters,
+    summary: PromiseSettledResult<DashboardSalesSummary>,
+    revenue: PromiseSettledResult<DashboardRevenue>,
+): DashboardData["revenue"] {
+    if (revenue.status === "rejected" && revenue.reason instanceof ApiError) {
+        // The backend answers 404 when no imported settlements cover the year yet, which is an empty state.
+        if (revenue.reason.status === 404) return { status: "empty", message: revenue.reason.message };
+
+        // The automatic end stops revenue at the last imported month, so a later start is a 400 until that month is
+        // imported. The sales summary passing with the same year and agent rules out every other 400.
+        if (revenue.reason.status === 400 && filters.monthTo === null && summary.status === "fulfilled") {
+            return { status: "notImported", year: filters.year, month: filters.monthFrom, move: "start" };
+        }
+    }
+
+    // An explicit end isn't capped at the last imported month, so the backend counts the missing months as zero.
+    if (revenue.status === "fulfilled" && filters.monthTo !== null) {
+        const lastImported = Number(revenue.value.ultima_competenza_disponibile.slice(5, 7));
+
+        if (filters.monthTo > lastImported) {
+            return { status: "notImported", year: filters.year, month: lastImported + 1, move: "end" };
+        }
+    }
+
+    return toSection("fatturato", revenue);
+}
+
 type PeriodSections = Omit<DashboardData, "agents">;
 
 async function fetchPeriodSections(filters: DashboardPeriodFilters): Promise<PeriodSections> {
@@ -116,18 +152,12 @@ async function fetchPeriodSections(filters: DashboardPeriodFilters): Promise<Per
         getDashboardRevenue(filters),
     ]);
 
-    // The backend answers 404 when no imported settlements cover the period yet, which is an empty state.
-    const revenueSection: DashboardSection<DashboardRevenue> =
-        revenue.status === "rejected" && revenue.reason instanceof ApiError && revenue.reason.status === 404
-            ? { status: "empty", message: revenue.reason.message }
-            : toSection("fatturato", revenue);
-
     return {
         summary: toSection("vendite/sintesi", summary),
         monthlySales: toSection("vendite/andamento-mensile", monthlySales),
         previousSellers: toSection("vendite/venditori-precedenti", previousSellers),
         productsByAgent: toSection("vendite/prodotti-agenti", productsByAgent),
-        revenue: revenueSection,
+        revenue: toRevenueSection(filters, summary, revenue),
     };
 }
 
@@ -156,7 +186,10 @@ export function useDashboard(): UseDashboardResult {
                 setOptions({ years, agents });
 
                 if (years.length > 0) {
-                    setFilters({ year: years[0], monthFrom: 1, monthTo: null, agent: null });
+                    // The backend rejects years after the current one, so a future order year can't be the default.
+                    const notFuture = years.filter((year) => year <= new Date().getFullYear());
+
+                    setFilters({ year: notFuture.length > 0 ? Math.max(...notFuture) : years[0], monthFrom: 1, monthTo: null, agent: null });
                 }
             })
             .catch((cause: unknown) => {

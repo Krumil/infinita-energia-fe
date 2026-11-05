@@ -19,7 +19,7 @@ import {
 const commissionDataSchema = z.object({
     cf_piva: z.string(),
     cliente: z.string(),
-    comp_al: z.string(),
+    comp_al: z.string().nullable(),
     importo_provvigione: z.number().nullable(),
     pod_pdr: z.string(),
     regola: z.string(),

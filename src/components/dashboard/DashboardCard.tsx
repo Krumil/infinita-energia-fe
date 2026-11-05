@@ -50,6 +50,7 @@ export function DashboardCard({
     const chartShown = !showTable && table !== undefined;
     const { attach, landed, className: landClass, style: landStyle } = useReveal<HTMLDivElement>();
     const thumbId = useId();
+    const titleId = useId();
     const reduceMotion = useReducedMotion();
 
     const toggleClass = (active: boolean): string =>
@@ -79,13 +80,15 @@ export function DashboardCard({
                 className,
             )}
             style={landStyle}
+            role="region"
+            aria-labelledby={titleId}
             aria-busy={loading}
         >
             {/* The info button sits outside the wrapping row, so it stays top right even when the toggle wraps under the title. */}
             <CardHeader className="flex-row items-start gap-2 space-y-0 p-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 space-y-1">
-                        <h2 className="font-display text-xl leading-tight text-foreground">{title}</h2>
+                        <h2 id={titleId} className="font-display text-xl leading-tight text-foreground">{title}</h2>
                         {period && <p className="text-sm text-muted-foreground">{period}</p>}
                         {/* The export is static, so the popover can't open there; the description shows inline instead. */}
                         {description && (

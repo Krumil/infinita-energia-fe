@@ -74,6 +74,11 @@ export function ThemeLanguageProvider({ children }: ThemeLanguageProviderProps):
 		root.classList.add(effectiveTheme);
 	}, [effectiveTheme]);
 
+	// Screen readers and the HTML export read the page language from the root element.
+	useEffect(() => {
+		window.document.documentElement.lang = language;
+	}, [language]);
+
 	const setTheme = (newTheme: Theme): void => {
 		setThemeState(newTheme);
 

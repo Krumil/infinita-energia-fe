@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState, type ReactElement } from "rea
 import { Download, FileText, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import {
     ATTACHMENT_ACCEPT, AttachmentValidationError,
-    deleteAttachment, getAttachments, getDownloadUrl, uploadAttachment, type UploadStage,
+    deleteAttachment, getAttachments, getDownloadUrl, toError, uploadAttachment, type UploadStage,
 } from "@/api/allegati";
-import { ApiError } from "@/api/client";
+import { apiErrorMessage } from "@/api/inviti";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -13,7 +14,6 @@ import {
     AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useTranslation } from "@/hooks/useTranslation";
-import { formatDate } from "@/lib/utils";
 import type { InvoiceRequestAttachment } from "@/types";
 import type { TranslationKey } from "@/translations";
 
@@ -45,9 +45,24 @@ const STATUS_LABELS = {
 function sizeLabel(bytes: number | null, language: string): string {
     if (bytes === null) return "—";
 
+    if (bytes < 1024) return `${bytes.toLocaleString(language)} B`;
+
     return bytes >= 1024 * 1024
         ? `${(bytes / (1024 * 1024)).toLocaleString(language, { maximumFractionDigits: 1 })} MB`
         : `${Math.ceil(bytes / 1024).toLocaleString(language)} KB`;
+}
+
+// The time tells apart two uploads of the same file name.
+function uploadedLabel(item: InvoiceRequestAttachment, language: string): string {
+    const iso = item.data_caricamento ?? item.data_creazione;
+
+    return iso ? new Date(iso).toLocaleString(language, { dateStyle: "short", timeStyle: "short" }) : "—";
+}
+
+function newestFirst(items: InvoiceRequestAttachment[]): InvoiceRequestAttachment[] {
+    const time = (item: InvoiceRequestAttachment): number => Date.parse(item.data_caricamento ?? item.data_creazione ?? "") || 0;
+
+    return [...items].sort((a, b) => time(b) - time(a) || b.id - a.id);
 }
 
 export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChange }: InvoiceRequestAttachmentsProps): ReactElement {
@@ -148,7 +163,7 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
                 } else {
                     const message = result.error instanceof AttachmentValidationError
                         ? t(result.error.reason === "size" ? "fileTooLarge" : "invalidFileType")
-                        : result.error instanceof ApiError ? result.error.message : t("attachmentUploadFailed");
+                        : apiErrorMessage(result.error, t("attachmentUploadFailed"), t("serverError"));
 
                     setFailures((previous) => [...previous, { name: file.name, message, cleanup: result.cleanup }]);
                 }
@@ -171,7 +186,7 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
             setDeleteTarget(null);
             await refresh();
         } catch (error) {
-            if (mountedRef.current) setActionError(error instanceof ApiError ? error.message : t("attachmentDeleteFailed"));
+            if (mountedRef.current) setActionError(apiErrorMessage(toError(error), t("attachmentDeleteFailed"), t("serverError")));
         } finally {
             finishOperation();
         }
@@ -185,7 +200,7 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
 
             if (mountedRef.current) window.location.assign(result.download_url);
         } catch (error) {
-            if (mountedRef.current) setActionError(error instanceof ApiError ? error.message : t("attachmentDownloadFailed"));
+            if (mountedRef.current) setActionError(apiErrorMessage(toError(error), t("attachmentDownloadFailed"), t("serverError")));
         } finally {
             finishOperation();
         }
@@ -224,7 +239,7 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
             )}
             {loadError && (
                 <div role="alert" className="flex items-center justify-between gap-3 rounded-sm border border-destructive/30 p-3 text-sm text-destructive">
-                    <span>{loadError instanceof ApiError ? loadError.message : t("fetchError")}</span>
+                    <span>{apiErrorMessage(loadError, t("fetchError"), t("serverError"))}</span>
                     <Button variant="outline" size="sm" disabled={busy || loading} onClick={() => void refresh()}>{t("attachmentRetry")}</Button>
                 </div>
             )}
@@ -238,6 +253,7 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
                             {failure.cleanup === "unresolved" && <p className="text-muted-foreground">{t("attachmentUnresolved")}</p>}
                         </div>
                     ))}
+                    <Button variant="outline" size="sm" disabled={busy || loading} onClick={() => { setFailures([]); void refresh(); }}>{t("attachmentRetry")}</Button>
                 </div>
             )}
             {loading && items.length === 0 ? (
@@ -256,7 +272,7 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
                                 <TableHead>{t("attachmentName")}</TableHead><TableHead>{t("attachmentSize")}</TableHead>
                                 <TableHead>{t("attachmentDate")}</TableHead><TableHead className="text-right">{t("attachmentActions")}</TableHead>
                             </TableRow></TableHeader>
-                            <TableBody>{items.map((item) => (
+                            <TableBody>{newestFirst(items).map((item) => (
                                 <TableRow key={item.id}>
                                     <TableCell className="max-w-[360px]">
                                         <p className="break-words font-medium">{item.nome_file}</p>
@@ -265,13 +281,13 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
                                         )}
                                     </TableCell>
                                     <TableCell className="whitespace-nowrap font-mono text-xs">{sizeLabel(item.dimensione_bytes, language)}</TableCell>
-                                    <TableCell className="whitespace-nowrap font-mono text-xs">{formatDate(item.data_caricamento ?? item.data_creazione)}</TableCell>
+                                    <TableCell className="whitespace-nowrap font-mono text-xs">{uploadedLabel(item, language)}</TableCell>
                                     <TableCell><div className="flex justify-end gap-1">
                                         <Button size="icon" className="h-11 w-11" variant="ghost" disabled={busy || item.stato !== "caricato"}
                                             aria-label={`${t("attachmentDownload")}: ${item.nome_file}`} onClick={() => void handleDownload(item)}>
                                             {operation.kind === "download" && operation.id === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                                         </Button>
-                                        <Button size="icon" className="h-11 w-11" variant="ghost" disabled={busy} aria-label={`${t("attachmentDelete")}: ${item.nome_file}`}
+                                        <Button size="icon" variant="ghost" className="h-11 w-11 text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} aria-label={`${t("attachmentDelete")}: ${item.nome_file}`}
                                             onClick={() => { setActionError(null); setDeleteTarget(item); }}><Trash2 className="h-4 w-4" /></Button>
                                     </div></TableCell>
                                 </TableRow>
@@ -285,11 +301,16 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
                     <AlertDialogHeader><AlertDialogTitle>{t("attachmentDeleteTitle")}</AlertDialogTitle>
                         <AlertDialogDescription>{t("attachmentDeleteDescription")}</AlertDialogDescription>
                     </AlertDialogHeader>
-                    <p className="break-all text-sm font-medium">{deleteTarget?.nome_file}</p>
+                    {deleteTarget && (
+                        <div className="text-sm">
+                            <p className="break-all font-medium">{deleteTarget.nome_file}</p>
+                            <p className="mt-1 font-mono text-xs text-muted-foreground">{uploadedLabel(deleteTarget, language)}</p>
+                        </div>
+                    )}
                     {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={busy}>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction disabled={busy} onClick={(event) => { event.preventDefault(); void handleDelete(); }}>
+                        <AlertDialogAction disabled={busy} className={buttonVariants({ variant: "destructive" })} onClick={(event) => { event.preventDefault(); void handleDelete(); }}>
                             {operation.kind === "delete" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t("attachmentDelete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>

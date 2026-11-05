@@ -20,7 +20,6 @@ export interface Agent {
     agente_padre: string | null;
     mail: string | null;
     statistiche: boolean | null;
-    percentuale_provvigione_figlio: number | null;
 }
 
 export interface RuleConfiguration {
@@ -36,6 +35,23 @@ export interface RuleConfigurationResponse {
     agente_id: number;
     nome_agente: string;
     configurazione: RuleConfiguration[];
+}
+
+// valore is the sub-agent's own commission, shown read-only next to the parent's share.
+export interface ParentRuleConfiguration {
+    regola_id: number;
+    regola_nome: string;
+    scaglione_id: number | null;
+    scaglione_nome: string;
+    valore: number;
+    valore_padre: number;
+}
+
+export interface ParentRuleConfigurationResponse {
+    agente_id: number;
+    nome_agente: string;
+    agente_padre: string;
+    configurazione: ParentRuleConfiguration[];
 }
 
 export interface Settlement {

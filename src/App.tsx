@@ -42,11 +42,11 @@ function AuthenticatedApp() {
     const [previousTab, setPreviousTab] = useState(activeTab);
 
     const [settingsOpen, setSettingsOpen] = useState(false);
-    const agents = useAgents();
-    const rules = useRules();
-    const tiers = useTiers();
-    const orders = useOrders();
     const calculation = useCalculation();
+    const agents = useAgents({ onChanged: calculation.invalidateAll });
+    const rules = useRules({ onChanged: calculation.invalidateAll });
+    const tiers = useTiers({ onChanged: calculation.invalidateAll });
+    const orders = useOrders();
     const pendingOrders = usePendingOrders();
 
     // Checked during render so header clicks and the browser's back button both count as leaving Provvigioni.
@@ -173,6 +173,7 @@ function AuthenticatedApp() {
                                 ordersImporting={orders.importing}
                                 ordersProgress={orders.progress}
                                 ordersResult={orders.result}
+                                ordersError={orders.error}
                                 onOrdersUpload={handleOrdersUpload}
                                 settlements={settlements}
                                 pendingOrders={pendingOrders.orders}
