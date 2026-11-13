@@ -40,15 +40,15 @@ function csvDate(isoDate: string | null): string {
 }
 
 // The backend returns the agent's own sales and, for a parent, only its share of each child sale under the child's name.
-function unpaidReportRow(item: CommissionData, agentKey: string): (string | number | null)[] {
+function unpaidReportRow(item: CommissionData, agentKey: string, sellerName: (seller: string) => string): (string | number | null)[] {
     const origin = normalizeName(item.venditore) === agentKey ? "Vendita diretta" : "Provvigione figlio";
 
-    const row = commissionToRow({ ...item, comp_al: csvDate(item.comp_al) });
+    const row = commissionToRow({ ...item, venditore: sellerName(item.venditore), comp_al: csvDate(item.comp_al) });
 
     return [...row, origin];
 }
 
-export function useUnpaidInvoiceRequests() {
+export function useUnpaidInvoiceRequests(sellerName: (seller: string) => string) {
     const { toast } = useToast();
     const { t } = useTranslation();
 
@@ -126,7 +126,7 @@ export function useUnpaidInvoiceRequests() {
 
                 const csv = toCsv(
                     UNPAID_REPORT_HEADERS,
-                    response.dati_provvigione.map((item) => unpaidReportRow(item, agentKey)),
+                    response.dati_provvigione.map((item) => unpaidReportRow(item, agentKey, sellerName)),
                     { delimiter: ";", decimal: "," },
                 );
 
@@ -149,7 +149,7 @@ export function useUnpaidInvoiceRequests() {
                 setLoading(false);
             }
         },
-        [loading, t, toast],
+        [loading, sellerName, t, toast],
     );
 
     return {

@@ -1,7 +1,7 @@
 import { uniqueToken, type SettlementRow } from "./support/backend";
 import { recordApiWrites } from "./support/network";
 import { expect, test } from "./support/test";
-import { attachWorkbook, openSettlements, pickMonth } from "./support/ui";
+import { attachWorkbook, openSettlements } from "./support/ui";
 
 // Covers docs/frontend-calcolo-refactor/test-guides/02-liquidation-import-and-deletion.md.
 const MONTH = "2031-07";
@@ -349,37 +349,17 @@ test.describe("liquidation import and deletion", () => {
         expect(await backend.storedPeriodEnds(MONTH)).toEqual(["2031-06-30", "2031-07-28"]);
     });
 
-    test("should refuse the file and import it after the month is changed when its latest Comp. al is in another month", async ({ page, backend }) => {
-        const fileMonth = "2031-06";
-
+    test("should import the file into the chosen month when its latest Comp. al is in another month", async ({ page, backend }) => {
         await backend.claimMonth(MONTH);
-        await backend.claimMonth(fileMonth);
         await page.goto("/");
 
         const token = uniqueToken();
-        const fileName = `giugno-${token}.xlsx`;
         const dialog = await openSettlements(page, MONTH);
 
-        await attachWorkbook(dialog, fileMonth, fileName, sellerRows(token, 2, 991_000));
-
-        const writes = recordApiWrites(page);
-
-        await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
-
-        await expect(dialog.getByRole("alert")).toHaveText(
-            "L'ultima data Comp. al del file è in 06/2031, ma il mese scelto è 07/2031. Scegli il mese del file e importa di nuovo.",
-        );
-        expect(writes).toEqual([]);
-
-        await pickMonth(page, dialog.getByRole("group", { name: "Mese di competenza" }), fileMonth);
-
-        await expect(dialog.getByRole("alert")).toHaveCount(0);
-        await expect(dialog.getByText(fileName)).toBeVisible();
-
+        await attachWorkbook(dialog, "2031-06", `giugno-${token}.xlsx`, sellerRows(token, 2, 991_000));
         await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
 
         await expect(dialog.getByRole("status")).toContainText("2 record elaborati · Importazione completata. Inserite 2 righe.");
-        expect(await backend.storedUnmatchedRows(MONTH)).toBe(0);
-        expect(await backend.storedUnmatchedRows(fileMonth)).toBe(2);
+        expect(await backend.storedPeriodEnds(MONTH)).toEqual(["2031-06-28", "2031-06-28"]);
     });
 });

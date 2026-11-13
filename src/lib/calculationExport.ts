@@ -26,7 +26,11 @@ function roundCents(value: number): number {
     return Math.round(value * 100) / 100;
 }
 
-export async function buildPreviewZip(month: string, draft: CalculationDraft): Promise<ZipDownload> {
+export async function buildPreviewZip(
+    month: string,
+    draft: CalculationDraft,
+    sellerName: (seller: string) => string,
+): Promise<ZipDownload> {
     const workbooks: AgentWorkbook[] = draft.agents
         .filter((agent) => agent.included)
         .map((agent) => {
@@ -37,7 +41,7 @@ export async function buildPreviewZip(month: string, draft: CalculationDraft): P
                     throw new Error(`Agent ${agent.agente_id} row ${row.id} has an invalid amount: "${row.amountText}"`);
                 }
 
-                return { ...row.detail, importo_provvigione: amount };
+                return { ...row.detail, venditore: row.detail.venditore && sellerName(row.detail.venditore), importo_provvigione: amount };
             });
 
             const total = roundCents(rows.reduce((sum, row) => sum + row.importo_provvigione, 0));
@@ -48,7 +52,11 @@ export async function buildPreviewZip(month: string, draft: CalculationDraft): P
     return { blob: await zipAgentWorkbooks(month, workbooks), filename: `anteprima-provvigioni-${month}.zip` };
 }
 
-export async function buildSavedZip(snapshot: ConfirmationSnapshot, results: ConfirmationResult[]): Promise<ZipDownload> {
+export async function buildSavedZip(
+    snapshot: ConfirmationSnapshot,
+    results: ConfirmationResult[],
+    sellerName: (seller: string) => string,
+): Promise<ZipDownload> {
     const saved = results.filter((result): result is SavedConfirmationResult => result.salvato);
 
     const workbooks = await Promise.all(
@@ -59,7 +67,9 @@ export async function buildSavedZip(snapshot: ConfirmationSnapshot, results: Con
                 const details = await getInvoiceRequestDetails(result.invito_id);
 
                 // Rows and total come from the same response, so an invite changed since the save never mixes new rows with an old total.
-                return { agentId: result.agente_id, agentName, rows: details.dati, total: details.totale_invito };
+                const rows = details.dati.map((row) => ({ ...row, venditore: row.venditore && sellerName(row.venditore) }));
+
+                return { agentId: result.agente_id, agentName, rows, total: details.totale_invito };
             } catch (error) {
                 throw new SavedInviteDetailError(result.invito_id, result.agente_id, error);
             }

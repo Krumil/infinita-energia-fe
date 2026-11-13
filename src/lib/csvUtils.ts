@@ -22,7 +22,8 @@ function escapeCsvCell(value: CsvCell, delimiter: string, decimal: string): stri
     }
 
     const text = textCell.safeParse(value);
-    const str = text.success ? text.data : formatNumber(Number(value), decimal);
+    // A leading quote makes Excel show imported text that starts like a formula instead of evaluating it. Numbers keep their sign.
+    const str = text.success ? text.data.replace(/^[=+\-@\t\r]/, "'$&") : formatNumber(Number(value), decimal);
     const needsQuoting = str.includes(delimiter) || /["\r\n]/.test(str);
 
     if (!needsQuoting) {

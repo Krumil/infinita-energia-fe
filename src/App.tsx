@@ -40,6 +40,8 @@ function AuthenticatedApp() {
 
     const [activeTab, setActiveTab] = useState<string>("dashboard");
     const [previousTab, setPreviousTab] = useState(activeTab);
+    // Set when Provvigioni opens Inviti on a confirmed month; Inviti mounts on each visit and reads it as its starting filter.
+    const [invitesFocus, setInvitesFocus] = useState<{ month: string; inviteId?: number } | null>(null);
 
     const [settingsOpen, setSettingsOpen] = useState(false);
     const calculation = useCalculation();
@@ -54,6 +56,9 @@ function AuthenticatedApp() {
         setPreviousTab(activeTab);
 
         if (previousTab === "provvigioni") calculation.clearConfirmedPreview();
+
+        // A later visit from the header shows the usual filters, not the month opened from Provvigioni.
+        if (previousTab === "inviti") setInvitesFocus(null);
     }
 
     const settlements = useSettlements({
@@ -62,7 +67,11 @@ function AuthenticatedApp() {
             void pendingOrders.refreshOrders();
         },
         onImported: (hasNewRules) => {
+            // The import can add tiers without adding rules, and its message is the only signal, so reload them every time.
+            void tiers.loadTiers();
+
             if (!hasNewRules) return;
+
             void rules.loadRules();
             toast({ title: t("newRulesCreated"), description: t("newRulesCreatedDesc") });
         },
@@ -99,6 +108,14 @@ function AuthenticatedApp() {
         if (window.location.hash !== `#${value}`) window.location.hash = value;
     }, []);
 
+    const handleOpenInvites = useCallback(
+        (month: string, inviteId?: number) => {
+            setInvitesFocus({ month, inviteId });
+            handleTabChange("inviti");
+        },
+        [handleTabChange],
+    );
+
     const handleOrdersUpload = async (files: File[]) => {
         const action = await orders.handleUpload(files);
 
@@ -132,6 +149,7 @@ function AuthenticatedApp() {
                                 dialogOpen={agents.dialogOpen}
                                 onDialogOpenChange={agents.setDialogOpen}
                                 editingAgent={agents.editingAgent}
+                                parentLinked={agents.parentLinked}
                                 saving={agents.saving}
                                 deleting={agents.deleting}
                                 onRefresh={agents.loadAgents}
@@ -176,6 +194,7 @@ function AuthenticatedApp() {
                                 ordersError={orders.error}
                                 onOrdersUpload={handleOrdersUpload}
                                 settlements={settlements}
+                                agents={agents.agents}
                                 pendingOrders={pendingOrders.orders}
                                 pendingOrdersLoading={pendingOrders.loading}
                                 pendingOrdersError={pendingOrders.error}
@@ -208,6 +227,7 @@ function AuthenticatedApp() {
                                 onPreview={calculation.requestPreview}
                                 onConfirm={calculation.confirmDraft}
                                 onNavigate={handleTabChange}
+                                onOpenInvites={handleOpenInvites}
                             />
                         </TabsContent>
 
@@ -215,6 +235,8 @@ function AuthenticatedApp() {
                             <InvoiceRequestsTab
                                 agents={agents.agents}
                                 agentsLoading={agents.loading}
+                                focusMonth={invitesFocus?.month}
+                                focusInviteId={invitesFocus?.inviteId}
                             />
                         </TabsContent>
                     </Tabs>

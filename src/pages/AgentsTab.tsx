@@ -10,6 +10,7 @@ interface AgentsTabProps {
     dialogOpen: boolean;
     onDialogOpenChange: (open: boolean) => void;
     editingAgent: Agent | null;
+    parentLinked: boolean;
     saving: boolean;
     deleting: boolean;
     onRefresh: () => void;
@@ -30,6 +31,7 @@ export function AgentsTab({
     dialogOpen,
     onDialogOpenChange,
     editingAgent,
+    parentLinked,
     saving,
     deleting,
     onRefresh,
@@ -85,6 +87,7 @@ export function AgentsTab({
                 open={dialogOpen}
                 onOpenChange={onDialogOpenChange}
                 agent={editingAgent}
+                parentLinked={parentLinked}
                 agents={agents}
                 rules={rules}
                 tiers={tiers}

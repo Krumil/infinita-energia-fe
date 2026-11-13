@@ -1,6 +1,6 @@
 export const attachmentsEn = {
     attachmentTitle: "Attachments",
-    attachmentHelp: "Invoices and supporting documents. Up to 50 MB per file.",
+    attachmentHelp: "Invoices and supporting documents. Up to 20 MB per file.",
     attachmentAdd: "Add",
     attachmentAddFile: "Add attachment",
     attachmentView: "View attachments",
@@ -34,7 +34,7 @@ export const attachmentsEn = {
 
 export const attachmentsIt: Record<keyof typeof attachmentsEn, string> = {
     attachmentTitle: "Allegati",
-    attachmentHelp: "Fatture e documenti di supporto. Massimo 50 MB per file.",
+    attachmentHelp: "Fatture e documenti di supporto. Massimo 20 MB per file.",
     attachmentAdd: "Aggiungi",
     attachmentAddFile: "Aggiungi allegato",
     attachmentView: "Visualizza allegati",

@@ -7,6 +7,8 @@ export const parentValuesEn = {
     parentValue: "Parent value",
     parentValuesNeedParent: "This agent has no parent agent. Select one and save to set the parent values.",
     parentValuesNewParent: "Save the new parent to edit its values",
+    parentLinkedNotice:
+        "{parent} is now the parent agent. Check the parent values, or prefill them from a percentage, and press Save: the parent earns nothing on a rule whose value is 0.",
     invalidValuesCount: "Invalid: {count}",
     agentDialogDescription: "Agent details and commission values",
     parentValuesEmpty: "No active rules to configure.",
@@ -29,6 +31,8 @@ export const parentValuesIt: Record<keyof typeof parentValuesEn, string> = {
     parentValue: "Valore padre",
     parentValuesNeedParent: "Questo agente non ha un agente padre. Selezionane uno e salva per configurare i valori padre.",
     parentValuesNewParent: "Salva il nuovo padre per modificare i suoi valori",
+    parentLinkedNotice:
+        "{parent} è ora l'agente padre. Controlla i valori padre, o precompilali da una percentuale, e premi Salva: su una regola con valore 0 il padre non matura nulla.",
     invalidValuesCount: "Non validi: {count}",
     agentDialogDescription: "Dati dell'agente e valori provvigionali",
     parentValuesEmpty: "Nessuna regola attiva da configurare.",

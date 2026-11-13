@@ -28,8 +28,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { UseSettlementsResult } from "@/hooks/useLiquidazioni";
 import { exportPendingOrdersExcel } from "@/lib/exportUtils";
-import { formatDate, matchesSearch } from "@/lib/utils";
-import type { ImportExcelResponse, ExcludedOrder, PendingOrder } from "@/types";
+import { formatDate, matchesSearch, sellerNameLookup } from "@/lib/utils";
+import type { Agent, ImportExcelResponse, ExcludedOrder, PendingOrder } from "@/types";
 import { z } from "zod";
 
 interface OrdersTabProps {
@@ -39,6 +39,7 @@ interface OrdersTabProps {
     ordersError: string | null;
     onOrdersUpload: (files: File[]) => void;
     settlements: UseSettlementsResult;
+    agents: Agent[];
     pendingOrders: PendingOrder[];
     pendingOrdersLoading: boolean;
     pendingOrdersError: string | null;
@@ -247,6 +248,7 @@ export function OrdersTab({
     ordersError,
     onOrdersUpload,
     settlements,
+    agents,
     pendingOrders,
     pendingOrdersLoading,
     pendingOrdersError,
@@ -321,12 +323,19 @@ export function OrdersTab({
         return sortDirection === "asc" ? "ascending" : "descending";
     };
 
+    // Swapped before filtering so the table, its sort and the export all use the name the operator typed.
+    const namedOrders = useMemo(() => {
+        const sellerName = sellerNameLookup(agents);
+
+        return pendingOrders.map((order) => (order.agente ? { ...order, agente: sellerName(order.agente) } : order));
+    }, [agents, pendingOrders]);
+
     const processedOrders = useMemo(() => {
-        const byStatus = effectiveStatus === ALL_STATUSES ? pendingOrders : pendingOrders.filter((order) => order.stato === effectiveStatus);
+        const byStatus = effectiveStatus === ALL_STATUSES ? namedOrders : namedOrders.filter((order) => order.stato === effectiveStatus);
         const filtered = byStatus.filter((order) => isSignedWithin(order, startDate, endDate));
 
         return sortOrders(filterOrders(filtered, filterQuery), sortField, sortDirection);
-    }, [pendingOrders, effectiveStatus, startDate, endDate, filterQuery, sortField, sortDirection]);
+    }, [namedOrders, effectiveStatus, startDate, endDate, filterQuery, sortField, sortDirection]);
 
     const processedExcludedOrders = useMemo(
         () => sortExcludedOrders(filterExcludedOrders(excludedOrders, filterQuery)),

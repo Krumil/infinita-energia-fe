@@ -81,9 +81,6 @@ const en = {
     rulesActiveSuffix: "active",
     invalidDefaultValue: "Enter a valid number, for example 2,50.",
     confirmRuleChangeDetail: "{rule}: {field} from {old} to {new}.",
-    confirmTierTypeTitle: "Change the tier type?",
-    confirmTierTypeDescription:
-        "{tier}: {field} from {old} to {new}. Agent values for the rules that are no longer compatible with this tier are deleted. For the rules that now have a compatible tier, the Valore Fisso rows of every agent are deleted too, custom values and parent values included. If you change the type back, these rows come back with the default value.",
     ruleNeedsCustomerType: "Set a user type to activate this rule.",
     scaglioni: "Scaglioni",
     importScaglioni: "Import Scaglioni",
@@ -318,9 +315,6 @@ const it: TranslationTable = {
     rulesActiveSuffix: "attive",
     invalidDefaultValue: "Inserisci un numero valido, per esempio 2,50.",
     confirmRuleChangeDetail: "{rule}: {field} da {old} a {new}.",
-    confirmTierTypeTitle: "Cambiare il tipo dello scaglione?",
-    confirmTierTypeDescription:
-        "{tier}: {field} da {old} a {new}. I valori degli agenti per le regole non più compatibili con questo scaglione vengono eliminati. Per le regole che ora hanno uno scaglione compatibile, vengono eliminate anche le righe Valore Fisso di tutti gli agenti, compresi i valori personalizzati e i valori padre. Se rimetti il tipo precedente, queste righe tornano con il valore predefinito.",
     ruleNeedsCustomerType: "Imposta il tipo utenza per attivare questa regola.",
     scaglioni: "Scaglioni",
     importScaglioni: "Importa Scaglioni",

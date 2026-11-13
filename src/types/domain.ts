@@ -17,7 +17,11 @@ export interface Tier {
 export interface Agent {
     id: number;
     nome_cognome: string;
+    // The words of nome_cognome in alphabetical order: the key agente_padre points to.
+    nome_normalizzato: string;
     agente_padre: string | null;
+    // The parent's nome_cognome, null when no agent has the agente_padre key.
+    agente_padre_nome: string | null;
     mail: string | null;
     statistiche: boolean | null;
 }

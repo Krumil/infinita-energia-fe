@@ -319,21 +319,6 @@
         box-shadow: var(--ledger-card-shadow);
     }
 
-    .ledger-card::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 3px;
-        height: 100%;
-        background: transparent;
-        transition: background-color 0.3s ease;
-    }
-
-    .ledger-card:hover::before {
-        background: hsl(var(--energia-accent));
-    }
-
     .ledger-card:hover {
         @apply border-border;
         box-shadow: var(--ledger-card-hover-shadow);
@@ -502,19 +487,6 @@
         @apply bg-card border rounded-sm;
         border-color: hsl(var(--border) / 0.5);
         box-shadow: var(--dialog-shadow);
-    }
-
-    .dialog-ledger::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: hsl(var(--energia-accent));
-        border-radius: inherit;
-        border-bottom-left-radius: 0;
-        border-bottom-right-radius: 0;
     }
 
     /* ═══════════════════════════════════════════════════════════════════════

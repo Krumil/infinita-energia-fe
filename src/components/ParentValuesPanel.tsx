@@ -145,7 +145,7 @@ export function ParentValuesPanel({ agent, agentEdits, edits, onEditsChange }: P
             <div className="space-y-4">
                 <p className="font-body text-sm text-muted-foreground">
                     {t("parentValuesDescription")
-                        .replace("{parent}", agent.agente_padre ?? "")
+                        .replace("{parent}", agent.agente_padre_nome ?? "")
                         .replace("{agent}", agent.nome_cognome)}
                 </p>
                 <div className="flex items-end gap-3">

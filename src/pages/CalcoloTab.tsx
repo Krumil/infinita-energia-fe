@@ -1,4 +1,4 @@
-import { memo, useId, useMemo, useState, type ReactElement } from "react";
+import { memo, useId, useMemo, useRef, useState, type ReactElement } from "react";
 import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, FileSpreadsheet, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +22,7 @@ import type { ConfirmationState, LoadedPreview, PreviewState } from "@/hooks/use
 import { summarizeDraft, type DraftActions, type DraftSummary } from "@/lib/calculationDraft";
 import { buildPreviewZip } from "@/lib/calculationExport";
 import { formatMonthLabel } from "@/lib/competenceDates";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, sellerNameLookup } from "@/lib/utils";
 import type { Agent, Rule } from "@/types";
 
 interface CalculationTabProps {
@@ -36,6 +36,7 @@ interface CalculationTabProps {
     onPreview: () => void;
     onConfirm: () => void;
     onNavigate: (tab: string) => void;
+    onOpenInvites: (month: string, inviteId?: number) => void;
 }
 
 type DiscardTarget = { kind: "month"; month: string } | { kind: "recalculate" };
@@ -52,27 +53,37 @@ export const CalculationTab = memo(function CalculationTab({
     onPreview,
     onConfirm,
     onNavigate,
+    onOpenInvites,
 }: CalculationTabProps): ReactElement {
     const { t, language } = useTranslation();
     const confirmReasonId = useId();
     const [discardTarget, setDiscardTarget] = useState<DiscardTarget | null>(null);
+    const monthButtonRef = useRef<HTMLButtonElement>(null);
+    const previewButtonRef = useRef<HTMLButtonElement>(null);
+    const discardOpenerRef = useRef<HTMLButtonElement | null>(null);
     const loading = preview.status === "loading";
     const submitting = confirmation.status === "submitting";
     const dirty = preview.status === "ready" && preview.draft.dirty;
+    const stale = preview.status === "ready" && preview.stale;
 
     const draft = preview.status === "ready" ? preview.draft : preview.status === "loading" ? (preview.previous?.draft ?? null) : null;
     const summary = useMemo(() => (draft ? summarizeDraft(draft) : null), [draft]);
+    const sellerName = useMemo(() => sellerNameLookup(agents), [agents]);
 
     const handleMonthChange = (nextMonth: string): void => {
         if (nextMonth === month) return;
 
-        if (dirty) setDiscardTarget({ kind: "month", month: nextMonth });
-        else onMonthChange(nextMonth);
+        if (dirty) {
+            discardOpenerRef.current = monthButtonRef.current;
+            setDiscardTarget({ kind: "month", month: nextMonth });
+        } else onMonthChange(nextMonth);
     };
 
     const handlePreview = (): void => {
-        if (dirty) setDiscardTarget({ kind: "recalculate" });
-        else onPreview();
+        if (dirty) {
+            discardOpenerRef.current = previewButtonRef.current;
+            setDiscardTarget({ kind: "recalculate" });
+        } else onPreview();
     };
 
     const handleDiscard = (): void => {
@@ -95,8 +106,9 @@ export const CalculationTab = memo(function CalculationTab({
     const outcome = confirmation.status !== "idle" && (
         <ConfirmationOutcome
             confirmation={confirmation}
+            sellerName={sellerName}
             changedAfterSave={confirmation.status === "done" && dirty}
-            onOpenInvites={() => onNavigate("inviti")}
+            onOpenInvites={onOpenInvites}
         />
     );
 
@@ -130,8 +142,9 @@ export const CalculationTab = memo(function CalculationTab({
                         label={t("exportPreviewAction")}
                         note={t("exportPreviewNote")}
                         hideNote
-                        disabled={loading || shownSummary.includedAgents === 0 || shownSummary.invalidIncludedRows > 0}
-                        build={() => buildPreviewZip(shownMonth, shown.draft)}
+                        disabled={loading || stale || shownSummary.includedAgents === 0 || shownSummary.invalidIncludedRows > 0}
+                        disabledReasonId={confirmReasonId}
+                        build={() => buildPreviewZip(shownMonth, shown.draft, sellerName)}
                         describeError={() => t("exportFailed")}
                     />
                     <AlertDialog>
@@ -236,7 +249,7 @@ export const CalculationTab = memo(function CalculationTab({
                             >
                                 <span className="flex items-center gap-2">
                                     <AlertTriangle className="h-4 w-4 shrink-0" />
-                                    {t("previewStale")}
+                                    {emptyPreview ? t("previewStaleEmpty") : t("previewStale")}
                                 </span>
                                 <Button variant="outline" size="sm" className="shrink-0" disabled={submitting} onClick={handlePreview}>
                                     {t("previewRecalculate")}
@@ -278,13 +291,14 @@ export const CalculationTab = memo(function CalculationTab({
 
             <div role="group" aria-label={t("previewMonthLabel")} className="flex items-center gap-2">
                 <MonthPicker
+                    ref={monthButtonRef}
                     value={month}
                     onChange={handleMonthChange}
                     placeholder={t("selectPeriod")}
                     className="h-9 min-w-0 flex-1 sm:w-[200px] sm:flex-none"
                     disabled={submitting}
                 />
-                <Button size="sm" onClick={handlePreview} disabled={!month || loading || submitting} className="btn-primary h-9 shrink-0 py-0">
+                <Button ref={previewButtonRef} size="sm" onClick={handlePreview} disabled={!month || loading || submitting} className="btn-primary h-9 shrink-0 py-0">
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
                     {t("previewAction")}
                 </Button>
@@ -299,7 +313,14 @@ export const CalculationTab = memo(function CalculationTab({
             {!resultsShown && outcome}
 
             <AlertDialog open={discardTarget !== null} onOpenChange={(open) => !open && setDiscardTarget(null)}>
-                <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
+                <AlertDialogContent
+                    className="max-w-[calc(100vw-2rem)] sm:max-w-lg"
+                    onCloseAutoFocus={(event) => {
+                        // Radix returns focus to what was focused on open, which for a month change is a button of the closed month popover.
+                        event.preventDefault();
+                        discardOpenerRef.current?.focus();
+                    }}
+                >
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("previewDiscardTitle")}</AlertDialogTitle>
                         <AlertDialogDescription>

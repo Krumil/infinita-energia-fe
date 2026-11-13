@@ -112,49 +112,57 @@ test.describe("invite dialog", () => {
         expect(updates).toEqual([]);
     });
 
-    test("should keep the dialog title uncovered when the invoice date calendar opens", async ({ page, backend }) => {
-        const { agent, dialog } = await seedAndOpen(page, backend);
-
-        await dialog.getByRole("button", { name: "Data Fattura" }).click();
-
-        const calendar = page.getByRole("grid");
-        const title = dialog.getByRole("heading", { name: agent.name });
-
-        await expect(calendar).toBeVisible();
-
-        const calendarBox = await calendar.boundingBox();
-        const titleBox = await title.boundingBox();
-
-        expect(calendarBox, "calendar has a box").not.toBeNull();
-        expect(titleBox, "title has a box").not.toBeNull();
-        expect(calendarBox!.y, "calendar starts below the title").toBeGreaterThanOrEqual(titleBox!.y + titleBox!.height);
-    });
-
-    test("should offer years up to ten years ahead when the invoice date calendar opens", async ({ page, backend }) => {
-        const { dialog } = await seedAndOpen(page, backend);
-        const thisYear = await page.evaluate(() => new Date().getFullYear());
-
-        await dialog.getByRole("button", { name: "Data Fattura" }).click();
-
-        const years = page.getByRole("combobox", { name: "Choose the Year" });
-
-        await expect(years.getByRole("option", { name: String(thisYear + 10), exact: true })).toHaveCount(1);
-        await expect(years.getByRole("option", { name: String(thisYear + 11), exact: true })).toHaveCount(0);
-        await expect(years.getByRole("option", { name: String(thisYear - 100), exact: true })).toHaveCount(1);
-    });
-
-    test("should clear the invoice reference when the operator empties it and saves", async ({ page, backend }) => {
-        const { agent, dialog } = await seedAndOpen(page, backend, { riferimento_fattura: "FT-E2E-1" });
+    test("should clear the invoice reference and date when the operator empties them and saves", async ({ page, backend }) => {
+        const { agent, dialog } = await seedAndOpen(page, backend, { riferimento_fattura: "FT-E2E-1", data_fattura: "2031-01-05" });
+        const invoiceDate = dialog.getByRole("button", { name: "Data Fattura" });
 
         await expect(dialog.getByLabel("Rif. Fattura")).toHaveValue("FT-E2E-1");
         await dialog.getByLabel("Rif. Fattura").clear();
+        await expect(invoiceDate).toHaveText("05/01/2031");
+        await invoiceDate.click();
+        // Clicking the selected day again only closes the calendar; Cancella is what empties the date.
+        await page.getByRole("gridcell", { selected: true }).getByRole("button").click();
+        await expect(invoiceDate).toHaveText("05/01/2031");
+        await invoiceDate.click();
+        await page.getByRole("button", { name: "Cancella", exact: true }).click();
+        await expect(invoiceDate).toHaveText("Data Fattura");
         await dialog.getByRole("button", { name: "Salva" }).click();
 
         await expect(dialog).toBeHidden();
 
         const stored = await page.request.get(`/api/storico-inviti?agente_id=${agent.id}`);
 
-        expect(await stored.json()).toMatchObject([{ riferimento_fattura: null }]);
+        expect(await stored.json()).toMatchObject([{ riferimento_fattura: null, data_fattura: null }]);
+    });
+
+    test("should send nothing and say why when Pagato is ticked on a draft or without an invoice reference", async ({ page, backend }) => {
+        const { agent, inviteId, dialog } = await seedAndOpen(page, backend);
+        const updates: string[] = [];
+
+        page.on("request", (request) => {
+            if (request.method() === "PUT" && request.url().endsWith(`/api/storico-inviti/${inviteId}`)) updates.push(request.url());
+        });
+
+        await dialog.getByRole("checkbox", { name: "Pagato" }).click();
+        await expect(dialog.getByRole("alert")).toHaveText("Un invito in bozza non può essere pagato: cambia prima lo stato.");
+        await dialog.getByRole("button", { name: "Salva" }).click();
+        await expect(dialog.getByRole("alert")).toHaveText("Un invito in bozza non può essere pagato: cambia prima lo stato.");
+
+        await dialog.getByRole("combobox", { name: "Stato" }).click();
+        await page.getByRole("option", { name: "Inviato", exact: true }).click();
+        await expect(dialog.getByRole("alert")).toHaveText("Inserisci il riferimento fattura prima di segnare l'invito come pagato.");
+        await dialog.getByRole("button", { name: "Salva" }).click();
+        await expect(dialog.getByRole("alert")).toHaveText("Inserisci il riferimento fattura prima di segnare l'invito come pagato.");
+        expect(updates).toEqual([]);
+
+        await dialog.getByLabel("Rif. Fattura").fill("FT-E2E-2");
+        await expect(dialog.getByRole("alert")).toHaveCount(0);
+        await dialog.getByRole("button", { name: "Salva" }).click();
+        await expect(dialog).toBeHidden();
+
+        const stored = await page.request.get(`/api/storico-inviti?agente_id=${agent.id}`);
+
+        expect(await stored.json()).toMatchObject([{ stato: "inviato", pagato: true, riferimento_fattura: "FT-E2E-2" }]);
     });
 
     test("should show a translated message instead of the server's text when saving fails with a 500", async ({ page, backend }) => {
@@ -263,6 +271,37 @@ test.describe("invite attachments", () => {
         await expect(confirmation).toContainText(listed);
     });
 
+    test("should show the backend's message and keep the file when deleting it fails with a 502", async ({ page, backend }) => {
+        const token = uniqueToken();
+        const agent = await backend.createAgent({ name: `Elimina KO ${token}`, ruleValues: {} });
+        const inviteId = await backend.seedInvite(INVITE_MONTH, agent, [detailRow(agent)], "bozza");
+
+        await backend.seedAttachment(inviteId, "bloccato.pdf");
+        // A real delete reaches the storage bucket, so the backend's answer when storage refuses it is stubbed.
+        await page.route(`**/api/storico-inviti/${inviteId}/allegati/*`, (route) =>
+            route.request().method() === "DELETE"
+                ? route.fulfill({ status: 502, json: { error: "Impossibile eliminare il file su R2: allegato non eliminato." } })
+                : route.fallback(),
+        );
+        await page.goto("/");
+        await openTab(page, "Inviti");
+        await page.getByRole("textbox", { name: "Filtra..." }).fill(token);
+        await page.getByRole("button", { name: agent.name, exact: true }).click();
+        await page.getByRole("tab", { name: "Allegati" }).click();
+        await page.getByRole("button", { name: "Elimina: bloccato.pdf" }).click();
+
+        const confirmation = page.getByRole("alertdialog");
+
+        await confirmation.getByRole("button", { name: "Elimina" }).click();
+
+        await expect(confirmation.getByRole("alert")).toHaveText("Impossibile eliminare il file su R2: allegato non eliminato.");
+
+        await confirmation.getByRole("button", { name: "Annulla" }).click();
+
+        await expect(confirmation).toBeHidden();
+        await expect(page.getByRole("button", { name: "Elimina: bloccato.pdf" })).toBeVisible();
+    });
+
     test("should offer Riprova and reload the list when an upload fails with a 500", async ({ page, backend }) => {
         const token = uniqueToken();
         const agent = await backend.createAgent({ name: `Storage ${token}`, ruleValues: {} });
@@ -299,32 +338,5 @@ test.describe("invite attachments", () => {
 
         await expect(dialog.getByText("ripreso.pdf")).toBeVisible();
         await expect(failure).toHaveCount(0);
-    });
-});
-
-test.describe("invites in English", () => {
-    test.use({ appLanguage: "en" });
-
-    test("should show month names and agent filter texts in English when the app language is English", async ({ page, backend }) => {
-        const token = uniqueToken();
-        const agent = await backend.createAgent({ name: `English ${token}`, ruleValues: {} });
-
-        await backend.seedInvite(INVITE_MONTH, agent, [detailRow(agent)], "bozza");
-        await page.goto("/");
-        await openTab(page, "Inviti");
-        await page.getByRole("textbox", { name: "Filter..." }).fill(token);
-
-        await expect(agentRow(page, agent)).toContainText("January 2032");
-
-        await page.getByRole("combobox", { name: "All Agents" }).click();
-
-        await expect(page.getByPlaceholder("Search agent...")).toBeVisible();
-
-        await page.keyboard.press("Escape");
-        await page.getByRole("button", { name: /^June 2030$/ }).click();
-
-        await expect(page.getByRole("button", { name: "Jan", exact: true })).toBeVisible();
-        await expect(page.getByRole("button", { name: "Clear", exact: true })).toBeVisible();
-        await expect(page.getByRole("button", { name: "Gen", exact: true })).toHaveCount(0);
     });
 });

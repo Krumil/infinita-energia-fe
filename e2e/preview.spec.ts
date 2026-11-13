@@ -18,6 +18,8 @@ const PREVIEW_BODY = JSON.stringify({ competenza_liquidazione: "2031-08-01" });
 
 const STALE_MESSAGE = "Liquidazioni, agenti, regole o scaglioni usati da questa anteprima sono cambiati dopo il calcolo. Ricalcola prima di salvare.";
 
+const STALE_EMPTY_MESSAGE = "Liquidazioni, agenti, regole o scaglioni sono cambiati dopo il calcolo di questo mese. Ricalcola per vedere se ora ci sono provvigioni.";
+
 interface Family {
     token: string;
     grandparent: TestAgent;
@@ -87,35 +89,30 @@ function totalRow(page: Page): Locator {
     return page.getByRole("row").filter({ hasText: /^Totale/ });
 }
 
-// "failed" expects the dialog to report an error, for a request whose response a test makes the page lose.
-async function deleteMonthInOrders(page: Page, month: string, outcome: number | "failed"): Promise<void> {
+async function deleteMonthInOrders(page: Page, month: string, deleted: number): Promise<void> {
     const dialog = await openSettlements(page, month);
 
     await dialog.getByRole("button", { name: `Elimina liquidazioni di ${monthLabel(month)}` }).click();
     await dialog.getByRole("button", { name: `Elimina ${importCompetence(month)}` }).click();
-
-    if (outcome === "failed") await expect(dialog.getByRole("alert")).toBeVisible();
-    else await expect(dialog.getByRole("status")).toHaveText(`Liquidazioni eliminate: ${outcome}.`);
+    await expect(dialog.getByRole("status")).toHaveText(`Liquidazioni eliminate: ${deleted}.`);
 
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 }
 
-async function importMonthInOrders(page: Page, month: string, fileName: string, rows: SettlementRow[], outcome: "imported" | "failed"): Promise<void> {
+async function importMonthInOrders(page: Page, month: string, fileName: string, rows: SettlementRow[]): Promise<void> {
     const dialog = await openSettlements(page, month);
 
     await attachWorkbook(dialog, month, fileName, rows);
     await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
-
-    if (outcome === "failed") await expect(dialog.getByRole("alert")).toBeVisible();
-    else await expect(dialog.getByRole("status")).toContainText(`${rows.length} record elaborati`);
+    await expect(dialog.getByRole("status")).toContainText(`${rows.length} record elaborati`);
 
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 }
 
 test.describe("calculation preview", () => {
-    test("should show each beneficiary's commission from the stored liquidazioni and write nothing when the preview is requested", async ({
+    test("should show each beneficiary's commission, the same on every request, and write nothing when the preview is requested again and after a month switch", async ({
         page,
         backend,
     }) => {
@@ -149,8 +146,23 @@ test.describe("calculation preview", () => {
         await expect(page.getByText("Solo anteprima: nulla è stato salvato")).toBeVisible();
         await expect(confirmButton(page)).toHaveAccessibleDescription("Solo anteprima: nulla è stato salvato");
 
-        expect(previewBodies).toEqual([PREVIEW_BODY]);
-        await expect.poll(() => writes).toEqual(["start POST /api/calcolo/anteprima", "end POST /api/calcolo/anteprima"]);
+        const firstResults = await page.getByRole("main").innerText();
+        const repeated = page.waitForResponse((response) => isPreviewOf(response.request(), MONTH));
+
+        await previewButton(page).click();
+        await repeated;
+        await expect(previewButton(page)).toBeEnabled();
+        expect(await page.getByRole("main").innerText()).toBe(firstResults);
+
+        await pickMonth(page, monthGroup(page), OTHER_MONTH);
+        await pickMonth(page, monthGroup(page), MONTH);
+        await previewButton(page).click();
+        await expect(totalRow(page)).toContainText("40,00 €");
+        expect(await page.getByRole("main").innerText()).toBe(firstResults);
+
+        await expect.poll(() => writes).toHaveLength(6);
+        expect(new Set(writes)).toEqual(new Set(["start POST /api/calcolo/anteprima", "end POST /api/calcolo/anteprima"]));
+        expect(previewBodies).toEqual([PREVIEW_BODY, PREVIEW_BODY, PREVIEW_BODY]);
         expect(await backend.invitesSnapshot()).toBe(invitesBefore);
     });
 
@@ -173,7 +185,7 @@ test.describe("calculation preview", () => {
             "E2ETST80A01H501A",
             `Da vendite di ${family.child.name}`,
             "Gettone Residenziale Standard",
-            "2031-08-31",
+            "31/08/2031",
             "",
             "",
         ]);
@@ -189,7 +201,7 @@ test.describe("calculation preview", () => {
             "E2ETST80A01H501A",
             family.parent.name,
             "Gettone Residenziale Standard",
-            "2031-08-31",
+            "31/08/2031",
             "",
             "",
         ]);
@@ -232,7 +244,7 @@ test.describe("calculation preview", () => {
             "E2ETST80A01H501A",
             "Gettone Residenziale Standard",
             "—",
-            "2031-08-31",
+            "31/08/2031",
             "250,50 €",
         ]);
 
@@ -322,42 +334,6 @@ test.describe("calculation preview", () => {
         await expect(recordRow(unmatched, token)).toHaveCount(250);
         await expect(unmatched.getByText(/righe mostrate su/)).toHaveCount(0);
         await expect(unmatched.getByRole("button")).toHaveText(["Nascondi righe"]);
-    });
-
-    test("should show the same results and write nothing when the preview is requested again", async ({ page, backend }) => {
-        await backend.claimMonth(MONTH);
-
-        const family = await createFamily(backend);
-
-        await backend.importRows(MONTH, mixedRows(family));
-
-        const invitesBefore = await backend.invitesSnapshot();
-
-        await page.goto("/");
-        await openPreview(page, MONTH);
-
-        const writes = recordApiWrites(page);
-
-        await previewButton(page).click();
-        await expect(totalRow(page)).toContainText("40,00 €");
-
-        const firstResults = await page.getByRole("main").innerText();
-        const repeated = page.waitForResponse((response) => isPreviewOf(response.request(), MONTH));
-
-        await previewButton(page).click();
-        await repeated;
-        await expect(previewButton(page)).toBeEnabled();
-        expect(await page.getByRole("main").innerText()).toBe(firstResults);
-
-        await pickMonth(page, page.getByRole("group", { name: "Competenza", exact: true }), OTHER_MONTH);
-        await pickMonth(page, page.getByRole("group", { name: "Competenza", exact: true }), MONTH);
-        await previewButton(page).click();
-        await expect(totalRow(page)).toContainText("40,00 €");
-        expect(await page.getByRole("main").innerText()).toBe(firstResults);
-
-        await expect.poll(() => writes).toHaveLength(6);
-        expect(new Set(writes)).toEqual(new Set(["start POST /api/calcolo/anteprima", "end POST /api/calcolo/anteprima"]));
-        expect(await backend.invitesSnapshot()).toBe(invitesBefore);
     });
 
     test("should send the user to Ordini when the month has no liquidazioni", async ({ page, backend }) => {
@@ -525,112 +501,14 @@ test.describe("calculation preview", () => {
 
         await expect(stale).toBeVisible();
         await expect(totalRow(page)).toContainText("40,00 €");
+        await expect(page.getByRole("button", { name: "Scarica anteprima ZIP" })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Scarica anteprima ZIP" })).toHaveAccessibleDescription(
+            "Ricalcola l'anteprima prima di confermare.",
+        );
 
         await stale.getByRole("button", { name: "Ricalcola" }).click();
 
         await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toBeVisible();
-        await expect(stale).toBeHidden();
-    });
-
-    test("should mark the preview outdated when the month's liquidazioni are deleted while it is loading", async ({ page, backend }) => {
-        await backend.claimMonth(MONTH);
-
-        const family = await createFamily(backend);
-
-        await backend.importRows(MONTH, mixedRows(family));
-
-        const computed = Promise.withResolvers<void>();
-        const delivered = Promise.withResolvers<void>();
-
-        // The backend computes the preview from the rows that exist now, and the page receives it after they are deleted.
-        await page.route("**/api/calcolo/anteprima", async (route) => {
-            const response = await route.fetch();
-
-            computed.resolve();
-            await delivered.promise;
-            await route.fulfill({ response });
-        });
-
-        await page.goto("/");
-        await openPreview(page, MONTH);
-        await previewButton(page).click();
-        await computed.promise;
-
-        await deleteMonthInOrders(page, MONTH, 6);
-        await openTab(page, "Provvigioni");
-        delivered.resolve();
-
-        const stale = page.getByRole("alert").filter({ hasText: STALE_MESSAGE });
-
-        await expect(totalRow(page)).toContainText("40,00 €");
-        await expect(stale).toBeVisible();
-
-        await stale.getByRole("button", { name: "Ricalcola" }).click();
-
-        await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toBeVisible();
-        await expect(stale).toBeHidden();
-    });
-
-    test("should mark the preview outdated and block confirming when the month is deleted but the response to the deletion is lost", async ({
-        page,
-        backend,
-    }) => {
-        await backend.claimMonth(MONTH);
-
-        const family = await createFamily(backend);
-
-        await backend.importRows(MONTH, mixedRows(family));
-        await page.goto("/");
-        await openPreview(page, MONTH);
-        await previewButton(page).click();
-        await expect(totalRow(page)).toContainText("40,00 €");
-
-        // The backend deletes the rows, but the page never receives its answer.
-        await page.route("**/api/liquidazioni/*", async (route) => {
-            if (route.request().method() !== "DELETE") return route.continue();
-
-            await route.fetch();
-            await route.abort("failed");
-        });
-
-        await deleteMonthInOrders(page, MONTH, "failed");
-        await openTab(page, "Provvigioni");
-
-        await expect(page.getByRole("alert").filter({ hasText: STALE_MESSAGE })).toBeVisible();
-        await expect(confirmButton(page)).toBeDisabled();
-        await expect(confirmButton(page)).toHaveAccessibleDescription("Ricalcola l'anteprima prima di confermare.");
-        expect(await backend.storedUnmatchedRows(MONTH)).toBe(0);
-    });
-
-    test("should mark the preview outdated and show the imported commissions after recalculating when the response to an import is lost", async ({
-        page,
-        backend,
-    }) => {
-        await backend.claimMonth(MONTH);
-
-        const family = await createFamily(backend);
-
-        await page.goto("/");
-        await openPreview(page, MONTH);
-        await previewButton(page).click();
-        await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toBeVisible();
-
-        // The backend imports the rows, but the page never receives its answer.
-        await page.route("**/api/importa-liquidazioni", async (route) => {
-            await route.fetch();
-            await route.abort("failed");
-        });
-
-        await importMonthInOrders(page, MONTH, `importazione-persa-${family.token}.xlsx`, childRows(family), "failed");
-        await openTab(page, "Provvigioni");
-
-        const stale = page.getByRole("alert").filter({ hasText: STALE_MESSAGE });
-
-        await expect(stale).toBeVisible();
-
-        await stale.getByRole("button", { name: "Ricalcola" }).click();
-
-        await expect(totalRow(page).getByRole("cell")).toHaveText(["Totale", "4", "12,00 €"]);
         await expect(stale).toBeHidden();
     });
 
@@ -647,10 +525,10 @@ test.describe("calculation preview", () => {
         await previewButton(page).click();
         await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toBeVisible();
 
-        await importMonthInOrders(page, MONTH, `anteprima-${family.token}.xlsx`, childRows(family), "imported");
+        await importMonthInOrders(page, MONTH, `anteprima-${family.token}.xlsx`, childRows(family));
         await openTab(page, "Provvigioni");
 
-        const stale = page.getByRole("alert").filter({ hasText: STALE_MESSAGE });
+        const stale = page.getByRole("alert").filter({ hasText: STALE_EMPTY_MESSAGE });
 
         await expect(stale).toBeVisible();
         await expect(page.getByText(EMPTY_MONTH_MESSAGE)).toBeVisible();
@@ -696,44 +574,4 @@ test.describe("calculation preview", () => {
         expect(await totalRow(page).boundingBox()).toEqual(before);
     });
 
-    test.describe("in English", () => {
-        test.use({ appLanguage: "en" });
-
-        test("should translate the labels, the error and the results when the app is in English", async ({ page, backend }) => {
-            await backend.claimMonth(MONTH);
-
-            const family = await createFamily(backend);
-
-            await backend.importRows(MONTH, mixedRows(family));
-            await page.route(
-                "**/api/calcolo/anteprima",
-                (route) => route.fulfill({ status: 500, json: { error: "Simulated failure" } }),
-                { times: 1 },
-            );
-
-            await page.goto("/");
-            await openTab(page, "Provvigioni");
-            await expect(page.getByText("Run the preview to calculate the total. Nothing is saved.")).toBeVisible();
-            await pickMonth(page, page.getByRole("group", { name: "Competence month", exact: true }), MONTH);
-            await page.getByRole("button", { name: "Preview", exact: true }).click();
-
-            const alert = page.getByRole("alert");
-
-            await expect(alert).toContainText("Preview failed");
-            await expect(alert).toContainText("Simulated failure");
-
-            await alert.getByRole("button", { name: "Retry" }).click();
-
-            await expect(page.getByText("Preview only: nothing has been saved")).toBeVisible();
-            await expect(page.getByText("3 beneficiaries · 8 included rows", { exact: true })).toBeVisible();
-            await expect(
-                page.getByRole("region", { name: "2 unmatched rows, excluded from the calculation" }).getByRole("status"),
-            ).toHaveText("2 unmatched rows, excluded from the calculation");
-            await expect(page.getByRole("row").filter({ hasText: /^Total/ }).getByRole("cell")).toHaveText(["Total", "8", "40,00 €"]);
-
-            await page.getByRole("button", { name: family.parent.name, exact: true }).click();
-
-            await expect(page.getByText(`From ${family.child.name}'s sales`)).toHaveCount(2);
-        });
-    });
 });

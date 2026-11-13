@@ -22,20 +22,20 @@ export function AgentsTable({ data, onEdit, onToggleStatistics }: AgentsTablePro
     const pageSize = 20;
 
     const parentOptions = useMemo(() => {
-        return Array.from(
-            new Set(
-                data
-                    .map((item) => item.agente_padre?.trim())
-                    .filter((value): value is string => Boolean(value)),
-            ),
-        )
-            .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }))
-            .map((value) => ({ value, label: value }));
+        const names = new Map<string, string>();
+
+        for (const item of data) {
+            if (item.agente_padre) names.set(item.agente_padre, item.agente_padre_nome ?? item.agente_padre);
+        }
+
+        return Array.from(names, ([value, label]) => ({ value, label })).sort((left, right) =>
+            left.label.localeCompare(right.label, undefined, { sensitivity: "base" }),
+        );
     }, [data]);
 
     const filtered = useMemo(() => {
         return data.filter((item) => {
-            const matchesText = matchesSearch(filter, [item.nome_cognome, item.agente_padre, item.mail]);
+            const matchesText = matchesSearch(filter, [item.nome_cognome, item.agente_padre_nome, item.mail]);
 
             const matchesParent = !parentFilter || item.agente_padre === parentFilter;
 
@@ -62,18 +62,15 @@ export function AgentsTable({ data, onEdit, onToggleStatistics }: AgentsTablePro
     const totalPages = Math.ceil(sorted.length / pageSize);
 
     const handleSort = useCallback((key: keyof Agent) => {
-        setSortKey((prev) => {
-            if (prev === key) {
-                setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        if (key === sortKey) {
+            setSortDir((d) => (d === "asc" ? "desc" : "asc"));
 
-                return prev;
-            }
+            return;
+        }
 
-            setSortDir("asc");
-
-            return key;
-        });
-    }, []);
+        setSortKey(key);
+        setSortDir("asc");
+    }, [sortKey]);
 
     return (
         <div className="space-y-6">
@@ -134,10 +131,10 @@ export function AgentsTable({ data, onEdit, onToggleStatistics }: AgentsTablePro
                                     <TooltipContent>{t("agentNameTooltip")}</TooltipContent>
                                 </Tooltip>
                             </TableHead>
-                            <TableHead aria-sort={sortKey === "agente_padre" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                            <TableHead aria-sort={sortKey === "agente_padre_nome" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button type="button" variant="unstyled" size="unstyled" className="flex justify-start whitespace-normal font-[inherit] font-normal text-[length:inherit] leading-[inherit] tracking-[inherit] uppercase hover:text-foreground [&_svg]:size-3" onClick={() => handleSort("agente_padre")}>
+                                        <Button type="button" variant="unstyled" size="unstyled" className="flex justify-start whitespace-normal font-[inherit] font-normal text-[length:inherit] leading-[inherit] tracking-[inherit] uppercase hover:text-foreground [&_svg]:size-3" onClick={() => handleSort("agente_padre_nome")}>
                                             {t("parentAgent")} <ArrowUpDown className="h-3 w-3 shrink-0" />
                                         </Button>
                                     </TooltipTrigger>
@@ -172,31 +169,26 @@ export function AgentsTable({ data, onEdit, onToggleStatistics }: AgentsTablePro
                             paginated.map((row) => (
                                 <TableRow key={row.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onEdit(row)}>
                                     <TableCell className="font-body font-medium overflow-hidden">
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    type="button"
-                                                    variant="unstyled"
-                                                    size="unstyled"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onEdit(row);
-                                                    }}
-                                                    className="block whitespace-normal text-left font-[inherit] font-medium line-clamp-2 leading-snug hover:underline"
-                                                >
-                                                    {row.nome_cognome}
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>{row.nome_cognome}</TooltipContent>
-                                        </Tooltip>
+                                        <Button
+                                            type="button"
+                                            variant="unstyled"
+                                            size="unstyled"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onEdit(row);
+                                            }}
+                                            className="block whitespace-normal text-left font-[inherit] font-medium line-clamp-2 leading-snug hover:underline"
+                                        >
+                                            {row.nome_cognome}
+                                        </Button>
                                     </TableCell>
                                     <TableCell className="text-muted-foreground overflow-hidden">
                                         {row.agente_padre ? (
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <span className="block line-clamp-2 leading-snug">{row.agente_padre}</span>
+                                                    <span className="block line-clamp-2 leading-snug">{row.agente_padre_nome ?? row.agente_padre}</span>
                                                 </TooltipTrigger>
-                                                <TooltipContent>{row.agente_padre}</TooltipContent>
+                                                <TooltipContent>{row.agente_padre_nome ?? row.agente_padre}</TooltipContent>
                                             </Tooltip>
                                         ) : (
                                             "—"

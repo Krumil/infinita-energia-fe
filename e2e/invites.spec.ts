@@ -1,6 +1,6 @@
 import type { Download, Locator, Page } from "@playwright/test";
 
-import { uniqueToken, type InviteDetail, type TestAgent } from "./support/backend";
+import { sellerKey, uniqueToken, type InviteDetail, type TestAgent } from "./support/backend";
 import { agentRow } from "./support/calculation";
 import { expect, test } from "./support/test";
 import { download, openTab } from "./support/ui";
@@ -13,9 +13,10 @@ function inviteMonth(offset: number): string {
     return `${FIRST_YEAR + Math.floor(offset / 12)}-${String((offset % 12) + 1).padStart(2, "0")}`;
 }
 
+// Saved rows keep the seller as the import's agent key, while the screens and files show the agent's typed name.
 function detailRow(agent: TestAgent, index: number): InviteDetail {
     return {
-        venditore: agent.name,
+        venditore: sellerKey(agent.name),
         comp_al: "2032-01-31",
         regola: "Gettone Residenziale Standard",
         importo_provvigione: 1,
@@ -50,7 +51,7 @@ test.describe("single invite workbook", () => {
         expect(file.suggestedFilename()).toBe(`${inviteMonth(0)}-${agent.name.split(" ").join("_")}-${agent.id}.xlsx`);
         expectWorkbook(
             await readWorkbook(file),
-            rows.map((row) => [row.cliente, row.cf_piva, row.pod_pdr, row.comp_al, row.regola, row.importo_provvigione, row.venditore]),
+            rows.map((row) => [row.cliente, row.cf_piva, row.pod_pdr, row.comp_al, row.regola, row.importo_provvigione, agent.name]),
             ["TOTALE", "", "", "", "", 3.5, ""],
         );
         await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -74,6 +75,54 @@ test.describe("single invite workbook", () => {
         await expect(page.getByText("Errore di lettura simulato", { exact: true })).toBeVisible();
         await expect(excelButton(page, agent)).toBeEnabled();
         expect(downloads).toEqual([]);
+    });
+});
+
+test.describe("invite list", () => {
+    test("should show the server error and list the invites after Riprova when the invite list fails to load", async ({ page, backend }) => {
+        const token = uniqueToken();
+        const agent = await backend.createAgent({ name: `Lista ${token}`, ruleValues: {} });
+
+        await backend.seedInvite(inviteMonth(0), agent, [detailRow(agent, 0)], "bozza");
+
+        const isList = (url: URL): boolean => url.pathname === "/api/storico-inviti";
+
+        // The backend can't fail the list on demand, so its answers are a server error until the retry.
+        await page.route(isList, (route) => route.fulfill({ status: 500, json: { error: "Errore di lettura simulato" } }));
+        await openInvites(page, token);
+
+        const failure = page.getByRole("alert").filter({ has: page.getByRole("button", { name: "Riprova" }) });
+
+        await expect(failure.getByText("Il server ha riscontrato un errore. Riprova tra poco.", { exact: true })).toBeVisible();
+        await expect(agentRow(page, agent)).toHaveCount(0);
+
+        await page.unroute(isList);
+        await failure.getByRole("button", { name: "Riprova" }).click();
+
+        await expect(agentRow(page, agent)).toBeVisible();
+        await expect(failure).toHaveCount(0);
+    });
+});
+
+test.describe("invite detail", () => {
+    test("should show the agent's typed name when a saved row's seller is the agent's key", async ({ page, backend }) => {
+        const token = uniqueToken();
+        const agent = await backend.createAgent({ name: `Venditore ${token}`, ruleValues: {} });
+        const outsider = `Esterno ${token}`;
+
+        await backend.seedInvite(inviteMonth(0), agent, [detailRow(agent, 0), { ...detailRow(agent, 1), venditore: outsider }], "bozza");
+        await openInvites(page, token);
+        await page.getByRole("button", { name: agent.name, exact: true }).click();
+
+        const dialog = page.getByRole("dialog", { name: agent.name });
+
+        await dialog.getByRole("tab", { name: "Dettaglio" }).click();
+
+        const detail = dialog.getByRole("region", { name: "Dettaglio invito" });
+
+        await expect(detail.getByRole("row", { name: new RegExp(`Cliente 000 ${agent.id}`) }).getByRole("cell").first()).toHaveText(agent.name);
+        // A seller who isn't one of our agents has no typed name, so the stored text stays.
+        await expect(detail.getByRole("row", { name: new RegExp(`Cliente 001 ${agent.id}`) }).getByRole("cell").first()).toHaveText(outsider);
     });
 });
 
@@ -151,5 +200,84 @@ test.describe("invite month filter", () => {
         await page.getByRole("button", { name: "Anno precedente" }).click();
 
         await expect(page.getByRole("combobox", { name: "Anno" })).toHaveValue("2044");
+    });
+});
+
+test.describe("invite agent filter", () => {
+    test("should list the last chosen agent's invites when an earlier agent's answer arrives later", async ({ page, backend }) => {
+        const token = uniqueToken();
+        const first = await backend.createAgent({ name: `Primo ${token}`, ruleValues: {} });
+        const second = await backend.createAgent({ name: `Secondo ${token}`, ruleValues: {} });
+
+        await backend.seedInvite(inviteMonth(0), first, [detailRow(first, 0)], "bozza");
+        await backend.seedInvite(inviteMonth(0), second, [detailRow(second, 0)], "bozza");
+
+        const forFirst = (url: URL): boolean => url.pathname === "/api/storico-inviti" && url.searchParams.get("agente_id") === String(first.id);
+        let release: () => void = () => undefined;
+
+        const released = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+
+        await page.route(forFirst, async (route) => {
+            await released;
+            await route.continue();
+        });
+
+        const choose = async (current: string, agent: TestAgent): Promise<void> => {
+            await page.getByRole("combobox", { name: current }).click();
+            await page.getByPlaceholder("Cerca agente...").fill(agent.name);
+            await page.getByRole("option", { name: agent.name, exact: true }).click();
+        };
+
+        await page.goto("/");
+        await openTab(page, "Inviti");
+        await choose("Tutti gli Agenti", first);
+        await choose(first.name, second);
+        await expect(agentRow(page, second)).toBeVisible();
+
+        const late = page.waitForResponse((response) => forFirst(new URL(response.url())));
+
+        release();
+        await (await late).finished();
+        // Two frames give React time to render the late answer, had it been accepted.
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
+        await expect(agentRow(page, second)).toBeVisible();
+        await expect(agentRow(page, first)).toHaveCount(0);
+    });
+});
+
+test.describe("invite row upload", () => {
+    test("should show a translated message instead of the storage status when the storage refuses the file with a 403", async ({ page, backend }) => {
+        const token = uniqueToken();
+        const agent = await backend.createAgent({ name: `Rifiuto ${token}`, ruleValues: {} });
+        const inviteId = await backend.seedInvite(inviteMonth(0), agent, [detailRow(agent, 0)], "bozza");
+        const storageUrl = `https://storage.e2e.invalid/${token}`;
+
+        // Both the upload URL and the storage answer are stubbed, so nothing reaches the real storage bucket.
+        await page.route(`**/api/storico-inviti/${inviteId}/allegati/upload-url`, (route) =>
+            route.fulfill({
+                json: {
+                    allegato_id: 41,
+                    chiave_oggetto: `e2e/${token}`,
+                    upload_url: storageUrl,
+                    metodo: "PUT",
+                    scadenza_secondi: 300,
+                    headers_richiesti: { "Content-Type": "application/pdf" },
+                    stato: "in_attesa",
+                },
+            }),
+        );
+        await page.route(storageUrl, (route) => route.fulfill({ status: 403, body: "denied" }));
+        await openInvites(page, token);
+
+        const chooser = page.waitForEvent("filechooser");
+
+        await agentRow(page, agent).getByRole("button", { name: /^Aggiungi allegato: / }).click();
+        await (await chooser).setFiles({ name: "fattura.pdf", mimeType: "application/pdf", buffer: Buffer.from("e2e") });
+
+        await expect(page.getByText("fattura.pdf: Impossibile caricare il file.", { exact: true })).toBeVisible();
+        await expect(page.getByText(/HTTP 403/)).toHaveCount(0);
     });
 });

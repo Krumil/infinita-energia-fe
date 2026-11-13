@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { Agent } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -25,6 +26,14 @@ export function formatCurrency(amount: number | null, currency: string = "EUR"):
 // Mirrors the backend's normalize_name: uppercase words sorted alphabetically, so "Rossi Mario" matches "MARIO ROSSI".
 export function normalizeName(name: string): string {
     return name.trim().toUpperCase().split(/\s+/).sort().join(" ");
+}
+
+// Orders and settlements store the seller as the backend's key, so screens and exports show the agent's typed name.
+// A seller who isn't one of our agents has no typed name and stays as the key.
+export function sellerNameLookup(agents: ReadonlyArray<Agent>): (seller: string) => string {
+    const names = new Map(agents.map((agent) => [agent.nome_normalizzato, agent.nome_cognome]));
+
+    return (seller) => names.get(normalizeName(seller)) ?? seller;
 }
 
 // Each query word can match anywhere, so "rossi mario" finds "MARIO ROSSI" after the backend reorders the words.

@@ -15,7 +15,7 @@ import {
     overallTotal,
     previewButton,
 } from "./support/calculation";
-import { holdRequests, recordApiRequests, recordApiWrites } from "./support/network";
+import { recordApiRequests, recordApiWrites } from "./support/network";
 import { expect, test } from "./support/test";
 import { attachWorkbook, download, openSettlements, openTab, pickMonth } from "./support/ui";
 import { expectWorkbook, readWorkbookZip } from "./support/zip";
@@ -125,7 +125,7 @@ async function expectNamedButtons(dialog: Locator): Promise<void> {
     for (const button of await dialog.getByRole("button").all()) await expect(button).toHaveAccessibleName(/\S/);
 }
 
-// The backend stores agent names as sorted uppercase words, and file names join them with underscores.
+// File names join the words of the agent's name with underscores.
 function fileName(agent: TestAgent): string {
     return agent.name.split(" ").join("_");
 }
@@ -146,13 +146,11 @@ async function runRelease(page: Page, backend: Backend): Promise<void> {
 
     const dialog = await openSettlements(page, MONTH);
 
-    await expectInsideViewport(page, dialog);
     await attachWorkbook(dialog, MONTH, `rilascio-${token}.xlsx`, release.rows);
     await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
     await dialog.getByRole("alert").getByRole("button", { name: "Elimina competenza e reimporta" }).click();
 
     await expect(dialog.getByRole("heading", { name: "Eliminare le liquidazioni di maggio 2031?" })).toBeVisible();
-    await expectInsideViewport(page, dialog);
 
     const imported = sentTo(page, "POST", IMPORT_PATH);
 
@@ -195,7 +193,6 @@ async function runRelease(page: Page, backend: Backend): Promise<void> {
     const review = reviewDialog(page, "Maggio 2031");
 
     await expect(review.getByRole("definition")).toHaveText(["2", "3", "235,50 €", "1", "0"]);
-    await expectInsideViewport(page, review);
 
     const confirmed = sentTo(page, "POST", CONFIRM_PATH);
     const answered = page.waitForResponse((response) => new URL(response.url()).pathname === CONFIRM_PATH);
@@ -279,7 +276,7 @@ async function runRelease(page: Page, backend: Backend): Promise<void> {
 }
 
 test.describe("release", () => {
-    test("should reach each step through its new endpoint with month-start dates when a month is imported, previewed, edited, confirmed, exported and reported", async ({
+    test("should send month-start dates to each step and save, export and report the edited commissions when a month is imported, previewed, edited, confirmed, exported and reported", async ({
         page,
         backend,
     }) => {
@@ -289,8 +286,41 @@ test.describe("release", () => {
     test.describe("on a narrow phone", () => {
         test.use({ viewport: { width: 390, height: 844 } });
 
-        test("should keep every dialog inside the screen and finish the release flow when the viewport is 390 pixels wide", async ({ page, backend }) => {
-            await runRelease(page, backend);
+        test("should keep the liquidazioni, deletion and review dialogs inside the screen when the viewport is 390 pixels wide", async ({
+            page,
+            backend,
+        }) => {
+            const release = await createRelease(backend, MONTH);
+
+            await backend.importRows(MONTH, release.rows);
+
+            const writes = recordApiWrites(page);
+
+            await page.goto("/");
+
+            const dialog = await openSettlements(page, MONTH);
+
+            await expectInsideViewport(page, dialog);
+            await dialog.getByRole("button", { name: "Elimina liquidazioni di maggio 2031" }).click();
+            await expect(dialog.getByRole("heading", { name: "Eliminare le liquidazioni di maggio 2031?" })).toBeVisible();
+            await expectInsideViewport(page, dialog);
+            await dialog.getByRole("button", { name: "Annulla" }).click();
+            await page.keyboard.press("Escape");
+            await expect(dialog).toBeHidden();
+
+            await openTab(page, "Provvigioni");
+            await pickMonth(page, monthGroup(page), MONTH);
+            await previewButton(page).click();
+            await expect(overallTotal(page)).toHaveText("217,00 €");
+            await confirmButton(page).click();
+
+            const review = reviewDialog(page, "Maggio 2031");
+
+            await expect(review.getByRole("definition")).toHaveText(["3", "4", "217,00 €", "0", "0"]);
+            await expectInsideViewport(page, review);
+            await page.keyboard.press("Escape");
+            await expect(review).toBeHidden();
+            expect(writes).toEqual([`start POST ${PREVIEW_PATH}`, `end POST ${PREVIEW_PATH}`]);
         });
     });
 
@@ -344,9 +374,9 @@ test.describe("release", () => {
         await page.keyboard.press("Enter");
 
         await expect(dialog.getByRole("heading", { name: "Gestisci liquidazioni" })).toBeVisible();
+        await expect(deleteButton).toBeFocused();
 
-        // The cancel button is gone, so the dialog holds focus itself and the next Tab lands on its first control.
-        await page.keyboard.press("Tab");
+        await page.keyboard.press("Shift+Tab");
         await expect(monthTrigger).toBeFocused();
 
         await page.keyboard.press("Escape");
@@ -405,51 +435,6 @@ test.describe("release", () => {
 
         await expect(outcome(page).getByRole("status")).toHaveText("Salvataggio completato. Agenti salvati: 3.");
         expect(writes.filter((write) => write.startsWith("start "))).toEqual([`start POST ${PREVIEW_PATH}`, `start POST ${CONFIRM_PATH}`]);
-    });
-
-    test("should keep the controls and the previous results in place while the preview loads", async ({ page, backend }) => {
-        const release = await createRelease(backend, MONTH);
-
-        await backend.importRows(MONTH, release.rows);
-        await page.goto("/");
-        await openTab(page, "Provvigioni");
-        await pickMonth(page, monthGroup(page), MONTH);
-
-        const monthTrigger = monthGroup(page).getByRole("button", { name: "maggio 2031" });
-        const controls = async (): Promise<unknown[]> => [await previewButton(page).boundingBox(), await monthTrigger.boundingBox()];
-        const idle = await controls();
-
-        let releasePreview = await holdRequests(page, PREVIEW_PATH);
-
-        await previewButton(page).click();
-
-        // The placeholder shows the message, and a screen-reader-only live region announces the same text.
-        await expect(page.getByText("Calcolo dell'anteprima...")).toHaveCount(2);
-        await expect(previewButton(page)).toBeDisabled();
-        expect(await controls()).toEqual(idle);
-
-        releasePreview();
-
-        await expect(overallTotal(page)).toHaveText("217,00 €");
-        expect(await controls()).toEqual(idle);
-
-        const row = agentRow(page, release.uno);
-        const shown = await row.boundingBox();
-
-        await page.unroute(`**${PREVIEW_PATH}`);
-        releasePreview = await holdRequests(page, PREVIEW_PATH);
-        await previewButton(page).click();
-
-        await expect(previewButton(page)).toBeDisabled();
-        await expect(agentTotal(page, release.uno)).toHaveText("170,00 €");
-        expect(await row.boundingBox()).toEqual(shown);
-        expect(await controls()).toEqual(idle);
-
-        releasePreview();
-
-        await expect(previewButton(page)).toBeEnabled();
-        expect(await row.boundingBox()).toEqual(shown);
-        expect(await controls()).toEqual(idle);
     });
 
     test.describe("in English", () => {

@@ -185,12 +185,8 @@ export function useDashboard(): UseDashboardResult {
                 if (!isMounted) return;
                 setOptions({ years, agents });
 
-                if (years.length > 0) {
-                    // The backend rejects years after the current one, so a future order year can't be the default.
-                    const notFuture = years.filter((year) => year <= new Date().getFullYear());
-
-                    setFilters({ year: notFuture.length > 0 ? Math.max(...notFuture) : years[0], monthFrom: 1, monthTo: null, agent: null });
-                }
+                // The backend lists years newest first and leaves out future ones, so the first is the default.
+                if (years.length > 0) setFilters({ year: years[0], monthFrom: 1, monthTo: null, agent: null });
             })
             .catch((cause: unknown) => {
                 if (!isMounted) return;

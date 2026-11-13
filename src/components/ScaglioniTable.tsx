@@ -1,15 +1,4 @@
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { useState } from "react";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Tier } from "@/types/domain";
@@ -25,30 +14,8 @@ interface TiersTableProps {
     onUpdateServiceType: (tier: Tier, value: "gas" | "luce" | null) => Promise<void>;
 }
 
-type PendingChange =
-    | { tier: Tier; field: "tipo_utenza"; value: z.infer<typeof customerTypeSchema> }
-    | { tier: Tier; field: "tipo_servizio"; value: z.infer<typeof serviceTypeSchema> | null };
-
 export function TiersTable({ tiers, onUpdateCustomerType, onUpdateServiceType }: TiersTableProps) {
     const { t } = useTranslation();
-    // Changing a type deletes agent values, so it is applied only after the user confirms.
-    const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
-
-    const confirmChange = (): void => {
-        if (!pendingChange) return;
-
-        if (pendingChange.field === "tipo_utenza") void onUpdateCustomerType(pendingChange.tier, pendingChange.value);
-        else void onUpdateServiceType(pendingChange.tier, pendingChange.value);
-
-        setPendingChange(null);
-    };
-
-    const changeDescription = (change: PendingChange): string =>
-        t("confirmTierTypeDescription")
-            .replace("{tier}", change.tier.descrizione)
-            .replace("{field}", t(change.field === "tipo_utenza" ? "tipoUtenza" : "tipoServizio"))
-            .replace("{old}", t(change.tier[change.field] ?? "typeNotSet"))
-            .replace("{new}", t(change.value ?? "typeNotSet"));
 
     return (
         <div className="border border-border/50 overflow-x-auto rounded-sm shadow-sm">
@@ -78,7 +45,7 @@ export function TiersTable({ tiers, onUpdateCustomerType, onUpdateServiceType }:
                                             const parsedValue = customerTypeSchema.safeParse(value);
 
                                             if (parsedValue.success) {
-                                                setPendingChange({ tier, field: "tipo_utenza", value: parsedValue.data });
+                                                void onUpdateCustomerType(tier, parsedValue.data);
                                             }
                                         }}
                                     >
@@ -96,7 +63,7 @@ export function TiersTable({ tiers, onUpdateCustomerType, onUpdateServiceType }:
                                         value={tier.tipo_servizio ?? ""}
                                         onValueChange={(value) => {
                                             if (value === "__none__") {
-                                                setPendingChange({ tier, field: "tipo_servizio", value: null });
+                                                void onUpdateServiceType(tier, null);
 
                                                 return;
                                             }
@@ -104,7 +71,7 @@ export function TiersTable({ tiers, onUpdateCustomerType, onUpdateServiceType }:
                                             const parsedValue = serviceTypeSchema.safeParse(value);
 
                                             if (parsedValue.success) {
-                                                setPendingChange({ tier, field: "tipo_servizio", value: parsedValue.data });
+                                                void onUpdateServiceType(tier, parsedValue.data);
                                             }
                                         }}
                                     >
@@ -123,19 +90,6 @@ export function TiersTable({ tiers, onUpdateCustomerType, onUpdateServiceType }:
                     )}
                 </TableBody>
             </Table>
-
-            <AlertDialog open={pendingChange !== null} onOpenChange={(open) => !open && setPendingChange(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t("confirmTierTypeTitle")}</AlertDialogTitle>
-                        <AlertDialogDescription>{pendingChange && changeDescription(pendingChange)}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmChange}>{t("confirm")}</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }

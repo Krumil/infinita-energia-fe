@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
-import { uniqueToken, type Backend, type InviteDetail, type RuleName, type SettlementRow, type TestAgent } from "./support/backend";
+import { sellerKey, uniqueToken, type Backend, type InviteDetail, type RuleName, type SettlementRow, type TestAgent } from "./support/backend";
 import {
     agentRow,
     agentTotal,
@@ -17,7 +17,7 @@ import {
 } from "./support/calculation";
 import { holdRequests, recordApiWrites } from "./support/network";
 import { expect, test } from "./support/test";
-import { openTab, pickMonth } from "./support/ui";
+import { monthLabel, openTab, pickMonth } from "./support/ui";
 
 // Covers docs/frontend-calcolo-refactor/test-guides/05-confirmation.md.
 const MONTH = "2031-12";
@@ -127,7 +127,7 @@ function fixtureRows(fixture: Fixture): SettlementRow[] {
 }
 
 function sentRow(agent: TestAgent, regola: RuleName, importo_provvigione: number, cliente: string, pod_pdr: string): InviteDetail {
-    return { venditore: agent.name, comp_al: COMP_AL, regola, importo_provvigione, pod_pdr, cliente, cf_piva: TAX_ID };
+    return { venditore: sellerKey(agent.name), comp_al: COMP_AL, regola, importo_provvigione, pod_pdr, cliente, cf_piva: TAX_ID };
 }
 
 // An invite that was saved before the test, with one row the preview doesn't contain.
@@ -196,14 +196,17 @@ function sortedConfirmation(body: SentConfirmation): SentConfirmation {
     };
 }
 
-// The cells an operator reads in the invite's Dettaglio tab, in the order they come from an InviteDetail.
+// The cells after the seller that an operator reads in the invite's Dettaglio tab, in the order they come from an InviteDetail.
 function detailCells(row: InviteDetail, amount: string): string[] {
     const [year, month, day] = row.comp_al.split("-");
 
-    return [row.venditore, `${day}/${month}/${year}`, row.regola, row.pod_pdr, row.cliente, row.cf_piva, amount];
+    return [`${day}/${month}/${year}`, row.regola, row.pod_pdr, row.cliente, row.cf_piva, amount];
 }
 
-async function expectInviteDetails(page: Page, agent: TestAgent, expected: string[][]): Promise<void> {
+// Every row in these invites is the agent's own sale, stored under the agent's key and shown with the typed name.
+async function expectInviteDetails(page: Page, agent: TestAgent, expectedAfterSeller: string[][]): Promise<void> {
+    const expected = expectedAfterSeller.map((cells) => [agent.name, ...cells]);
+
     await page.getByRole("button", { name: agent.name, exact: true }).click();
 
     const dialog = page.getByRole("dialog", { name: agent.name });
@@ -320,6 +323,7 @@ test.describe("commission confirmation", () => {
 
         await outcome(page).getByRole("button", { name: "Apri Inviti" }).click();
 
+        await expect(page.getByRole("button", { name: monthLabel(MONTH), exact: true })).toHaveCount(2);
         await expect(agentRow(page, fixture.uno).getByRole("cell").nth(1)).toHaveText(MONTH_LABEL);
         await expect(agentRow(page, fixture.uno).getByRole("cell").nth(2)).toHaveText("345,50 €");
         await expect(agentRow(page, fixture.uno).getByRole("cell").nth(3)).toHaveText("Bozza");
@@ -338,6 +342,29 @@ test.describe("commission confirmation", () => {
         const excludedInvites = await backend.invites(fixture.escluso);
 
         expect(excludedInvites.map((invite) => [invite.id, invite.totale_invito, invite.stato])).toEqual([[excludedInvite, 11, "bozza"]]);
+    });
+
+    test("should open that invite in Inviti on the confirmed month when its ID is clicked in the outcome", async ({ page, backend }) => {
+        const fixture = await createAndPreview(page, backend);
+        const response = page.waitForResponse((candidate) => candidate.url().endsWith(CONFIRM_PATH));
+
+        await confirmFromReview(page);
+
+        const { risultati }: { risultati: SavedResult[] } = await (await response).json();
+        const dueInvite = risultati.find((result) => result.agente_id === fixture.due.id)?.invito_id;
+
+        await outcome(page).getByRole("button", { name: `Apri invito #${dueInvite}` }).click();
+
+        const dialog = page.getByRole("dialog", { name: fixture.due.name });
+
+        await expect(dialog).toBeVisible();
+        await expect(dialog).toContainText("80,00 €");
+
+        await page.keyboard.press("Escape");
+
+        await expect(dialog).toBeHidden();
+        await expect(page.getByRole("button", { name: monthLabel(MONTH), exact: true })).toHaveCount(2);
+        await expect(agentRow(page, fixture.due).getByRole("cell").nth(1)).toHaveText(MONTH_LABEL);
     });
 
     test("should keep the outcome tied to the sent draft and replace the same invite without duplicates when the edited draft is confirmed again", async ({
@@ -472,7 +499,10 @@ test.describe("commission confirmation", () => {
         expect(await backend.invites(fixture.escluso)).toEqual([]);
     });
 
-    test("should send one write, lock the draft and show one outcome when the save button is double-clicked", async ({ page, backend }) => {
+    test("should send one write per save, lock the draft and show one outcome when the save button is double-clicked or Enter is pressed repeatedly", async ({
+        page,
+        backend,
+    }) => {
         const fixture = await createAndPreview(page, backend);
         const writes = recordApiWrites(page);
         const release = await holdRequests(page, CONFIRM_PATH);
@@ -499,13 +529,10 @@ test.describe("commission confirmation", () => {
         await expect(amountInputs(page, fixture.twinCustomer).first()).toBeEditable();
         await expect(confirmButton(page)).toBeEnabled();
         expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE]);
-        expect(await backend.invites(fixture.uno)).toHaveLength(1);
-    });
 
-    test("should send one write and show one outcome when Enter is pressed repeatedly on the save button", async ({ page, backend }) => {
-        const fixture = await createAndPreview(page, backend);
-        const writes = recordApiWrites(page);
-        const release = await holdRequests(page, CONFIRM_PATH);
+        await page.unroute(`**${CONFIRM_PATH}`);
+
+        const releaseAgain = await holdRequests(page, CONFIRM_PATH);
 
         await confirmButton(page).click();
         await saveButton(page).focus();
@@ -514,14 +541,15 @@ test.describe("commission confirmation", () => {
 
         await expect(outcome(page).getByRole("status")).toHaveText("Salvataggio in corso...");
         await expect(confirmButton(page)).toBeDisabled();
-        expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE]);
+        expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE, CONFIRM_WRITE]);
 
-        release();
+        releaseAgain();
 
         await expect(outcome(page).getByRole("status")).toHaveText("Salvataggio completato. Agenti salvati: 3.");
         await expect(outcome(page)).toHaveCount(1);
         await expect(reviewDialog(page)).toBeHidden();
-        expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE]);
+        expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE, CONFIRM_WRITE]);
+        // The second save replaces the draft invite instead of adding one.
         expect(await backend.invites(fixture.uno)).toHaveLength(1);
     });
 

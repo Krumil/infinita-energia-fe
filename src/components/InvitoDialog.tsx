@@ -28,6 +28,7 @@ interface EditFormData {
 interface InvoiceRequestDialogProps {
     initialTab?: "edit" | "attachments";
     invoiceRequest: InvoiceRequest | null;
+    sellerName: (seller: string) => string;
     saving: boolean;
     onSave: (id: number, data: UpdateInvoiceRequestPayload) => Promise<UpdateInvoiceRequestResult>;
     onClose: () => void;
@@ -51,11 +52,12 @@ function createEditForm(invoiceRequest: InvoiceRequest): EditFormData {
 
 interface DetailPanelProps {
     invoiceRequestId: number;
+    sellerName: (seller: string) => string;
     translations: InvoiceRequestsTranslations;
     language: string;
 }
 
-function DetailPanel({ invoiceRequestId, translations, language }: DetailPanelProps): ReactElement {
+function DetailPanel({ invoiceRequestId, sellerName, translations, language }: DetailPanelProps): ReactElement {
     const [detail, setDetail] = useState<InvoiceRequestDetailsResponse | null>(null);
     const [shownRows, setShownRows] = useState(ROWS_PAGE_SIZE);
     const [loading, setLoading] = useState(true);
@@ -112,7 +114,7 @@ function DetailPanel({ invoiceRequestId, translations, language }: DetailPanelPr
                 </div>
             ) : detail && detail.dati.length > 0 ? (
                 <div className="ledger-card max-h-[55dvh] overflow-auto">
-                    <Table className="min-w-[800px] [&_td]:whitespace-nowrap [&_td]:px-3 [&_td]:py-2 [&_th]:h-10 [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:text-xs">
+                    <Table className="[&_td]:px-3 [&_td]:py-2 [&_th]:h-10 [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:text-xs">
                         <TableHeader><TableRow>
                             <TableHead>{translations.seller}</TableHead>
                             <TableHead>{translations.competenceTo}</TableHead>
@@ -124,13 +126,13 @@ function DetailPanel({ invoiceRequestId, translations, language }: DetailPanelPr
                         </TableRow></TableHeader>
                         <TableBody>{detail.dati.slice(0, shownRows).map((row) => (
                             <TableRow key={row.id}>
-                                <TableCell>{row.venditore ?? "—"}</TableCell>
+                                <TableCell>{row.venditore ? sellerName(row.venditore) : "—"}</TableCell>
                                 <TableCell className="whitespace-nowrap">{formatDate(row.comp_al)}</TableCell>
                                 <TableCell>{row.regola ?? "—"}</TableCell>
                                 <TableCell>{row.pod_pdr ?? "—"}</TableCell>
                                 <TableCell>{row.cliente ?? "—"}</TableCell>
                                 <TableCell>{row.cf_piva ?? "—"}</TableCell>
-                                <TableCell className="text-right font-mono text-xs">{formatCurrency(row.importo_provvigione, language)}</TableCell>
+                                <TableCell className="whitespace-nowrap text-right font-mono text-xs">{formatCurrency(row.importo_provvigione, language)}</TableCell>
                             </TableRow>
                         ))}</TableBody>
                     </Table>
@@ -143,7 +145,7 @@ function DetailPanel({ invoiceRequestId, translations, language }: DetailPanelPr
     );
 }
 
-export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, initialTab = "edit" }: InvoiceRequestDialogProps): ReactElement | null {
+export function InvoiceRequestDialog({ invoiceRequest, sellerName, saving, onSave, onClose, initialTab = "edit" }: InvoiceRequestDialogProps): ReactElement | null {
     const { t, language } = useTranslation();
     const [activeTab, setActiveTab] = useState<DialogTab>(initialTab);
     const [detailVisited, setDetailVisited] = useState(false);
@@ -164,6 +166,11 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
     // ISO dates compare correctly as strings.
     const paymentBeforeInvoice = editForm.paid && !!editForm.paymentDate && !!editForm.invoiceDate && editForm.paymentDate < editForm.invoiceDate;
 
+    // Only a newly ticked Pagato is checked, so invites already saved as paid without an invoice can still be edited.
+    const paidError = editForm.paid && !invoiceRequest.pagato
+        ? editForm.status === "bozza" ? copy.paidDraft : !editForm.invoiceReference.trim() ? copy.paidWithoutInvoice : null
+        : null;
+
     const dismiss = (): void => {
         if (!saving && !saveRef.current && !attachmentBusyRef.current) onClose();
     };
@@ -171,7 +178,7 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
     const save = async (): Promise<void> => {
         if (saving || saveRef.current || attachmentBusyRef.current) return;
 
-        if (paymentBeforeInvoice) return;
+        if (paymentBeforeInvoice || paidError) return;
 
         saveRef.current = true;
         setLocalSaving(true);
@@ -180,11 +187,11 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
         try {
             const result = await onSave(invoiceRequest.id, {
                 stato: editForm.status,
-                // null clears the reference. The dates can't be cleared yet: the backend fails on null dates.
+                // null clears the field; an unpaid invite has its payment date cleared by the backend.
                 riferimento_fattura: editForm.invoiceReference || null,
-                data_fattura: editForm.invoiceDate || undefined,
+                data_fattura: editForm.invoiceDate || null,
                 pagato: editForm.paid,
-                data_pagamento: editForm.paid ? editForm.paymentDate || undefined : undefined,
+                data_pagamento: editForm.paid ? editForm.paymentDate || null : undefined,
             });
 
             if (result.ok) onClose();
@@ -255,6 +262,7 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
                                 <Checkbox id="invite-paid" disabled={busy} checked={editForm.paid} onCheckedChange={(checked) => setEditForm({ ...editForm, paid: checked === true, paymentDate: checked === true ? editForm.paymentDate : "" })} />
                                 <label htmlFor="invite-paid" className="cursor-pointer text-sm font-medium">{t("paid")}</label>
                             </div>
+                            {paidError && <p role="alert" className="text-sm text-destructive sm:col-span-2">{paidError}</p>}
                             {editForm.paid && (
                                 <div className="space-y-1.5">
                                     <label htmlFor="invite-payment-date" className="text-sm font-medium">{t("paymentDate")}</label>
@@ -266,7 +274,7 @@ export function InvoiceRequestDialog({ invoiceRequest, saving, onSave, onClose, 
                         {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
                     </TabsContent>
                     <TabsContent value="detail" forceMount className="mt-0 p-4 data-[state=inactive]:hidden sm:p-5">
-                        {detailVisited && <DetailPanel invoiceRequestId={invoiceRequest.id} translations={copy} language={language} />}
+                        {detailVisited && <DetailPanel invoiceRequestId={invoiceRequest.id} sellerName={sellerName} translations={copy} language={language} />}
                     </TabsContent>
                     <TabsContent value="attachments" forceMount className="mt-0 p-4 data-[state=inactive]:hidden sm:p-5">
                         <InvoiceRequestAttachments invoiceRequestId={invoiceRequest.id} active={activeTab === "attachments"} onBusyChange={(value) => {

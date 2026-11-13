@@ -1,7 +1,7 @@
 import type { InvoiceRequestAttachment, DownloadUrlResponse, UploadUrlResponse } from "@/types";
 import { ApiError, authFetch, getApiUrl, handleResponse } from "./client";
 
-export const ATTACHMENT_MAX_MB = 50;
+export const ATTACHMENT_MAX_MB = 20;
 
 export const ATTACHMENT_MAX_BYTES = ATTACHMENT_MAX_MB * 1024 * 1024;
 

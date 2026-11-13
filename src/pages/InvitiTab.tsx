@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { ATTACHMENT_ACCEPT, AttachmentValidationError, uploadAttachment } from "@/api/allegati";
 import { ApiError } from "@/api/client";
-import { getInvoiceRequestDetails } from "@/api/inviti";
+import { apiErrorMessage, getInvoiceRequestDetails } from "@/api/inviti";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { InvoiceRequestDialog } from "@/components/InvitoDialog";
 import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
 import { useTranslation } from "@/hooks/useTranslation";
-import { formatCurrency, formatDate, matchesSearch } from "@/lib/utils";
+import { formatCurrency, formatDate, matchesSearch, sellerNameLookup } from "@/lib/utils";
 import { formatMonthLabel } from "@/lib/competenceDates";
 import { downloadAgentWorkbook } from "@/lib/exportUtils";
 import { useInvoiceRequests } from "@/hooks/useInviti";
@@ -41,6 +41,8 @@ import type { Agent, InvoiceRequest, UpdateInvoiceRequestPayload } from "@/types
 interface InvoiceRequestsTabProps {
     agents: Agent[];
     agentsLoading: boolean;
+    focusMonth?: string;
+    focusInviteId?: number;
 }
 
 type SortField =
@@ -201,12 +203,14 @@ function sortInvoiceRequests(invoiceRequests: InvoiceRequest[], field: SortField
     });
 }
 
-export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
+export function InvoiceRequestsTab({ agents, focusMonth, focusInviteId }: InvoiceRequestsTabProps) {
     const { t, language } = useTranslation();
+    const sellerName = useMemo(() => sellerNameLookup(agents), [agents]);
 
     const {
         invoiceRequests,
         loading,
+        error: loadError,
         updating,
         filteredAgentId,
         setFilteredAgentId,
@@ -220,7 +224,7 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
         setEndDate,
         fetchInvoiceRequests,
         updateInvoiceRequest,
-    } = useInvoiceRequests();
+    } = useInvoiceRequests(focusMonth);
 
     const {
         selectionMode,
@@ -234,12 +238,20 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
         selectAgent,
         toggleInvoiceRequest,
         runCalculation,
-    } = useUnpaidInvoiceRequests();
+    } = useUnpaidInvoiceRequests(sellerName);
 
     const [filterQuery, setFilterQuery] = useState("");
     const [sortField, setSortField] = useState<SortField>("mese_competenza");
     const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
     const [editingInvoiceRequest, setEditingInvoiceRequest] = useState<InvoiceRequest | null>(null);
+    const [pendingInviteId, setPendingInviteId] = useState(focusInviteId);
+
+    // An invite opened from Provvigioni shows its detail once the first fetch has brought it into the list.
+    if (pendingInviteId !== undefined && !loading) {
+        setPendingInviteId(undefined);
+        setEditingInvoiceRequest(invoiceRequests.find((invoiceRequest) => invoiceRequest.id === pendingInviteId) ?? null);
+    }
+
     const [shownRows, setShownRows] = useState(ROWS_PAGE_SIZE);
 
     const [dialogInitialTab, setDialogInitialTab] = useState<"edit" | "attachments">("edit");
@@ -264,7 +276,7 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
 
                 const message = result.error instanceof AttachmentValidationError
                     ? t(result.error.reason === "size" ? "fileTooLarge" : "invalidFileType")
-                    : result.error instanceof ApiError ? result.error.message : t("attachmentUploadFailed");
+                    : apiErrorMessage(result.error, t("attachmentUploadFailed"), t("serverError"));
 
                 const cleanup = result.cleanup === "failed" ? t("attachmentCleanupFailed")
                     : result.cleanup === "unresolved" ? t("attachmentUnresolved") : "";
@@ -294,7 +306,7 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
             await downloadAgentWorkbook(invoiceRequest.mese_competenza.slice(0, 7), {
                 agentId: invoiceRequest.agente_id,
                 agentName: invoiceRequest.nome_agente,
-                rows: details.dati,
+                rows: details.dati.map((row) => ({ ...row, venditore: row.venditore && sellerName(row.venditore) })),
                 total: details.totale_invito,
             });
         } catch (error) {
@@ -695,6 +707,11 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
                 <div className="ledger-card flex flex-1 items-center justify-center py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
                 </div>
+            ) : loadError && invoiceRequests.length === 0 ? (
+                <div role="alert" className="ledger-card flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center text-sm text-destructive">
+                    <p>{loadError}</p>
+                    <Button variant="outline" size="sm" onClick={() => void fetchInvoiceRequests()}>{t("retry")}</Button>
+                </div>
             ) : invoiceRequests.length === 0 ? (
                 <div className="ledger-card flex flex-1 flex-col items-center justify-center py-16 text-center">
                     <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
@@ -902,6 +919,7 @@ export function InvoiceRequestsTab({ agents }: InvoiceRequestsTabProps) {
                 key={editingInvoiceRequest?.id ?? "closed"}
                 invoiceRequest={editingInvoiceRequest}
                 initialTab={dialogInitialTab}
+                sellerName={sellerName}
                 saving={updating === editingInvoiceRequest?.id}
                 onSave={handleSave}
                 onClose={() => setEditingInvoiceRequest(null)}

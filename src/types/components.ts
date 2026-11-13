@@ -20,6 +20,8 @@ export interface AgentDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     agent: Agent | null;
+    // The agent's parent was just linked, so the dialog opens on the parent values with a notice.
+    parentLinked: boolean;
     agents: Agent[];
     rules: Rule[];
     tiers: Tier[];

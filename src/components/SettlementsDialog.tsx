@@ -1,4 +1,4 @@
-import { useId, useState, type ReactElement } from "react";
+import { useId, useRef, useState, type ReactElement } from "react";
 import { CheckCircle, Loader2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,16 @@ export function SettlementsDialog({ open, onOpenChange, settlements, trigger }: 
     const [month, setMonth] = useState(() => settlements.preparedMonth ?? currentMonth());
     const [file, setFile] = useState<File | null>(null);
     const [deletion, setDeletion] = useState<DeletionDecision | null>(null);
+    // The edit view remounts when the confirmation is cancelled, so the button that opened it takes focus back as it mounts.
+    const refocusOnReturn = useRef<"delete" | "replace" | null>(null);
+
+    const refocus = (kind: "delete" | "replace") => (node: HTMLButtonElement | null): void => {
+        if (!node || refocusOnReturn.current !== kind) return;
+
+        refocusOnReturn.current = null;
+        node.focus();
+    };
+
     const { importing, state, result, preparedMonth, preparedFileName } = settlements;
 
     const monthLabel = (value: string): string => {
@@ -115,6 +125,7 @@ export function SettlementsDialog({ open, onOpenChange, settlements, trigger }: 
                             <div className="flex items-center gap-2">
                                 <MonthPicker value={month} onChange={changeMonth} placeholder={t("selectPeriod")} className="min-w-0 flex-1" disabled={importing} />
                                 <Button
+                                    ref={refocus("delete")}
                                     variant="outline"
                                     className="shrink-0 text-muted-foreground hover:text-destructive"
                                     disabled={!month || importing}
@@ -140,7 +151,7 @@ export function SettlementsDialog({ open, onOpenChange, settlements, trigger }: 
                             <div role="alert" className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
                                 <p className="text-destructive">{state.message}</p>
                                 {preparedMonth && (
-                                    <Button size="sm" variant="destructive" onClick={() => setDeletion({ month: preparedMonth, replace: true })}>
+                                    <Button ref={refocus("replace")} size="sm" variant="destructive" onClick={() => setDeletion({ month: preparedMonth, replace: true })}>
                                         {t("replaceSettlements")}
                                     </Button>
                                 )}
@@ -182,7 +193,10 @@ export function SettlementsDialog({ open, onOpenChange, settlements, trigger }: 
                 <DialogFooter className="mt-2 gap-2 sm:space-x-0">
                     {view === "confirm" && deletion && (
                         <>
-                            <Button autoFocus variant="outline" onClick={() => setDeletion(null)}>{t("cancel")}</Button>
+                            <Button autoFocus variant="outline" onClick={() => {
+                                refocusOnReturn.current = deletion.replace ? "replace" : "delete";
+                                setDeletion(null);
+                            }}>{t("cancel")}</Button>
                             <Button variant="destructive" disabled={importing} onClick={runDeletion}>
                                 {deletion.replace ? t("replaceSettlements") : t("deleteSettlementsConfirm").replace("{month}", monthToImportCompetence(deletion.month))}
                             </Button>

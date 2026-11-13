@@ -1,4 +1,4 @@
-import { uniqueToken, type Backend } from "./support/backend";
+import { sellerKey, uniqueToken, type Backend } from "./support/backend";
 import { expect, test } from "./support/test";
 import { openTab } from "./support/ui";
 
@@ -66,22 +66,21 @@ test.describe("pending orders", () => {
         await expect(dialog).toContainText(`${token}P1`);
     });
 
-    test("should keep the import button where it was when a file is chosen", async ({ page }) => {
+    test("should show the agent's typed name when an order's seller is stored as the agent's key", async ({ page, backend }) => {
+        const token = uniqueToken();
+        const agent = await backend.createAgent({ name: `Zeno ${token}`, ruleValues: {} });
+
+        await backend.seedOrders(token, [
+            { customer: `Alfa ${token}`, orderId: 990_001, signedOn: "2031-06-05", seller: sellerKey(agent.name) },
+            { customer: `Beta ${token}`, orderId: 990_002, signedOn: "2031-06-20" },
+        ]);
         await page.goto("/");
         await openTab(page, "Ordini");
-        await page.getByRole("button", { name: "Importa Ordini" }).click();
+        await page.getByPlaceholder("Cerca cliente, POD o agente…").fill(token);
 
-        const dialog = page.getByRole("dialog", { name: "Importa Ordini da Excel" });
-        const importButton = dialog.getByRole("button", { name: "Importa Ordini" });
-        const before = await importButton.boundingBox();
-
-        await dialog.locator('input[type="file"]').setInputFiles({
-            name: "ordini.xlsx",
-            mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            buffer: Buffer.from("not read"),
-        });
-
-        await expect(dialog.getByText("ordini.xlsx")).toBeVisible();
-        expect(await importButton.boundingBox()).toEqual(before);
+        await expect(page.getByRole("row", { name: new RegExp(`Alfa ${token}`) }).getByRole("cell", { name: agent.name, exact: true })).toBeVisible();
+        // A seller who isn't one of our agents has no typed name, so the stored text stays.
+        await expect(page.getByRole("row", { name: new RegExp(`Beta ${token}`) }).getByRole("cell", { name: `Agente ${token}`, exact: true })).toBeVisible();
     });
+
 });

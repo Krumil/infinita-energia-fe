@@ -29,6 +29,7 @@ export const confirmationEn = {
     confirmUnknownTitle: "Save outcome unknown",
     confirmUnknownDescription: "We don't know whether the save went through. Open Inviti and check before confirming again.",
     confirmOpenInvites: "Open Inviti",
+    confirmOpenInvite: "Open invite #{id}",
 } as const;
 
 export const confirmationIt = {
@@ -62,4 +63,5 @@ export const confirmationIt = {
     confirmUnknownTitle: "Esito del salvataggio sconosciuto",
     confirmUnknownDescription: "Non sappiamo se il salvataggio è avvenuto. Apri Inviti e controlla prima di confermare di nuovo.",
     confirmOpenInvites: "Apri Inviti",
+    confirmOpenInvite: "Apri invito #{id}",
 } as const;

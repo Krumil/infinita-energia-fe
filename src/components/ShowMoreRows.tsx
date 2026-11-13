@@ -10,6 +10,17 @@ interface ShowMoreRowsProps {
     onShowMore: (shown: number) => void;
 }
 
+// Checks for real overflow too, because an overflow-x wrapper also computes overflow-y to auto without scrolling vertically.
+function scrollContainer(element: HTMLElement): HTMLElement | null {
+    for (let node = element.parentElement; node; node = node.parentElement) {
+        const { overflowY } = getComputedStyle(node);
+
+        if ((overflowY === "auto" || overflowY === "scroll") && node.scrollHeight > node.clientHeight) return node;
+    }
+
+    return null;
+}
+
 /** Shows the next page once it scrolls into view, so it has to sit inside the table's scroll container. */
 export function ShowMoreRows({ shown, total, onShowMore }: ShowMoreRowsProps): ReactElement | null {
     const { t, language } = useTranslation();
@@ -21,9 +32,10 @@ export function ShowMoreRows({ shown, total, onShowMore }: ShowMoreRowsProps): R
 
         if (!element) return undefined;
 
+        // With the viewport as root, a container that runs past the bottom of the page would hide the sentinel until the page scrolls too.
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting) onShowMore(shown + ROWS_PAGE_SIZE);
-        });
+        }, { root: scrollContainer(element) });
 
         observer.observe(element);
 

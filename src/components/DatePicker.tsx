@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, type Ref } from "react";
 import { format } from "date-fns";
-import { enUS, it } from "date-fns/locale";
+// DayPicker's own locales carry translated aria-labels (previous and next month, days); the date-fns ones don't.
+import { enUS, it } from "react-day-picker/locale";
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -36,18 +37,31 @@ function toIsoDate(date: Date): string {
     return `${y}-${m}-${d}`;
 }
 
-// The dropdown would otherwise stop at the current year, which blocks dates such as a future due date.
-const YEARS_BACK = 100;
+// Same reach as MonthPicker; a century of years made the list slow to scroll through.
+const YEARS_BACK = 20;
 
+// The dropdown would otherwise stop at the current year, which blocks dates such as a future due date.
 const YEARS_AHEAD = 10;
 
 export function DatePicker({ id, value, onChange, placeholder = "Seleziona data", className, disabled, openOn = "", side = "bottom" }: DatePickerProps) {
-    const { language } = useTranslation();
+    const { t, language } = useTranslation();
     const selected = parseDate(value);
     const thisYear = new Date().getFullYear();
+    const [open, setOpen] = useState(false);
+
+    // Clicking the selected day again reports no date; keep the date and just close, since "Clear" is the way to empty it.
+    const handleSelect = (date: Date | undefined) => {
+        if (date) onChange(toIsoDate(date));
+        setOpen(false);
+    };
+
+    const handleClear = () => {
+        onChange("");
+        setOpen(false);
+    };
 
     return (
-        <Popover>
+        <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
                     id={id}
@@ -68,18 +82,29 @@ export function DatePicker({ id, value, onChange, placeholder = "Seleziona data"
                     mode="single"
                     selected={selected}
                     defaultMonth={selected ?? parseDate(openOn)}
-                    onSelect={(date) => onChange(date ? toIsoDate(date) : "")}
+                    onSelect={handleSelect}
                     locale={language === "it" ? it : enUS}
+                    labels={{ labelMonthDropdown: () => t("pickerMonth"), labelYearDropdown: () => t("pickerYear") }}
                     captionLayout="dropdown"
+                    // Six rows in every month, so the popover keeps its height and position while the operator changes month.
+                    fixedWeeks
                     startMonth={new Date(thisYear - YEARS_BACK, 0)}
                     endMonth={new Date(thisYear + YEARS_AHEAD, 11)}
                 />
+                {selected && (
+                    <div className="px-3 pb-3">
+                        <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={handleClear}>
+                            {t("clearMonth")}
+                        </Button>
+                    </div>
+                )}
             </PopoverContent>
         </Popover>
     );
 }
 
 interface MonthPickerProps {
+    ref?: Ref<HTMLButtonElement>;
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
@@ -112,7 +137,7 @@ function shortMonthLabels(language: string): string[] {
     });
 }
 
-export function MonthPicker({ value, onChange, placeholder = "Seleziona mese", className, disabled }: MonthPickerProps) {
+export function MonthPicker({ ref, value, onChange, placeholder = "Seleziona mese", className, disabled }: MonthPickerProps) {
     const { t, language } = useTranslation();
     const selected = parseMonth(value);
     const [open, setOpen] = useState(false);
@@ -141,6 +166,7 @@ export function MonthPicker({ value, onChange, placeholder = "Seleziona mese", c
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
+                    ref={ref}
                     variant="outline"
                     disabled={disabled}
                     className={cn(

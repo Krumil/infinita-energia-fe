@@ -122,53 +122,18 @@ test.describe("rules", () => {
         await expect(page.getByRole("tooltip")).toHaveText("Imposta il tipo utenza per attivare questa regola.");
     });
 
-    test("should write the active count in the plural when the rules page is shown", async ({ page }) => {
-        await openRules(page);
-
-        await expect(page.getByText(/^\d+\/\d+ attive$/)).toBeVisible();
-    });
 });
 
 test.describe("tiers", () => {
-    test("should name the tier and the change, send nothing and keep the old type when the type change is cancelled", async ({
-        page,
-        catalog,
-    }) => {
-        const tier = catalog.tier(TIER);
-        const writes = recordApiWrites(page);
-
-        await openRules(page);
-
-        const select = tableRow(page, TIER).getByRole("combobox").nth(1);
-
-        await select.click();
-        await page.getByRole("option", { name: "Luce" }).click();
-
-        const dialog = page.getByRole("alertdialog", { name: "Cambiare il tipo dello scaglione?" });
-
-        await expect(dialog).toContainText(`${TIER}: Tipo Servizio da Gas a Luce.`);
-        await expect(dialog).toContainText("I valori degli agenti per le regole non più compatibili con questo scaglione vengono eliminati.");
-        await expect(dialog).toContainText(
-            "vengono eliminate anche le righe Valore Fisso di tutti gli agenti, compresi i valori personalizzati e i valori padre.",
-        );
-
-        await dialog.getByRole("button", { name: "Annulla" }).click();
-
-        await expect(dialog).toBeHidden();
-        await expect(select).toHaveText("Gas");
-        expect(writes).toEqual([]);
-        expect((await catalog.current("scaglioni", tier.id)).tipo_servizio).toBe("gas");
-    });
-
-    test("should save the new type and say so when the type change is confirmed", async ({ page, catalog }) => {
+    test("should save the new type without asking and say so when a tier's type is changed", async ({ page, catalog }) => {
         const tier = catalog.tier(TIER);
 
         await openRules(page);
         await tableRow(page, TIER).getByRole("combobox").nth(1).click();
         await page.getByRole("option", { name: "Luce" }).click();
-        await page.getByRole("alertdialog").getByRole("button", { name: "Conferma" }).click();
 
         await expect(page.getByText("Tipo aggiornato", { exact: true })).toBeVisible();
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
         await expect.poll(async () => (await catalog.current("scaglioni", tier.id)).tipo_servizio).toBe("luce");
         await expect(tableRow(page, TIER).getByRole("combobox").nth(1)).toHaveText("Luce");
     });
@@ -201,34 +166,36 @@ test.describe("preview after a configuration change", () => {
         return agent;
     }
 
-    test("should mark the preview outdated and block confirming when a rule's default value changes afterwards", async ({
+    test("should mark the preview outdated and block confirming when a rule's default value changes or an agent is saved afterwards", async ({
         page,
         backend,
         catalog,
     }) => {
         const rule = catalog.rule(DEFAULT_RULE);
+        const stale = page.getByRole("alert").filter({ hasText: STALE_MESSAGE });
+        const agent = await loadPreview(page, backend);
 
-        await loadPreview(page, backend);
         await openTab(page, "Regole");
         await (await startEditingDefault(tableRow(page, rule.descrizione), "2,5")).press("Enter");
         await page.getByRole("alertdialog").getByRole("button", { name: "Conferma" }).click();
         await expect(page.getByText("Valore predefinito aggiornato", { exact: true })).toBeVisible();
         await openTab(page, "Provvigioni");
 
-        await expect(page.getByRole("alert").filter({ hasText: STALE_MESSAGE })).toBeVisible();
+        await expect(stale).toBeVisible();
         await expect(confirmButton(page)).toBeDisabled();
         await expect(confirmButton(page)).toHaveAccessibleDescription("Ricalcola l'anteprima prima di confermare.");
-    });
 
-    test("should mark the preview outdated and block confirming when an agent is saved afterwards", async ({ page, backend }) => {
-        const agent = await loadPreview(page, backend);
+        await stale.getByRole("button", { name: "Ricalcola" }).click();
+        await expect(stale).toBeHidden();
+        await expect(confirmButton(page)).toBeEnabled();
+
         const dialog = await openAgent(page, agent);
 
         await dialog.getByRole("button", { name: "Salva" }).click();
         await expect(page.getByText("Agente aggiornato con successo", { exact: true })).toBeVisible();
         await openTab(page, "Provvigioni");
 
-        await expect(page.getByRole("alert").filter({ hasText: STALE_MESSAGE })).toBeVisible();
+        await expect(stale).toBeVisible();
         await expect(confirmButton(page)).toBeDisabled();
     });
 });

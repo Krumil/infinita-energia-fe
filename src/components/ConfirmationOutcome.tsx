@@ -15,12 +15,13 @@ const EMPTY_VALUE = "—";
 
 interface ConfirmationOutcomeProps {
     confirmation: Exclude<ConfirmationState, { status: "idle" }>;
+    sellerName: (seller: string) => string;
     // The draft was edited after a successful save, so the outcome no longer describes what is on screen.
     changedAfterSave: boolean;
-    onOpenInvites: () => void;
+    onOpenInvites: (month: string, inviteId?: number) => void;
 }
 
-export function ConfirmationOutcome({ confirmation, changedAfterSave, onOpenInvites }: ConfirmationOutcomeProps): ReactElement {
+export function ConfirmationOutcome({ confirmation, sellerName, changedAfterSave, onOpenInvites }: ConfirmationOutcomeProps): ReactElement {
     const { t, language } = useTranslation();
     const titleId = useId();
     const { snapshot } = confirmation;
@@ -75,11 +76,28 @@ export function ConfirmationOutcome({ confirmation, changedAfterSave, onOpenInvi
                                 <TableRow key={result.agente_id}>
                                     <TableCell className="font-medium">{agentName(result.agente_id)}</TableCell>
                                     <TableCell>
-                                        <Badge variant={result.salvato ? "secondary" : "outline"}>
+                                        <Badge
+                                            variant="status"
+                                            className={
+                                                result.salvato
+                                                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                                                    : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                                            }
+                                        >
                                             {result.salvato ? t("confirmSaved") : t("confirmSkipped")}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="font-mono text-xs">#{result.invito_id}</TableCell>
+                                    <TableCell>
+                                        <Button
+                                            variant="link"
+                                            size="sm"
+                                            className="h-auto p-0 font-mono text-xs"
+                                            aria-label={t("confirmOpenInvite").replace("{id}", String(result.invito_id))}
+                                            onClick={() => onOpenInvites(snapshot.month, result.invito_id)}
+                                        >
+                                            #{result.invito_id}
+                                        </Button>
+                                    </TableCell>
                                     <TableCell className="text-right font-mono">
                                         {result.salvato ? formatCurrency(result.totale_invito) : EMPTY_VALUE}
                                     </TableCell>
@@ -151,7 +169,7 @@ export function ConfirmationOutcome({ confirmation, changedAfterSave, onOpenInvi
             {renderStatus()}
             {confirmation.status !== "submitting" && (
                 <div className="flex flex-wrap items-start gap-3">
-                    <Button variant="outline" size="sm" onClick={onOpenInvites}>
+                    <Button variant="outline" size="sm" onClick={() => onOpenInvites(snapshot.month)}>
                         {t("confirmOpenInvites")}
                         <ArrowRight className="h-4 w-4" />
                     </Button>
@@ -160,7 +178,7 @@ export function ConfirmationOutcome({ confirmation, changedAfterSave, onOpenInvi
                             label={t("exportSavedAction")}
                             note={savedCount === 0 ? t("exportSavedNone") : t("exportSavedNote")}
                             disabled={savedCount === 0}
-                            build={() => buildSavedZip(snapshot, confirmation.results)}
+                            build={() => buildSavedZip(snapshot, confirmation.results, sellerName)}
                             describeError={describeSavedExportError}
                         />
                     )}

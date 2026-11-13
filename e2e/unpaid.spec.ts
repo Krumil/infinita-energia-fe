@@ -331,7 +331,26 @@ test.describe("Unpaid report", () => {
 
         const { download } = await runAndDownload(page);
 
-        await expectReport(download, legacyName, [csvLine(sale, "30", DIRECT)]);
+        // The seller column shows the agent's name as it is stored now.
+        await expectReport(download, legacyName, [csvLine({ ...sale, seller: { ...agent, name: legacyName } }, "30", DIRECT)]);
+    });
+
+    test("should put a quote before the customer when its name starts like a spreadsheet formula", async ({ page, backend }) => {
+        await backend.claimMonth(FEBRUARY);
+
+        const token = uniqueToken();
+        const agent = await backend.createAgent({ name: `Formula ${token}`, ruleValues: { [STANDARD]: 30 } });
+        const sale: Sale = { month: FEBRUARY, seller: agent, rule: STANDARD, customer: `=Cliente ${token}`, pod: "IT001E07000010" };
+
+        await importSales(backend, FEBRUARY, [sale]);
+        await seedDraft(backend, FEBRUARY, agent);
+
+        await openUnpaidSelection(page);
+        await selectAgent(page, agent.name, [FEBRUARY_LABEL]);
+
+        const { download } = await runAndDownload(page);
+
+        await expectReport(download, agent.name, [csvLine({ ...sale, customer: `'${sale.customer}` }, "30", DIRECT)]);
     });
 
     test("should show the backend message, download nothing and keep the selection when no liquidazioni match the selected months", async ({ page, backend }) => {

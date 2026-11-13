@@ -11,7 +11,7 @@ import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { rowAmount, type DraftAgent, type DraftRow } from "@/lib/calculationDraft";
 import { formatMonthLabel } from "@/lib/competenceDates";
-import { formatCurrency, matchesSearch, normalizeName } from "@/lib/utils";
+import { formatCurrency, formatDate, matchesSearch, normalizeName, sellerNameLookup } from "@/lib/utils";
 import type { CalculationResultsProps } from "@/types/components";
 import type { CalculationDetail } from "@/types";
 import type { TranslationKey } from "@/translations";
@@ -44,6 +44,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
     const [detailShown, setDetailShown] = useState(ROWS_PAGE_SIZE);
 
     const agentNames = useMemo(() => new Map(agents.map((agent) => [agent.id, agent.nome_cognome])), [agents]);
+    const sellerName = useMemo(() => sellerNameLookup(agents), [agents]);
     const periodDisplay = formatMonthLabel(month, language);
     const provisional = summary.invalidIncludedRows > 0;
 
@@ -66,7 +67,7 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
 
         if (!seller || beneficiaryNames.length === 0) return null;
 
-        return beneficiaryNames.includes(normalizeName(seller)) ? null : seller;
+        return beneficiaryNames.includes(normalizeName(seller)) ? null : sellerName(seller);
     };
 
     const handleExpandAgent = (agentId: number): void => {
@@ -162,11 +163,11 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                                                 {t("childOriginLabel").replace("{seller}", childSeller)}
                                                             </Badge>
                                                         ) : (
-                                                            (detail.venditore ?? EMPTY_VALUE)
+                                                            (detail.venditore ? sellerName(detail.venditore) : EMPTY_VALUE)
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="text-sm text-muted-foreground">{detail.regola ?? EMPTY_VALUE}</TableCell>
-                                                    <TableCell className="font-mono text-xs">{detail.comp_al ?? EMPTY_VALUE}</TableCell>
+                                                    <TableCell className="font-mono text-xs">{formatDate(detail.comp_al, EMPTY_VALUE)}</TableCell>
                                                     <TableCell className="text-right">
                                                         <Input
                                                             inputMode="decimal"
@@ -384,7 +385,9 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                             {countLabel(unmatched.length, "unmatchedRowsWarningOne", "unmatchedRowsWarningOther")}
                                         </span>
                                     </h3>
-                                    <p className="text-sm text-amber-800/80 dark:text-amber-300/80">{t("unmatchedRowsDescription")}</p>
+                                    <p className="text-sm text-amber-800/80 dark:text-amber-300/80">
+                                        {t(unmatched.length === 1 ? "unmatchedRowsDescriptionOne" : "unmatchedRowsDescription")}
+                                    </p>
                                 </div>
                             </div>
                             <CollapsibleTrigger asChild>
@@ -413,14 +416,14 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                 <TableBody>
                                     {unmatched.slice(0, unmatchedShown).map((row, idx) => (
                                         <TableRow key={idx}>
-                                            <TableCell className="font-medium">{row.venditore ?? EMPTY_VALUE}</TableCell>
+                                            <TableCell className="font-medium">{row.venditore ? sellerName(row.venditore) : EMPTY_VALUE}</TableCell>
                                             <TableCell>{row.cliente ?? EMPTY_VALUE}</TableCell>
                                             <TableCell className="font-mono text-xs">{row.pod_pdr ?? EMPTY_VALUE}</TableCell>
                                             <TableCell className="font-mono text-xs">{row.cf_piva ?? EMPTY_VALUE}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground">{row.regola ?? EMPTY_VALUE}</TableCell>
                                             {/* The backend sends a missing scaglione as an empty string, not null. */}
                                             <TableCell className="text-sm">{row.scaglione_consumo || EMPTY_VALUE}</TableCell>
-                                            <TableCell className="font-mono text-xs">{row.comp_al ?? EMPTY_VALUE}</TableCell>
+                                            <TableCell className="font-mono text-xs">{formatDate(row.comp_al, EMPTY_VALUE)}</TableCell>
                                             <TableCell className="text-right font-mono">
                                                 {row.importo_euro === null ? EMPTY_VALUE : formatCurrency(row.importo_euro)}
                                             </TableCell>

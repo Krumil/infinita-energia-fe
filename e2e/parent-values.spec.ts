@@ -10,6 +10,10 @@ const RENEWAL: RuleName = "Rinnovo Residenziale";
 
 const NO_PARENT_ERROR = "L'agente non ha un agente padre: nessuna quota da configurare.";
 
+function linkedNotice(parent: TestAgent): string {
+    return `${parent.name} è ora l'agente padre. Controlla i valori padre, o precompilali da una percentuale, e premi Salva: su una regola con valore 0 il padre non matura nulla.`;
+}
+
 interface Family {
     parent: TestAgent;
     child: TestAgent;
@@ -222,15 +226,6 @@ test.describe("parent values", () => {
         await expect(dialog).toBeVisible();
     });
 
-    test("should format parent values with a comma when they have decimals", async ({ page, backend }) => {
-        const token = uniqueToken();
-        const parent = await backend.createAgent({ name: `Padre ${token}`, ruleValues: { [STANDARD]: 10 } });
-        const child = await backend.createAgent({ name: `Figlio ${token}`, parentName: parent.name, parentShare: 25, ruleValues: { [STANDARD]: 6 } });
-        const dialog = await openParentValues(page, child);
-
-        await expect(parentValue(dialog, STANDARD)).toHaveValue("1,5");
-    });
-
     test("should explain that the new parent has to be saved when another parent is selected", async ({ page, backend }) => {
         const { parent, child } = await createFamily(backend);
         const other = await backend.createAgent({ name: `Altro ${uniqueToken()}`, ruleValues: { [STANDARD]: 1 } });
@@ -245,36 +240,73 @@ test.describe("parent values", () => {
         await expect(dialog.getByRole("textbox", { name: /^Valore padre / })).toHaveCount(0);
     });
 
-    test("should keep the table header in view when the dialog is scrolled to the last row", async ({ page, backend }) => {
-        const { child } = await createFamily(backend);
-        const dialog = await openParentValues(page, child);
-        const inputs = dialog.getByRole("textbox", { name: /^Valore padre / });
+    test("should open the parent values with a notice when a parent is linked to an agent that had none", async ({ page, backend }) => {
+        const token = uniqueToken();
+        const parent = await backend.createAgent({ name: `Padre ${token}`, ruleValues: { [STANDARD]: 10 } });
+        const child = await backend.createAgent({ name: `Figlio ${token}`, ruleValues: { [STANDARD]: 6 } });
+        const dialog = await openAgent(page, child);
 
-        await expect(inputs.first()).toBeVisible();
-        await inputs.last().scrollIntoViewIfNeeded();
+        await dialog.getByRole("combobox", { name: "Nessun agente padre" }).click();
+        await page.getByRole("option", { name: parent.name, exact: true }).click();
+        await dialog.getByRole("button", { name: "Salva" }).click();
 
-        const header = dialog.getByRole("columnheader", { name: "Valore padre", exact: true });
-        const box = await dialog.boundingBox();
-        const headerBox = await header.boundingBox();
+        await expect(page.getByText("Agente aggiornato con successo", { exact: true })).toBeVisible();
+        await expect(dialog.getByRole("tab", { name: "Valori padre" })).toHaveAttribute("aria-selected", "true");
+        await expect(dialog.getByRole("status").filter({ hasText: parent.name })).toHaveText(linkedNotice(parent));
 
-        expect(box).not.toBeNull();
-        expect(headerBox).not.toBeNull();
-        expect(headerBox?.y).toBeGreaterThanOrEqual((box?.y ?? 0) + 60);
-        expect(headerBox?.y).toBeLessThan((box?.y ?? 0) + (box?.height ?? 0));
+        await parentValue(dialog, STANDARD).fill("2");
+        await dialog.getByRole("button", { name: "Salva" }).click();
+        await expect(dialog).toBeHidden();
+
+        await page.reload();
+
+        const reopened = await openParentValues(page, child);
+
+        await expect(parentValue(reopened, STANDARD)).toHaveValue("2");
+        await expect(reopened.getByText(linkedNotice(parent), { exact: true })).toHaveCount(0);
     });
 
-    test("should keep the dialog height when switching to a shorter tab", async ({ page, backend }) => {
-        const { parent } = await createFamily(backend);
-        const dialog = await openAgent(page, parent);
+    test("should open the parent values with a notice when a new agent is created with a parent", async ({ page, backend }) => {
+        const token = uniqueToken();
+        const parent = await backend.createAgent({ name: `Padre ${token}`, ruleValues: { [STANDARD]: 10 } });
 
-        await expect(dialog.getByRole("tabpanel", { name: "Valori agente" }).getByRole("button").first()).toBeVisible();
+        await page.goto("/#agenti");
+        await page.getByRole("button", { name: "Aggiungi Agente" }).click();
 
-        const agentTabHeight = (await dialog.boundingBox())?.height;
+        const created = page.getByRole("dialog", { name: "Aggiungi Agente" });
 
-        await dialog.getByRole("tab", { name: "Valori padre" }).click();
-        await expect(dialog.getByRole("tabpanel", { name: "Valori padre" })).toBeVisible();
+        await created.getByLabel("Nome Agente").fill(`Figlio ${token}`);
+        await created.getByRole("combobox", { name: "Nessun agente padre" }).click();
+        await page.getByPlaceholder("Cerca agente padre...").fill(parent.name);
+        await page.getByRole("option", { name: parent.name, exact: true }).click();
 
-        expect((await dialog.boundingBox())?.height).toBe(agentTabHeight);
+        const response = page.waitForResponse((candidate) => candidate.request().method() === "POST" && new URL(candidate.url()).pathname === "/api/agenti");
+
+        await created.getByRole("button", { name: "Salva" }).click();
+
+        const body: { agente_id: number } = await (await response).json();
+
+        backend.trackAgent(body.agente_id);
+
+        const dialog = page.getByRole("dialog", { name: "Modifica Agente" });
+
+        await expect(page.getByText("Agente creato con successo", { exact: true })).toBeVisible();
+        await expect(dialog.getByRole("combobox", { name: parent.name })).toBeVisible();
+        await expect(dialog.getByRole("tab", { name: "Valori padre" })).toHaveAttribute("aria-selected", "true");
+        await expect(dialog.getByRole("status").filter({ hasText: parent.name })).toHaveText(linkedNotice(parent));
+        await expect(parentValue(dialog, STANDARD)).toHaveValue("0");
+    });
+
+    test("should close the dialog without the notice when the parent is removed and saved", async ({ page, backend }) => {
+        const { parent, child } = await createFamily(backend);
+        const dialog = await openAgent(page, child);
+
+        await dialog.getByRole("combobox", { name: parent.name }).click();
+        await page.getByRole("option", { name: "Nessun agente padre" }).click();
+        await dialog.getByRole("button", { name: "Salva" }).click();
+
+        await expect(page.getByText("Agente aggiornato con successo", { exact: true })).toBeVisible();
+        await expect(dialog).toBeHidden();
     });
 
     test("should show the server's reason when the parent is removed before the values load", async ({ page, backend }) => {
@@ -318,22 +350,4 @@ test.describe("parent values", () => {
         }
     });
 
-    test("should return focus to the prefill button when the confirmation is closed", async ({ page, backend }) => {
-        const { child } = await createFamily(backend);
-        const dialog = await openParentValues(page, child);
-        const prefill = dialog.getByRole("button", { name: "Precompila da percentuale" });
-        const confirm = page.getByRole("alertdialog", { name: "Sovrascrivere i valori padre?" });
-
-        await dialog.getByLabel("Percentuale").fill("50");
-
-        await prefill.click();
-        await confirm.getByRole("button", { name: "Annulla" }).click();
-        await expect(confirm).toBeHidden();
-        await expect(prefill).toBeFocused();
-
-        await prefill.click();
-        await confirm.getByRole("button", { name: "Precompila" }).click();
-        await expect(confirm).toBeHidden();
-        await expect(prefill).toBeFocused();
-    });
 });

@@ -64,6 +64,7 @@ export function AgentDialog({
     open,
     onOpenChange,
     agent,
+    parentLinked,
     agents,
     rules,
     onSave,
@@ -101,9 +102,9 @@ export function AgentDialog({
         setConfirmingDelete(false);
         setParentEdits(new Map());
         setParentSaveError(null);
-        setTab("agent");
-        setParentTabOpened(false);
-    }, [agent, open]);
+        setTab(parentLinked ? "parent" : "agent");
+        setParentTabOpened(parentLinked);
+    }, [agent, open, parentLinked]);
 
     const handleValueChange = useCallback((ruleId: number, tierId: number, value: string) => {
         const key = `${ruleId}_${tierId}`;
@@ -194,25 +195,25 @@ export function AgentDialog({
 
     const availableParents = useMemo(() => {
         // A descendant as parent would close a loop, which the backend rejects after the parent values are already saved.
-        const excluded = new Set<string>(agent ? [agent.nome_cognome] : []);
-        const queue = agent ? [agent.nome_cognome] : [];
+        const excluded = new Set<string>(agent ? [agent.nome_normalizzato] : []);
+        const queue = agent ? [agent.nome_normalizzato] : [];
 
-        for (let name = queue.pop(); name !== undefined; name = queue.pop()) {
+        for (let key = queue.pop(); key !== undefined; key = queue.pop()) {
             for (const candidate of agents) {
-                if (candidate.agente_padre === name && !excluded.has(candidate.nome_cognome)) {
-                    excluded.add(candidate.nome_cognome);
-                    queue.push(candidate.nome_cognome);
+                if (candidate.agente_padre === key && !excluded.has(candidate.nome_normalizzato)) {
+                    excluded.add(candidate.nome_normalizzato);
+                    queue.push(candidate.nome_normalizzato);
                 }
             }
         }
 
         return agents
-            .filter((candidate) => !excluded.has(candidate.nome_cognome))
+            .filter((candidate) => !excluded.has(candidate.nome_normalizzato))
             .sort((left, right) => left.nome_cognome.localeCompare(right.nome_cognome, undefined, { sensitivity: "base" }));
     }, [agent, agents]);
 
     const parentOptions = useMemo(
-        () => availableParents.map((candidate) => ({ value: candidate.nome_cognome, label: candidate.nome_cognome })),
+        () => availableParents.map((candidate) => ({ value: candidate.nome_normalizzato, label: candidate.nome_cognome })),
         [availableParents],
     );
 
@@ -235,8 +236,9 @@ export function AgentDialog({
                     <DialogDescription className="font-body">{t("agentDialogDescription")}</DialogDescription>
                 </DialogHeader>
                 <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
-                    <div className="flex-1 overflow-y-auto px-1 pt-4 pb-4">
-                        <div className="space-y-4">
+                    {/* Vertical padding sits inside the scroller: on the scroller it would hold the Valori padre sticky header 16px below the top. */}
+                    <div className="flex-1 overflow-y-auto px-1">
+                        <div className="space-y-4 py-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="nome_cognome" className="editorial-caps text-muted-foreground">
@@ -342,12 +344,19 @@ export function AgentDialog({
                                 </TabsContent>
                                 <TabsContent value="parent" forceMount={parentTabOpened || undefined} className={tabContentClass}>
                                     {parentValuesEditable ? (
-                                        <ParentValuesPanel
-                                            agent={agent}
-                                            agentEdits={editedValues}
-                                            edits={parentEdits}
-                                            onEditsChange={setParentEdits}
-                                        />
+                                        <>
+                                            {parentLinked && agent?.agente_padre_nome && (
+                                                <p role="status" className="mb-4 rounded-sm border border-border/60 bg-muted/40 px-3 py-2 font-body text-sm">
+                                                    {t("parentLinkedNotice").replace("{parent}", agent.agente_padre_nome)}
+                                                </p>
+                                            )}
+                                            <ParentValuesPanel
+                                                agent={agent}
+                                                agentEdits={editedValues}
+                                                edits={parentEdits}
+                                                onEditsChange={setParentEdits}
+                                            />
+                                        </>
                                     ) : (
                                         <p className="py-10 text-center text-sm italic text-muted-foreground">
                                             {formParent === null ? t("parentValuesNeedParent") : t("parentValuesNewParent")}

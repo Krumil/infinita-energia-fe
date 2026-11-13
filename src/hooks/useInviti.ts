@@ -20,6 +20,7 @@ export type UpdateInvoiceRequestResult = UpdateInvoiceRequestSuccess | UpdateInv
 export interface UseInvoiceRequestsResult {
     invoiceRequests: InvoiceRequest[];
     loading: boolean;
+    error: string | null;
     updating: number | null;
     filteredAgentId: number | undefined;
     setFilteredAgentId: Dispatch<SetStateAction<number | undefined>>;
@@ -44,7 +45,8 @@ function defaultStartDate(): string {
     return `${yyyy}-${mm}`;
 }
 
-export function useInvoiceRequests(): UseInvoiceRequestsResult {
+// month narrows both date filters to one competence month, for a tab opened on a confirmed month.
+export function useInvoiceRequests(month?: string): UseInvoiceRequestsResult {
     const { toast } = useToast();
     const { t } = useTranslation();
     const toastRef = useRef(toast);
@@ -53,17 +55,23 @@ export function useInvoiceRequests(): UseInvoiceRequestsResult {
     tRef.current = t;
 
     const [invoiceRequests, setInvoiceRequests] = useState<InvoiceRequest[]>([]);
-    const [loading, setLoading] = useState(false);
+    // The mount effect always fetches, so the list starts out loading rather than empty.
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [updating, setUpdating] = useState<number | null>(null);
 
     const [filteredAgentId, setFilteredAgentId] = useState<number | undefined>();
     const [selectedStatus, setSelectedStatus] = useState<string | undefined>();
     const [selectedPaid, setSelectedPaid] = useState<boolean | undefined>();
-    const [startDate, setStartDate] = useState(defaultStartDate);
-    const [endDate, setEndDate] = useState("");
+    const [startDate, setStartDate] = useState(() => month ?? defaultStartDate());
+    const [endDate, setEndDate] = useState(month ?? "");
+    // Only the latest request may fill the list; an older filter's slower answer would show under the new filter.
+    const requestRef = useRef(0);
 
     const fetchInvoiceRequests = useCallback(async () => {
+        const requestId = ++requestRef.current;
         setLoading(true);
+        setError(null);
 
         try {
             const params: Parameters<typeof getInvoiceRequests>[0] = {};
@@ -79,12 +87,16 @@ export function useInvoiceRequests(): UseInvoiceRequestsResult {
             if (endDate) params.data_fine = `${endDate}-01`;
 
             const data = await getInvoiceRequests(params);
-            setInvoiceRequests(data);
+
+            if (requestId === requestRef.current) setInvoiceRequests(data);
         } catch (err) {
+            if (requestId !== requestRef.current) return;
+
             const errorMsg = apiErrorMessage(toError(err), tRef.current("fetchError"), tRef.current("serverError"));
+            setError(errorMsg);
             toastRef.current({ title: tRef.current("error"), description: errorMsg, variant: "destructive" });
         } finally {
-            setLoading(false);
+            if (requestId === requestRef.current) setLoading(false);
         }
     }, [filteredAgentId, selectedStatus, selectedPaid, startDate, endDate]);
 
@@ -95,7 +107,7 @@ export function useInvoiceRequests(): UseInvoiceRequestsResult {
     const updateInvoiceRequest = useCallback(
         async (id: number, data: UpdateInvoiceRequestPayload): Promise<UpdateInvoiceRequestResult> => {
             setUpdating(id);
-            const previous = invoiceRequests;
+            const previous = invoiceRequests.find((invoiceRequest) => invoiceRequest.id === id);
 
             setInvoiceRequests((prev) =>
                 prev.map((invoiceRequest) => (invoiceRequest.id === id ? { ...invoiceRequest, ...data } : invoiceRequest)),
@@ -110,7 +122,8 @@ export function useInvoiceRequests(): UseInvoiceRequestsResult {
 
                 return { ok: true, invoiceRequest: updated };
             } catch (err) {
-                setInvoiceRequests(previous);
+                // Only this row goes back, so a list refetched meanwhile isn't replaced by the older one.
+                setInvoiceRequests((prev) => prev.map((invoiceRequest) => (invoiceRequest.id === id && previous ? previous : invoiceRequest)));
                 const errorMsg = apiErrorMessage(toError(err), tRef.current("invitationUpdateFailed"), tRef.current("serverError"));
                 toastRef.current({ title: tRef.current("error"), description: errorMsg, variant: "destructive" });
 
@@ -125,6 +138,7 @@ export function useInvoiceRequests(): UseInvoiceRequestsResult {
     return {
         invoiceRequests,
         loading,
+        error,
         updating,
         filteredAgentId,
         setFilteredAgentId,

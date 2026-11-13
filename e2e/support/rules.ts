@@ -85,7 +85,11 @@ export class Catalog {
 
                 await client.query("DELETE FROM valori_regole_agente WHERE agente_id = ANY($1::int[]) AND id <> ALL($2::int[])", [agentIds, ids]);
 
-                for (const value of this.values) {
+                // Another run on the shared database may have deleted its agents since the snapshot, and their values can't come back.
+                const live = await client.query<{ id: number }>("SELECT id FROM agenti WHERE id = ANY($1::int[])", [agentIds]);
+                const liveIds = new Set(live.rows.map((row) => row.id));
+
+                for (const value of this.values.filter((item) => liveIds.has(item.agente_id))) {
                     await client.query(
                         `INSERT INTO valori_regole_agente (id, agente_id, regola_id, scaglione_id, valore, valore_padre)
                          VALUES ($1, $2, $3, $4, $5, $6)

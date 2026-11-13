@@ -43,9 +43,11 @@ export async function getInvoiceRequestDetails(id: number, signal?: AbortSignal)
     return handleResponse<InvoiceRequestDetailsResponse>(res);
 }
 
-// A 500 body is the server's raw status text, which means nothing to the operator.
+// A 500 can carry raw exception text, and an error without a body message is only a status line; neither means anything to the operator.
 export function apiErrorMessage(error: Error, fallback: string, serverError: string): string {
     if (!(error instanceof ApiError)) return fallback;
 
-    return error.status >= 500 ? serverError : error.message;
+    if (error.status >= 500) return error.status === 500 || !error.fromBody ? serverError : error.message;
+
+    return error.fromBody ? error.message : fallback;
 }

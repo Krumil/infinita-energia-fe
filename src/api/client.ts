@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getTranslation } from "@/translations";
 
 const BASE_API = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 
@@ -33,6 +34,8 @@ export class ApiError extends Error {
     constructor(
         public status: number,
         message: string,
+        // False when the body had no message and the text is only the HTTP status line.
+        public fromBody = false,
     ) {
         super(message);
         this.name = "ApiError";
@@ -54,8 +57,18 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
 
 async function throwIfNotOk(res: Response): Promise<void> {
     if (!res.ok) {
-        throw new ApiError(res.status, await getErrorMessage(res));
+        const message = await getErrorMessage(res);
+
+        throw new ApiError(res.status, message ?? statusMessage(res), message !== null);
     }
+}
+
+// A 5xx without a body message is a gateway's status line, which means nothing to the operator on any screen.
+function statusMessage(res: Response): string {
+    if (res.status < 500) return `HTTP ${res.status}: ${res.statusText}`;
+
+    // ThemeLanguageProvider keeps the document language in step with the operator's choice.
+    return getTranslation(document.documentElement.lang === "en" ? "en" : "it", "serverError");
 }
 
 function firstNonblankString(...values: Array<string | undefined>): string | null {
@@ -66,16 +79,16 @@ function firstNonblankString(...values: Array<string | undefined>): string | nul
     return null;
 }
 
-async function getErrorMessage(res: Response): Promise<string> {
-    const fallback = `HTTP ${res.status}: ${res.statusText}`;
-
+async function getErrorMessage(res: Response): Promise<string | null> {
     try {
         const body: unknown = await res.json();
         const parsed = apiErrorResponseSchema.safeParse(body);
 
-        if (!parsed.success) return fallback;
+        if (!parsed.success) return null;
 
-        const message = firstNonblankString(parsed.data.error, parsed.data.message) ?? fallback;
+        const message = firstNonblankString(parsed.data.error, parsed.data.message);
+
+        if (message === null) return null;
 
         const details = (parsed.data.dettagli ?? []).map(({ campo, errore }) => {
             // Pydantic puts "Value error, " before the text of the backend's own validators.
@@ -86,7 +99,7 @@ async function getErrorMessage(res: Response): Promise<string> {
 
         return details.length > 0 ? `${message} (${details.join("; ")})` : message;
     } catch {
-        return fallback;
+        return null;
     }
 }
 

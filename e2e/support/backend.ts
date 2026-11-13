@@ -35,6 +35,8 @@ export interface NewOrder {
     orderId: number;
     // ISO date.
     signedOn: string;
+    // Stored as given, like the import's agent key. Left out, the seller is no agent of ours.
+    seller?: string;
 }
 
 export interface TestAgent {
@@ -88,6 +90,14 @@ interface PreviewBody {
 export function uniqueToken(): string {
     return `E2E${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
+
+// The import stores a sale's seller as the backend's name key, uppercase words sorted, so "Uno E2E..." comes back as "E2E... UNO".
+export function sellerKey(name: string): string {
+    return name.toUpperCase().split(/\s+/).sort().join(" ");
+}
+
+// The fixture clock sits in 2031, and no real liquidazioni exist that far ahead.
+const SUITE_YEAR = 2031;
 
 export function monthStart(month: string): string {
     return `${month}-01`;
@@ -145,8 +155,11 @@ export class Backend {
 
     constructor(private readonly api: APIRequestContext) {}
 
-    // Cleanup deletes every claimed month, so a month is claimed only after proving it holds no liquidazioni.
+    // Cleanup deletes every claimed month, so a month is claimed only after proving it holds no liquidazioni. From 2031 on
+    // the months belong to the suite, so rows an interrupted run left behind are deleted first instead of failing the test.
     async claimMonth(month: string): Promise<void> {
+        if (Number(month.slice(0, 4)) >= SUITE_YEAR) await this.deleteMonth(month);
+
         const preview = await this.preview(month);
 
         expect(
@@ -225,6 +238,11 @@ export class Backend {
         return { id, name: config.nome_agente };
     }
 
+    // An agent the test creates through the UI, so cleanup deletes it too.
+    trackAgent(id: number): void {
+        this.agentIds.push(id);
+    }
+
     // No API creates an order, so pending orders are written to the database. Each carries the token in its customer,
     // product, POD and tax code, which is how cleanup finds them again.
     async seedOrders(token: string, orders: NewOrder[]): Promise<void> {
@@ -248,7 +266,7 @@ export class Backend {
                 await client.query(
                     `INSERT INTO ordini (id_riga_ordine, id_ordine, n_riga, data_firma, stato, agente, prodotto, cod_fisc, pod__pdr)
                      VALUES ($1, $2, 1, $3, 'Accettato', $4, $5, $6, $7)`,
-                    [`${token}R${index}`, order.orderId, order.signedOn, `Agente ${token}`, `Prodotto ${token}`, taxCode, pod],
+                    [`${token}R${index}`, order.orderId, order.signedOn, order.seller ?? `Agente ${token}`, `Prodotto ${token}`, taxCode, pod],
                 );
             }
 
@@ -353,6 +371,24 @@ export class Backend {
         }
 
         return inviteId;
+    }
+
+    // Uploading goes through the storage bucket, so an uploaded attachment is written to the database with no file behind it.
+    // Cleanup deletes it with the invite.
+    async seedAttachment(inviteId: number, name: string): Promise<void> {
+        const client = new pg.Client({ connectionString: DATABASE_URL });
+
+        await client.connect();
+
+        try {
+            await client.query(
+                `INSERT INTO allegati_invito (storico_invito_id, chiave_oggetto, nome_file, content_type, dimensione_bytes, stato, data_creazione, data_caricamento)
+                 VALUES ($1, $2, $3, 'application/pdf', 10, 'caricato', now(), now())`,
+                [inviteId, `e2e/${inviteId}/${name}`, name],
+            );
+        } finally {
+            await client.end();
+        }
     }
 
     async invites(agent: TestAgent): Promise<StoredInvite[]> {

@@ -283,9 +283,9 @@ export interface DashboardRevenue {
 export interface UpdateInvoiceRequestPayload {
     stato?: "bozza" | "inviato" | "approvato";
     riferimento_fattura?: string | null;
-    data_fattura?: string;
+    data_fattura?: string | null;
     pagato?: boolean;
-    data_pagamento?: string;
+    data_pagamento?: string | null;
 }
 
 export interface DeleteSettlementsResponse {

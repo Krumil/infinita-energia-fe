@@ -1,6 +1,6 @@
 import type { Download, Locator, Page } from "@playwright/test";
 
-import { uniqueToken, type Backend, type InviteDetail, type RuleName, type SettlementRow, type TestAgent } from "./support/backend";
+import { sellerKey, uniqueToken, type Backend, type InviteDetail, type RuleName, type SettlementRow, type TestAgent } from "./support/backend";
 import {
     agentTotal,
     amountInputs,
@@ -113,7 +113,7 @@ async function createAndPreview(page: Page, backend: Backend, month: TestMonth, 
 
 function storedRow(fixture: Fixture, agent: TestAgent, importo_provvigione: number): InviteDetail {
     return {
-        venditore: agent.name,
+        venditore: sellerKey(agent.name),
         comp_al: COMP_AL[fixture.month],
         regola: STANDARD,
         importo_provvigione,
@@ -132,7 +132,7 @@ function totalRow(total: number): SheetRow {
     return ["TOTALE", "", "", "", "", total, ""];
 }
 
-// The backend stores agent names as sorted uppercase words, and the file name joins them with underscores.
+// The file name joins the words of the agent's name with underscores.
 function member(fixture: Fixture, agent: TestAgent): string {
     return `${fixture.month}/${agent.name.split(" ").join("_")}-${agent.id}.xlsx`;
 }
@@ -258,6 +258,7 @@ test.describe("calculation exports", () => {
         const fixture = await createAndPreview(page, backend, PREVIEW_MONTH);
 
         await expect(previewZipButton(page)).toBeEnabled();
+        await expect(previewZipButton(page)).toHaveAccessibleDescription(PREVIEW_NOTE);
         await expect(page.getByRole("button", { name: "Scarica inviti salvati ZIP" })).toHaveCount(0);
 
         await expand(page, fixture.due);
@@ -274,7 +275,7 @@ test.describe("calculation exports", () => {
         await includeBox(page, fixture.escluso).click();
 
         await expect(previewZipButton(page)).toBeDisabled();
-        await expect(previewZipButton(page)).toHaveAccessibleDescription(PREVIEW_NOTE);
+        await expect(previewZipButton(page)).toHaveAccessibleDescription("Nessun agente incluso: non c'è nulla da confermare.");
     });
 
     test("should download only the saved agent's stored rows and total, then the invite's current version, when one agent was skipped", async ({
