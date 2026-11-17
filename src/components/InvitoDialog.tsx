@@ -113,8 +113,8 @@ function DetailPanel({ invoiceRequestId, sellerName, translations, language }: D
                     <Loader2 className="h-6 w-6 animate-spin" /><span className="sr-only">{translations.detailTitle}</span>
                 </div>
             ) : detail && detail.dati.length > 0 ? (
-                <div className="ledger-card max-h-[55dvh] overflow-auto">
-                    <Table className="[&_td]:px-3 [&_td]:py-2 [&_th]:h-10 [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:text-xs">
+                <div className="ledger-card overflow-hidden">
+                    <Table containerClassName="max-h-[55dvh]" className="[&_th]:whitespace-nowrap [&_th]:text-xs">
                         <TableHeader><TableRow>
                             <TableHead>{translations.seller}</TableHead>
                             <TableHead>{translations.competenceTo}</TableHead>
@@ -134,9 +134,10 @@ function DetailPanel({ invoiceRequestId, sellerName, translations, language }: D
                                 <TableCell>{row.cf_piva ?? "—"}</TableCell>
                                 <TableCell className="whitespace-nowrap text-right font-mono text-xs">{formatCurrency(row.importo_provvigione, language)}</TableCell>
                             </TableRow>
-                        ))}</TableBody>
+                        ))}
+                        <ShowMoreRows shown={shownRows} total={detail.dati.length} onShowMore={setShownRows} colSpan={7} />
+                        </TableBody>
                     </Table>
-                    <ShowMoreRows shown={shownRows} total={detail.dati.length} onShowMore={setShownRows} />
                 </div>
             ) : detail ? (
                 <p className="ledger-card px-4 py-10 text-center text-sm text-muted-foreground">{translations.detailUnavailable}</p>

@@ -41,7 +41,7 @@ interface ParentValuesPanelProps {
     onEditsChange: Dispatch<SetStateAction<Map<string, ParentValueEdit>>>;
 }
 
-const headClass = "sticky top-0 z-10 h-10 bg-background px-3 text-left align-middle text-xs font-medium text-muted-foreground";
+const headClass = "sticky top-0 z-10 h-10 bg-secondary/90 px-3 backdrop-blur-sm text-left align-middle text-xs font-medium text-muted-foreground";
 
 function rowKey(row: ParentRuleConfiguration): string {
     return `${row.regola_id}_${row.scaglione_id ?? "fisso"}`;

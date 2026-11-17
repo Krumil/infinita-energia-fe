@@ -26,6 +26,12 @@ async function openRules(page: Page): Promise<void> {
     await expect(page.getByRole("heading", { name: "Regole", level: 2 })).toBeVisible();
 }
 
+async function openTiers(page: Page): Promise<void> {
+    await openRules(page);
+    // The tab name includes the tier count.
+    await page.getByRole("tab", { name: /^Scaglioni/ }).click();
+}
+
 function tableRow(page: Page, description: string): Locator {
     return page.getByRole("row").filter({ hasText: description });
 }
@@ -199,7 +205,7 @@ test.describe("tiers", () => {
     test("should save the new type without asking and without a success notice when a tier's type is changed", async ({ page, catalog }) => {
         const tier = catalog.tier(TIER);
 
-        await openRules(page);
+        await openTiers(page);
         await tableRow(page, TIER).getByRole("combobox").nth(1).click();
         await page.getByRole("option", { name: "Luce" }).click();
 
@@ -210,7 +216,7 @@ test.describe("tiers", () => {
     });
 
     test("should offer only the two user types when a tier's user type is opened", async ({ page }) => {
-        await openRules(page);
+        await openTiers(page);
         await tableRow(page, TIER).getByRole("combobox").first().click();
 
         await expect(page.getByRole("option")).toHaveText(["Residenziale", "Business"]);

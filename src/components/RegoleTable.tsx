@@ -140,15 +140,15 @@ export function RulesTable({
     };
 
     return (
-        <div className="border border-border/50 overflow-x-auto rounded-sm shadow-sm">
-            <Table appearance="plain" className="ledger-table w-full table-fixed">
+        <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
+            <Table containerClassName="min-h-0 flex-1" className="table-fixed">
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="font-medium text-sm normal-case tracking-normal">{t("ruleDescription")}</TableHead>
-                        <TableHead className="w-48 font-medium text-sm normal-case tracking-normal">{t("tipoUtenza")}</TableHead>
-                        <TableHead className="w-48 font-medium text-sm normal-case tracking-normal">{t("tipoServizio")}</TableHead>
-                        <TableHead className="!text-right font-medium text-sm normal-case tracking-normal">{t("ruleDefault")}</TableHead>
-                        <TableHead className="text-center w-28 font-medium text-sm normal-case tracking-normal">{t("ruleActive")}</TableHead>
+                        <TableHead>{t("ruleDescription")}</TableHead>
+                        <TableHead className="w-48">{t("tipoUtenza")}</TableHead>
+                        <TableHead className="w-48">{t("tipoServizio")}</TableHead>
+                        <TableHead className="text-right">{t("ruleDefault")}</TableHead>
+                        <TableHead className="text-center w-28">{t("ruleActive")}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>

@@ -9,9 +9,6 @@ import {
     RefreshCw,
     Search,
     X,
-    ArrowUpDown,
-    ArrowUp,
-    ArrowDown,
     Check,
     Minus,
 } from "lucide-react";
@@ -30,6 +27,7 @@ import { MonthPicker } from "@/components/DatePicker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InvoiceRequestDialog } from "@/components/InvitoDialog";
 import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
+import { SortableTableHead, type SortDirection } from "@/components/SortableTableHead";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCurrency, formatDate, matchesSearch, sellerNameLookup } from "@/lib/utils";
 import { formatMonthLabel } from "@/lib/competenceDates";
@@ -54,9 +52,6 @@ type SortField =
     | "data_fattura"
     | "pagato"
     | "data_pagamento";
-
-type SortDirection = "asc" | "desc";
-
 
 function formatMonth(isoDate: string, language: string): string {
     return formatMonthLabel(isoDate, language);
@@ -105,38 +100,6 @@ function getPaidBadge(paid: boolean) {
         <Badge variant="status" className="gap-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
             <Minus className="h-3 w-3" />
         </Badge>
-    );
-}
-
-interface SortableHeaderProps {
-    label: string;
-    field: SortField;
-    currentField: SortField;
-    direction: SortDirection;
-    onSort: (field: SortField) => void;
-}
-
-function SortableHeader({ label, field, currentField, direction, onSort }: SortableHeaderProps) {
-    const isActive = currentField === field;
-
-    return (
-        <Button
-            variant="ghost"
-            size="icon"
-            className="h-auto w-auto gap-1 rounded-none p-0 text-[length:inherit] [font-weight:inherit] hover:bg-transparent [&_svg]:!size-3"
-            onClick={() => onSort(field)}
-        >
-            {label}
-            {isActive ? (
-                direction === "asc" ? (
-                    <ArrowUp className="h-3 w-3" />
-                ) : (
-                    <ArrowDown className="h-3 w-3" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 opacity-40" />
-            )}
-        </Button>
     );
 }
 
@@ -463,7 +426,7 @@ export function InvoiceRequestsTab({ agents, focusMonth, focusInviteId }: Invoic
     const paidFilterValue = selectedPaid === true ? "paid" : selectedPaid === false ? "unpaid" : "all";
 
     return (
-        <div className="flex flex-col gap-6 lg:h-[calc(100dvh-11.5rem)]">
+        <div className="flex flex-col gap-6 lg:h-[calc(100dvh-8.5rem)]">
             <input ref={attachmentInputRef} type="file" accept={ATTACHMENT_ACCEPT} multiple hidden
                 aria-label={t("attachmentAddFile")} onChange={(event) => {
                     const files = Array.from(event.currentTarget.files ?? []);
@@ -592,15 +555,14 @@ export function InvoiceRequestsTab({ agents, focusMonth, focusInviteId }: Invoic
                 </div>
             ) : selectionMode ? (
                 <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
-                    <div className="min-h-0 flex-1 overflow-auto">
                         <RadioGroup
                             value={selectedAgentId == null ? "" : String(selectedAgentId)}
                             onValueChange={(value) => handleSelectAgent(Number(value))}
                             aria-label={t("agent")}
                             className="contents"
                         >
-                        <Table>
-                            <TableHeader className="sticky top-0 bg-secondary/90 backdrop-blur-sm">
+                        <Table containerClassName="min-h-0 flex-1">
+                            <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[48px]" />
                                     <TableHead className="min-w-[160px]">{t("agent")}</TableHead>
@@ -701,7 +663,6 @@ export function InvoiceRequestsTab({ agents, focusMonth, focusInviteId }: Invoic
                             </TableBody>
                         </Table>
                         </RadioGroup>
-                    </div>
                 </div>
             ) : loading && invoiceRequests.length === 0 ? (
                 <div className="ledger-card flex flex-1 items-center justify-center py-16">
@@ -720,82 +681,17 @@ export function InvoiceRequestsTab({ agents, focusMonth, focusInviteId }: Invoic
                 </div>
             ) : (
                 <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
-                    <div className="min-h-0 flex-1 overflow-auto">
-                        <Table>
-                            <TableHeader className="sticky top-0 bg-secondary/90 backdrop-blur-sm">
+                        <Table containerClassName="min-h-0 flex-1">
+                            <TableHeader>
                                 <TableRow>
-                                    <TableHead className="min-w-[160px]">
-                                        <SortableHeader
-                                            label={t("agent")}
-                                            field="nome_agente"
-                                            currentField={sortField}
-                                            direction={sortDirection}
-                                            onSort={handleSort}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-[150px]">
-                                        <SortableHeader
-                                            label={t("competenceMonth")}
-                                            field="mese_competenza"
-                                            currentField={sortField}
-                                            direction={sortDirection}
-                                            onSort={handleSort}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-[120px] text-right">
-                                        <SortableHeader
-                                            label={t("invitationTotal")}
-                                            field="totale_invito"
-                                            currentField={sortField}
-                                            direction={sortDirection}
-                                            onSort={handleSort}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-[110px]">
-                                        <SortableHeader
-                                            label={t("status")}
-                                            field="stato"
-                                            currentField={sortField}
-                                            direction={sortDirection}
-                                            onSort={handleSort}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-[150px]">
-                                        <SortableHeader
-                                            label={t("invoiceReference")}
-                                            field="riferimento_fattura"
-                                            currentField={sortField}
-                                            direction={sortDirection}
-                                            onSort={handleSort}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-[110px]">
-                                        <SortableHeader
-                                            label={t("invoiceDate")}
-                                            field="data_fattura"
-                                            currentField={sortField}
-                                            direction={sortDirection}
-                                            onSort={handleSort}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-[70px]">
-                                        <SortableHeader
-                                            label={t("paid")}
-                                            field="pagato"
-                                            currentField={sortField}
-                                            direction={sortDirection}
-                                            onSort={handleSort}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-[120px]">
-                                        <SortableHeader
-                                            label={t("paymentDate")}
-                                            field="data_pagamento"
-                                            currentField={sortField}
-                                            direction={sortDirection}
-                                            onSort={handleSort}
-                                        />
-                                    </TableHead>
+                                    <SortableTableHead label={t("agent")} field="nome_agente" sortField={sortField} direction={sortDirection} onSort={handleSort} className="min-w-[160px]" />
+                                    <SortableTableHead label={t("competenceMonth")} field="mese_competenza" sortField={sortField} direction={sortDirection} onSort={handleSort} className="w-[150px]" />
+                                    <SortableTableHead label={t("invitationTotal")} field="totale_invito" sortField={sortField} direction={sortDirection} onSort={handleSort} className="w-[120px] text-right" />
+                                    <SortableTableHead label={t("status")} field="stato" sortField={sortField} direction={sortDirection} onSort={handleSort} className="w-[110px]" />
+                                    <SortableTableHead label={t("invoiceReference")} field="riferimento_fattura" sortField={sortField} direction={sortDirection} onSort={handleSort} className="w-[150px]" />
+                                    <SortableTableHead label={t("invoiceDate")} field="data_fattura" sortField={sortField} direction={sortDirection} onSort={handleSort} className="w-[110px]" />
+                                    <SortableTableHead label={t("paid")} field="pagato" sortField={sortField} direction={sortDirection} onSort={handleSort} className="w-[70px]" />
+                                    <SortableTableHead label={t("paymentDate")} field="data_pagamento" sortField={sortField} direction={sortDirection} onSort={handleSort} className="w-[120px]" />
                                     <TableHead className="w-[160px] text-right">{t("attachmentActions")}</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -827,7 +723,7 @@ export function InvoiceRequestsTab({ agents, focusMonth, focusInviteId }: Invoic
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button type="button" variant="unstyled" size="icon" className="h-11 w-11 text-muted-foreground/70 [&_svg]:size-3.5"
+                                                    <Button type="button" variant="unstyled" size="icon" className="h-8 w-8 text-muted-foreground/70 [&_svg]:size-3.5"
                                                         disabled={downloadingId === invoiceRequest.id}
                                                         title={t("downloadInviteExcel")}
                                                         aria-label={`${t("downloadInviteExcel")}: ${invoiceRequest.nome_agente}, ${formatMonth(invoiceRequest.mese_competenza, language)}`}
@@ -837,7 +733,7 @@ export function InvoiceRequestsTab({ agents, focusMonth, focusInviteId }: Invoic
                                                         }}>
                                                         {downloadingId === invoiceRequest.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                                                     </Button>
-                                                    <Button type="button" variant="unstyled" size="icon" className="h-11 w-11 text-muted-foreground/70 [&_svg]:size-3.5"
+                                                    <Button type="button" variant="unstyled" size="icon" className="h-8 w-8 text-muted-foreground/70 [&_svg]:size-3.5"
                                                         disabled={uploadingId !== null}
                                                         title={t("attachmentAddFile")}
                                                         aria-label={`${t("attachmentAddFile")}: ${invoiceRequest.nome_agente}, ${formatMonth(invoiceRequest.mese_competenza, language)}`}
@@ -848,7 +744,7 @@ export function InvoiceRequestsTab({ agents, focusMonth, focusInviteId }: Invoic
                                                         }}>
                                                         {uploadingId === invoiceRequest.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
                                                     </Button>
-                                                    <Button type="button" variant="unstyled" size="icon" className="h-11 w-11 text-muted-foreground/70 [&_svg]:size-3.5"
+                                                    <Button type="button" variant="unstyled" size="icon" className="h-8 w-8 text-muted-foreground/70 [&_svg]:size-3.5"
                                                         disabled={uploadingId !== null} title={t("attachmentView")}
                                                         aria-label={`${t("attachmentView")}: ${invoiceRequest.nome_agente}, ${formatMonth(invoiceRequest.mese_competenza, language)}`}
                                                         onClick={(event) => {
@@ -869,10 +765,9 @@ export function InvoiceRequestsTab({ agents, focusMonth, focusInviteId }: Invoic
                                         </TableCell>
                                     </TableRow>
                                 )}
+                                <ShowMoreRows shown={shownRows} total={processedInvoiceRequests.length} onShowMore={setShownRows} colSpan={9} />
                             </TableBody>
                         </Table>
-                        <ShowMoreRows shown={shownRows} total={processedInvoiceRequests.length} onShowMore={setShownRows} />
-                    </div>
                 </div>
             )}
 

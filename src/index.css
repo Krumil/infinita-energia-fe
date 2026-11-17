@@ -356,46 +356,6 @@
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
-     TABLES - Classic Ledger Grid with Better Readability
-     ═══════════════════════════════════════════════════════════════════════ */
-
-    .ledger-table {
-        @apply w-full;
-        font-family: "IBM Plex Mono", Consolas, monospace;
-        font-size: 0.875rem;
-        line-height: 0.6;
-    }
-
-    .ledger-table thead {
-        @apply sticky top-0 backdrop-blur-sm;
-        background: hsl(var(--background) / 0.98);
-    }
-
-    .ledger-table th {
-        @apply px-4 py-3.5 text-left text-sm uppercase;
-        font-family: "Roboto Slab", Georgia, serif;
-        letter-spacing: 0.08em;
-        font-weight: 400;
-        color: hsl(var(--muted-foreground));
-        border-bottom: 2px solid hsl(var(--energia-accent) / 0.25);
-    }
-
-    .ledger-table td {
-        @apply px-4 py-3.5;
-        border-bottom: 1px solid hsl(var(--border) / 0.5);
-        transition: background-color 0.15s ease;
-    }
-
-    .ledger-table tr:hover td {
-        background: hsl(var(--secondary) / 0.4);
-    }
-
-    .ledger-table [data-numeric] {
-        @apply text-right tabular-nums;
-        font-family: "IBM Plex Mono", Consolas, monospace;
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
      BUTTONS - Editorial/Modernist Style
      ═══════════════════════════════════════════════════════════════════════ */
 

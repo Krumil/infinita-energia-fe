@@ -136,7 +136,7 @@ function AuthenticatedApp() {
                     incompleteRulesCount={incompleteRulesCount}
                 />
 
-                <main className="flex-1 max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 w-full">
+                <main className="flex-1 max-w-[1600px] mx-auto px-4 pt-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 w-full">
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-10">
                         <TabsContent value="dashboard">
                             <DashboardTab />

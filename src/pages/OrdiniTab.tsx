@@ -1,8 +1,5 @@
 import { useMemo, useState, type ReactElement } from "react";
 import {
-    ArrowDown,
-    ArrowUp,
-    ArrowUpDown,
     Calendar,
     Download,
     FileSpreadsheet,
@@ -24,6 +21,7 @@ import { DatePicker } from "@/components/DatePicker";
 import { OrdersImportDialog } from "@/components/OrdersImportDialog";
 import { SettlementsDialog } from "@/components/SettlementsDialog";
 import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
+import { SortableTableHead, type SortDirection } from "@/components/SortableTableHead";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { UseSettlementsResult } from "@/hooks/useLiquidazioni";
@@ -67,8 +65,6 @@ type SortField =
     | "stato"
     | "data_firma"
     | "metodo_pagam";
-
-type SortDirection = "asc" | "desc";
 
 const ALL_STATUSES = "all";
 
@@ -197,7 +193,7 @@ const TAB_TRIGGER_CLASSES = "gap-2 px-3 py-2 data-[state=active]:bg-secondary da
 
 const COUNT_PILL_CLASSES = "rounded bg-background/60 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground";
 
-const PANEL_CLASSES = "rounded-md border bg-card";
+const PANEL_CLASSES = "ledger-card";
 
 function getStatusBadge(status: string | null): ReactElement {
     const config = ORDER_BADGE_CLASSES.get(status ?? "") ?? DEFAULT_BADGE_CLASSES;
@@ -206,38 +202,6 @@ function getStatusBadge(status: string | null): ReactElement {
         <Badge variant="status" className={`${config.bg} ${config.text}`}>
             {status || "—"}
         </Badge>
-    );
-}
-
-interface SortableHeaderProps {
-    label: string;
-    field: SortField;
-    currentField: SortField;
-    direction: SortDirection;
-    onSort: (field: SortField) => void;
-}
-
-function SortableHeader({ label, field, currentField, direction, onSort }: SortableHeaderProps): ReactElement {
-    const isActive = currentField === field;
-
-    return (
-        <Button
-            variant="ghost"
-            size="icon"
-            className="h-auto w-auto gap-1 rounded-none p-0 text-[length:inherit] [font-weight:inherit] hover:bg-transparent [&_svg]:!size-3"
-            onClick={() => onSort(field)}
-        >
-            {label}
-            {isActive ? (
-                direction === "asc" ? (
-                    <ArrowUp className="h-3 w-3" />
-                ) : (
-                    <ArrowDown className="h-3 w-3" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 opacity-40" />
-            )}
-        </Button>
     );
 }
 
@@ -317,12 +281,6 @@ export function OrdersTab({
         }
     };
 
-    const ariaSort = (field: SortField): "ascending" | "descending" | undefined => {
-        if (sortField !== field) return undefined;
-
-        return sortDirection === "asc" ? "ascending" : "descending";
-    };
-
     // Swapped before filtering so the table, its sort and the export all use the name the operator typed.
     const namedOrders = useMemo(() => {
         const sellerName = sellerNameLookup(agents);
@@ -369,9 +327,7 @@ export function OrdersTab({
     };
 
     const sortableHead = (label: string, field: SortField, className?: string): ReactElement => (
-        <TableHead className={className} aria-sort={ariaSort(field)}>
-            <SortableHeader label={label} field={field} currentField={sortField} direction={sortDirection} onSort={handleSort} />
-        </TableHead>
+        <SortableTableHead label={label} field={field} sortField={sortField} direction={sortDirection} onSort={handleSort} className={className} />
     );
 
     const footer = isPending
@@ -383,7 +339,7 @@ export function OrdersTab({
     const emptyError = isPending ? pendingOrdersError : excludedOrdersError;
 
     return (
-        <div className="flex flex-col gap-6 lg:h-[calc(100dvh-11.5rem)]">
+        <div className="flex flex-col gap-6 lg:h-[calc(100dvh-8.5rem)]">
             <header className="flex shrink-0 flex-wrap items-center justify-between gap-4">
                 <h2 className="font-display text-2xl leading-tight">{t("ordini")}</h2>
                 <div className="flex flex-wrap gap-2">
@@ -517,9 +473,9 @@ export function OrdersTab({
                     </div>
                 ) : (
                     <>
-                        <div className={`${PANEL_CLASSES} flex min-h-0 flex-1 flex-col overflow-hidden [&>div:first-child]:min-h-0 [&>div:first-child]:flex-1`}>
-                            <Table className="[&_td]:px-3 [&_td]:py-2 [&_th]:h-9 [&_th]:px-3">
-                                <TableHeader className="sticky top-0 z-10 bg-secondary/90 backdrop-blur-sm">
+                        <div className={`${PANEL_CLASSES} flex min-h-0 flex-1 flex-col overflow-hidden`}>
+                            <Table containerClassName="min-h-0 flex-1">
+                                <TableHeader>
                                     {isPending ? (
                                         <TableRow>
                                             {sortableHead(t("orderId"), "id_ordine", "w-[90px]")}
@@ -610,14 +566,7 @@ export function OrdersTab({
                                             </TableCell>
                                         </TableRow>
                                     )}
-                                    {/* A row, because the table's own wrapper is the scroll container the sticky header needs. */}
-                                    {shownRows < visibleCount && (
-                                        <TableRow>
-                                            <TableCell colSpan={isPending ? 9 : 4} className="!p-0">
-                                                <ShowMoreRows shown={shownRows} total={visibleCount} onShowMore={setShownRows} />
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
+                                    <ShowMoreRows shown={shownRows} total={visibleCount} onShowMore={setShownRows} colSpan={isPending ? 9 : 4} />
                                 </TableBody>
                             </Table>
                         </div>

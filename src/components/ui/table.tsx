@@ -6,16 +6,18 @@ const TableStyleContext = React.createContext(true);
 
 interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
     appearance?: "default" | "plain";
+    /** Classes for the wrapper div. Give it the height so it is the scroller the sticky header sticks to. */
+    containerClassName?: string;
 }
 
 const Table = React.forwardRef<HTMLTableElement, TableProps>(
-    ({ className, appearance = "default", ...props }, ref) => {
+    ({ className, appearance = "default", containerClassName, ...props }, ref) => {
         const styled = appearance === "default";
         const table = <table ref={ref} className={cn(styled && "w-full caption-bottom text-sm", className)} {...props} />;
 
         return (
             <TableStyleContext.Provider value={styled}>
-                {styled ? <div className="relative w-full overflow-auto">{table}</div> : table}
+                {styled ? <div className={cn("relative w-full overflow-auto", containerClassName)}>{table}</div> : table}
             </TableStyleContext.Provider>
         );
     },
@@ -24,7 +26,13 @@ const Table = React.forwardRef<HTMLTableElement, TableProps>(
 Table.displayName = "Table";
 
 const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
-    ({ className, ...props }, ref) => <thead ref={ref} className={cn(React.useContext(TableStyleContext) && "[&_tr]:border-b", className)} {...props} />,
+    ({ className, ...props }, ref) => (
+        <thead
+            ref={ref}
+            className={cn(React.useContext(TableStyleContext) && "sticky top-0 z-10 bg-secondary/90 backdrop-blur-sm [&_tr]:border-b", className)}
+            {...props}
+        />
+    ),
 );
 
 TableHeader.displayName = "TableHeader";
@@ -66,7 +74,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
         <th
             ref={ref}
             className={cn(
-                React.useContext(TableStyleContext) && "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+                React.useContext(TableStyleContext) && "h-10 px-3 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
                 className,
             )}
             {...props}
@@ -78,7 +86,11 @@ TableHead.displayName = "TableHead";
 
 const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(
     ({ className, ...props }, ref) => (
-        <td ref={ref} className={cn(React.useContext(TableStyleContext) && "p-4 align-middle [&:has([role=checkbox])]:pr-0", className)} {...props} />
+        <td
+            ref={ref}
+            className={cn(React.useContext(TableStyleContext) && "px-3 py-2 align-middle [&:has([role=checkbox])]:pr-0", className)}
+            {...props}
+        />
     ),
 );
 

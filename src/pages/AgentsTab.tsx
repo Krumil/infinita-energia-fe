@@ -48,8 +48,8 @@ export function AgentsTab({
     const { t } = useTranslation();
 
     return (
-        <div className="space-y-8">
-            <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-6 lg:h-[calc(100dvh-8.5rem)]">
+            <div className="flex shrink-0 items-center justify-between">
                 <div>
                     <h2 className="font-display text-2xl">{t("agentsList")}</h2>
                     <p className="font-body text-muted-foreground mt-1">{t("agentsListDesc")}</p>
@@ -66,21 +66,17 @@ export function AgentsTab({
                 </div>
             </div>
 
-            <div className="ledger-card p-6">
-                {loading && agents.length === 0 ? (
-                    <div className="flex items-center justify-center py-16">
-                        <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
-                    </div>
-                ) : agents.length === 0 ? (
+            {loading && agents.length === 0 ? (
+                <div className="ledger-card flex flex-1 items-center justify-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
+                </div>
+            ) : agents.length === 0 ? (
+                <div className="ledger-card p-6">
                     <EmptyState message={t("noAgentsYet")} icon={<Users className="h-16 w-16" />} />
-                ) : (
-                    <AgentsTable
-                        data={agents}
-                        onEdit={onEdit}
-                        onToggleStatistics={onToggleStatistics}
-                    />
-                )}
-            </div>
+                </div>
+            ) : (
+                <AgentsTable data={agents} onEdit={onEdit} onToggleStatistics={onToggleStatistics} />
+            )}
 
             <AgentDialog
                 key={editingAgent?.id ?? "new"}

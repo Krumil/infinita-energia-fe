@@ -270,7 +270,7 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
             ) : items.length > 0 ? (
                 <div className="ledger-card overflow-hidden">
                     <div className="overflow-x-auto">
-                        <Table className="min-w-[640px] [&_td]:px-3 [&_td]:py-2 [&_th]:h-10 [&_th]:px-3 [&_th]:text-xs">
+                        <Table className="min-w-[640px] [&_th]:text-xs">
                             <TableHeader><TableRow>
                                 <TableHead>{t("attachmentName")}</TableHead><TableHead>{t("attachmentSize")}</TableHead>
                                 <TableHead>{t("attachmentDate")}</TableHead><TableHead className="text-right">{t("attachmentActions")}</TableHead>
@@ -286,11 +286,11 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
                                     <TableCell className="whitespace-nowrap font-mono text-xs">{sizeLabel(item.dimensione_bytes, language)}</TableCell>
                                     <TableCell className="whitespace-nowrap font-mono text-xs">{uploadedLabel(item, language)}</TableCell>
                                     <TableCell><div className="flex justify-end gap-1">
-                                        <Button size="icon" className="h-11 w-11" variant="ghost" disabled={busy || item.stato !== "caricato"}
+                                        <Button size="icon" className="h-8 w-8" variant="ghost" disabled={busy || item.stato !== "caricato"}
                                             aria-label={`${t("attachmentDownload")}: ${item.nome_file}`} onClick={() => void handleDownload(item)}>
                                             {operation.kind === "download" && operation.id === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                                         </Button>
-                                        <Button size="icon" variant="ghost" className="h-11 w-11 text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} aria-label={`${t("attachmentDelete")}: ${item.nome_file}`}
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} aria-label={`${t("attachmentDelete")}: ${item.nome_file}`}
                                             onClick={() => {
                                                 setActionError(null);
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactElement } from "react";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { useTranslation } from "@/hooks/useTranslation";
 
 // The backend returns whole lists, and mounting thousands of rows freezes the page on open and on every keystroke.
@@ -8,6 +9,7 @@ interface ShowMoreRowsProps {
     shown: number;
     total: number;
     onShowMore: (shown: number) => void;
+    colSpan: number;
 }
 
 // Checks for real overflow too, because an overflow-x wrapper also computes overflow-y to auto without scrolling vertically.
@@ -21,10 +23,10 @@ function scrollContainer(element: HTMLElement): HTMLElement | null {
     return null;
 }
 
-/** Shows the next page once it scrolls into view, so it has to sit inside the table's scroll container. */
-export function ShowMoreRows({ shown, total, onShowMore }: ShowMoreRowsProps): ReactElement | null {
+/** The last row of a TableBody: shows the next page once it scrolls into view inside the table's scroll container. */
+export function ShowMoreRows({ shown, total, onShowMore, colSpan }: ShowMoreRowsProps): ReactElement | null {
     const { t, language } = useTranslation();
-    const sentinel = useRef<HTMLDivElement>(null);
+    const sentinel = useRef<HTMLTableRowElement>(null);
 
     // A new observer per page reports the sentinel again, so rows that still don't fill the container load the next page.
     useEffect(() => {
@@ -45,8 +47,10 @@ export function ShowMoreRows({ shown, total, onShowMore }: ShowMoreRowsProps): R
     if (total <= shown) return null;
 
     return (
-        <div ref={sentinel} className="shrink-0 border-t px-4 py-2 text-xs text-muted-foreground">
-            {t("rowsShown").replace("{shown}", shown.toLocaleString(language)).replace("{count}", total.toLocaleString(language))}
-        </div>
+        <TableRow ref={sentinel} className="hover:bg-transparent">
+            <TableCell colSpan={colSpan} className="text-xs text-muted-foreground">
+                {t("rowsShown").replace("{shown}", shown.toLocaleString(language)).replace("{count}", total.toLocaleString(language))}
+            </TableCell>
+        </TableRow>
     );
 }

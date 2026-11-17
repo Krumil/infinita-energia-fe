@@ -127,9 +127,9 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                             />
                         </div>
 
-                        <div className="max-h-80 overflow-y-auto border rounded-md bg-background/50">
-                            <Table>
-                                <TableHeader className="sticky top-0 z-10 bg-secondary/80 backdrop-blur-sm">
+                        <div className="overflow-hidden rounded-md border bg-background/50">
+                            <Table containerClassName="max-h-[60dvh]">
+                                <TableHeader>
                                     <TableRow>
                                         <TableHead>{t("client")}</TableHead>
                                         <TableHead>{t("podPdr")}</TableHead>
@@ -208,9 +208,9 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                             </TableCell>
                                         </TableRow>
                                     )}
+                                    <ShowMoreRows shown={detailShown} total={visibleRows.length} onShowMore={setDetailShown} colSpan={8} />
                                 </TableBody>
                             </Table>
-                            <ShowMoreRows shown={detailShown} total={visibleRows.length} onShowMore={setDetailShown} />
                         </div>
 
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -399,9 +399,9 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                 </Button>
                             </CollapsibleTrigger>
                         </div>
-                        <CollapsibleContent className="max-h-64 overflow-y-auto border-t border-amber-500/30 bg-card">
-                            <Table>
-                                <TableHeader className="sticky top-0 bg-secondary/80 backdrop-blur-sm">
+                        <CollapsibleContent className="border-t border-amber-500/30 bg-card">
+                            <Table containerClassName="max-h-[60dvh]">
+                                <TableHeader>
                                     <TableRow>
                                         <TableHead>{t("seller")}</TableHead>
                                         <TableHead>{t("client")}</TableHead>
@@ -429,9 +429,9 @@ export function CalculationResults({ month, draft, summary, unmatched, agents, r
                                             </TableCell>
                                         </TableRow>
                                     ))}
+                                    <ShowMoreRows shown={unmatchedShown} total={unmatched.length} onShowMore={setUnmatchedShown} colSpan={8} />
                                 </TableBody>
                             </Table>
-                            <ShowMoreRows shown={unmatchedShown} total={unmatched.length} onShowMore={setUnmatchedShown} />
                         </CollapsibleContent>
                     </section>
                 </Collapsible>
