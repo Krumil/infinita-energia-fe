@@ -52,24 +52,20 @@ async function startEditingDefault(row: Locator, value: string): Promise<Locator
 }
 
 test.describe("rules", () => {
-    test("should keep the confirm dialog open with the rule, old and new value and save the default when Enter is pressed", async ({
-        page,
-        catalog,
-    }) => {
+    test("should save the default once without asking when Enter is pressed", async ({ page, catalog }) => {
         const rule = catalog.rule(DEFAULT_RULE);
 
         await openRules(page);
+
+        const writes = recordApiWrites(page);
+
         await (await startEditingDefault(tableRow(page, DEFAULT_RULE), "2,5")).press("Enter");
 
-        const dialog = page.getByRole("alertdialog", { name: "Conferma Modifica" });
-
-        await expect(dialog).toContainText(`${DEFAULT_RULE}: Valore predefinito da 1,00 € a 2,50 €.`);
-        expect((await catalog.current("regole", rule.id)).valore_default).toBe(1);
-
-        await dialog.getByRole("button", { name: "Conferma" }).click();
-
         await expect(tableRow(page, DEFAULT_RULE).getByTitle("Clicca per modificare")).toContainText("2,50 €");
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
         await expect.poll(async () => (await catalog.current("regole", rule.id)).valore_default).toBe(2.5);
+        // Enter and the blur that follows it both commit the edit, and only one of them may save.
+        expect(writes.filter((write) => write.startsWith("start "))).toEqual([`start PUT /api/regole/${rule.id}`]);
         await expectNoSuccessNotice(page);
 
         await page.reload();
@@ -94,10 +90,7 @@ test.describe("rules", () => {
         expect((await catalog.current("regole", rule.id)).valore_default).toBe(1);
     });
 
-    test("should name the old and new type in the confirm dialog and save it without a success notice when a rule's service type changes", async ({
-        page,
-        catalog,
-    }) => {
+    test("should save the type without asking when a rule's empty service type is set", async ({ page, catalog }) => {
         const rule = catalog.rule(UNTYPED_RULE);
 
         await openRules(page);
@@ -107,58 +100,77 @@ test.describe("rules", () => {
         await serviceType.click();
         await page.getByRole("option", { name: "Gas" }).click();
 
-        const dialog = page.getByRole("alertdialog", { name: "Conferma Modifica" });
-
-        await expect(dialog).toContainText("Tipo Servizio da non impostato a Gas.");
-        await dialog.getByRole("button", { name: "Conferma" }).click();
-
         await expect(serviceType).toHaveText("Gas");
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
         await expect.poll(async () => (await catalog.current("regole", rule.id)).tipo_servizio).toBe("gas");
         await expectNoSuccessNotice(page);
     });
 
-    test("should keep asking to confirm a rule change after a cancel and stop asking after a confirm when Non mostrare più is ticked", async ({
+    test("should name the old and new type in the confirm dialog and save only after confirming when a rule's user type is overwritten", async ({
         page,
         catalog,
     }) => {
-        const rule = catalog.rule(DEFAULT_RULE);
-        const row = tableRow(page, DEFAULT_RULE);
-        const shown = row.getByTitle("Clicca per modificare");
+        const rule = catalog.rule(TOGGLED_RULE);
+        const userType = tableRow(page, TOGGLED_RULE).getByRole("combobox").first();
         const dialog = page.getByRole("alertdialog", { name: "Conferma Modifica" });
-        const savedDefault = async (): Promise<number> => (await catalog.current("regole", rule.id)).valore_default;
 
         await openRules(page);
-        await (await startEditingDefault(row, "2,5")).press("Enter");
+        await userType.click();
+        await page.getByRole("option", { name: "Residenziale" }).click();
+
+        await expect(dialog).toContainText(`${TOGGLED_RULE}: Tipo Utenza da Business a Residenziale.`);
+        expect((await catalog.current("regole", rule.id)).tipo_utenza).toBe("business");
+
+        await dialog.getByRole("button", { name: "Conferma" }).click();
+
+        await expect(userType).toHaveText("Residenziale");
+        await expect.poll(async () => (await catalog.current("regole", rule.id)).tipo_utenza).toBe("residenziale");
+        await expectNoSuccessNotice(page);
+    });
+
+    test("should keep asking to confirm a type overwrite after a cancel and stop asking after a confirm when Non mostrare più is ticked", async ({
+        page,
+        catalog,
+    }) => {
+        const rule = catalog.rule(TOGGLED_RULE);
+        const userType = tableRow(page, TOGGLED_RULE).getByRole("combobox").first();
+        const dialog = page.getByRole("alertdialog", { name: "Conferma Modifica" });
+        const savedType = async (): Promise<string | null> => (await catalog.current("regole", rule.id)).tipo_utenza;
+
+        const pick = async (name: string): Promise<void> => {
+            await userType.click();
+            await page.getByRole("option", { name }).click();
+        };
+
+        await openRules(page);
+        await pick("Residenziale");
         await dialog.getByRole("checkbox", { name: "Non mostrare più" }).check();
         await dialog.getByRole("button", { name: "Annulla" }).click();
         await expect(dialog).toBeHidden();
+        await expect(userType).toHaveText("Business");
 
-        await (await startEditingDefault(row, "2,5")).press("Enter");
+        await pick("Residenziale");
 
         await expect(dialog).toBeVisible();
-        expect(await savedDefault()).toBe(1);
+        expect(await savedType()).toBe("business");
 
         await dialog.getByRole("checkbox", { name: "Non mostrare più" }).check();
         await dialog.getByRole("button", { name: "Conferma" }).click();
-        await expect.poll(savedDefault).toBe(2.5);
+        await expect.poll(savedType).toBe("residenziale");
 
-        const writes = recordApiWrites(page);
+        await pick("Business");
 
-        await (await startEditingDefault(row, "3,75")).press("Enter");
-
-        await expect(shown).toContainText("3,75 €");
+        await expect(userType).toHaveText("Business");
         await expect(page.getByRole("alertdialog")).toHaveCount(0);
-        await expect.poll(savedDefault).toBe(3.75);
-        // Enter and the blur that follows it both commit the edit, and only one of them may save.
-        expect(writes.filter((write) => write.startsWith("start "))).toEqual([`start PUT /api/regole/${rule.id}`]);
+        await expect.poll(savedType).toBe("business");
 
         // The choice lives in the browser's storage, so it outlasts a reload.
         await page.reload();
-        await (await startEditingDefault(row, "4")).press("Enter");
+        await pick("Residenziale");
 
-        await expect(shown).toContainText("4,00 €");
+        await expect(userType).toHaveText("Residenziale");
         await expect(page.getByRole("alertdialog")).toHaveCount(0);
-        await expect.poll(savedDefault).toBe(4);
+        await expect.poll(savedType).toBe("residenziale");
     });
 
     test("should switch a rule off without a success notice when its switch is clicked", async ({ page, catalog }) => {
@@ -254,7 +266,6 @@ test.describe("preview after a configuration change", () => {
 
         await openTab(page, "Regole");
         await (await startEditingDefault(tableRow(page, rule.descrizione), "2,5")).press("Enter");
-        await page.getByRole("alertdialog").getByRole("button", { name: "Conferma" }).click();
         await expect.poll(async () => (await catalog.current("regole", rule.id)).valore_default).toBe(2.5);
         await openTab(page, "Provvigioni");
 

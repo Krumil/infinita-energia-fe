@@ -31,8 +31,7 @@ const serviceTypeSchema = z.enum(["gas", "luce"]);
 
 type PendingChange =
     | { rule: Rule; field: "tipo_utenza"; value: z.infer<typeof customerTypeSchema> | null }
-    | { rule: Rule; field: "tipo_servizio"; value: z.infer<typeof serviceTypeSchema> | null }
-    | { rule: Rule; field: "valore_default"; value: number };
+    | { rule: Rule; field: "tipo_servizio"; value: z.infer<typeof serviceTypeSchema> | null };
 
 function normalizeDescription(value: string): string {
     return value.trim().replace(/\s+/g, " ").toLowerCase();
@@ -70,18 +69,17 @@ export function RulesTable({
         (change: PendingChange) => {
             if (change.field === "tipo_utenza") {
                 void onUpdateCustomerType(change.rule, change.value);
-            } else if (change.field === "tipo_servizio") {
-                void onUpdateServiceType(change.rule, change.value);
             } else {
-                void onUpdateDefault(change.rule, change.value);
+                void onUpdateServiceType(change.rule, change.value);
             }
         },
-        [onUpdateCustomerType, onUpdateServiceType, onUpdateDefault],
+        [onUpdateCustomerType, onUpdateServiceType],
     );
 
     const requestChange = useCallback(
         (change: PendingChange) => {
-            if (isSkipped()) applyChange(change);
+            // Only overwriting a type that's already set asks first; filling an empty one doesn't.
+            if (change.rule[change.field] === null || isSkipped()) applyChange(change);
             else setPendingChange(change);
         },
         [isSkipped, applyChange],
@@ -94,19 +92,17 @@ export function RulesTable({
             if (parsed === undefined) {
                 toast({ title: t("error"), description: t("invalidDefaultValue"), variant: "destructive" });
             } else if (parsed !== rule.valore_default) {
-                requestChange({ rule, field: "valore_default", value: parsed });
+                void onUpdateDefault(rule, parsed);
             }
 
             setEditingId(null);
         },
-        [editValue, toast, t, requestChange],
+        [editValue, toast, t, onUpdateDefault],
     );
 
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent, rule: Rule) => {
             if (e.key === "Enter") {
-                // Otherwise the same Enter lands on the confirm dialog that opens and presses its Cancel.
-                e.preventDefault();
                 commitEdit(rule);
             } else if (e.key === "Escape") {
                 setEditingId(null);
@@ -127,16 +123,11 @@ export function RulesTable({
     const changeDetail = (change: PendingChange): string => {
         const { rule } = change;
 
-        const [label, oldValue, newValue] =
-            change.field === "valore_default"
-                ? [t("ruleDefaultValue"), formatCurrency(rule.valore_default), formatCurrency(change.value)]
-                : [t(change.field === "tipo_utenza" ? "tipoUtenza" : "tipoServizio"), typeLabel(rule[change.field]), typeLabel(change.value)];
-
         return t("confirmRuleChangeDetail")
             .replace("{rule}", rule.descrizione)
-            .replace("{field}", label)
-            .replace("{old}", oldValue)
-            .replace("{new}", newValue);
+            .replace("{field}", t(change.field === "tipo_utenza" ? "tipoUtenza" : "tipoServizio"))
+            .replace("{old}", typeLabel(rule[change.field]))
+            .replace("{new}", typeLabel(change.value));
     };
 
     return (
