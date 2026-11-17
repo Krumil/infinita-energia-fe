@@ -62,7 +62,6 @@ export function useRules({ onChanged }: Options = {}) {
             try {
                 await updateRule(rule.id, { utilizzato: value });
                 onChanged?.();
-                toast({ title: t("success"), description: value ? t("ruleActivated") : t("ruleDeactivated") });
             } catch (error) {
                 setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, utilizzato: rule.utilizzato } : r)));
                 const errorMsg = error instanceof ApiError ? error.message : t("error");
@@ -80,7 +79,6 @@ export function useRules({ onChanged }: Options = {}) {
             try {
                 await updateRule(rule.id, { valore_default: value });
                 onChanged?.();
-                toast({ title: t("success"), description: t("defaultUpdated") });
             } catch (error) {
                 setRules((prev) =>
                     prev.map((r) => (r.id === rule.id ? { ...r, valore_default: previousValue } : r)),
@@ -100,7 +98,6 @@ export function useRules({ onChanged }: Options = {}) {
             try {
                 await updateRule(rule.id, { tipo_utenza: value });
                 onChanged?.();
-                toast({ title: t("success"), description: t("typeUpdated") });
             } catch (error) {
                 setRules((prev) =>
                     prev.map((r) => (r.id === rule.id ? { ...r, tipo_utenza: previousValue } : r)),
@@ -120,7 +117,6 @@ export function useRules({ onChanged }: Options = {}) {
             try {
                 await updateRule(rule.id, { tipo_servizio: value });
                 onChanged?.();
-                toast({ title: t("success"), description: t("typeUpdated") });
             } catch (error) {
                 setRules((prev) =>
                     prev.map((r) => (r.id === rule.id ? { ...r, tipo_servizio: previousValue } : r)),

@@ -63,7 +63,6 @@ export function useTiers({ onChanged }: Options = {}) {
             try {
                 await updateTier(tier.id, { tipo_utenza: value });
                 onChanged?.();
-                toast({ title: t("success"), description: t("typeUpdated") });
             } catch (error) {
                 setTiers((prev) =>
                     prev.map((s) => (s.id === tier.id ? { ...s, tipo_utenza: previousValue } : s)),
@@ -83,7 +82,6 @@ export function useTiers({ onChanged }: Options = {}) {
             try {
                 await updateTier(tier.id, { tipo_servizio: value });
                 onChanged?.();
-                toast({ title: t("success"), description: t("typeUpdated") });
             } catch (error) {
                 setTiers((prev) =>
                     prev.map((s) => (s.id === tier.id ? { ...s, tipo_servizio: previousValue } : s)),

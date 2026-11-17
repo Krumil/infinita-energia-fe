@@ -150,7 +150,7 @@ export async function expectBackendDatabase(api: APIRequestContext): Promise<voi
 // Talks to the real backend through the Vite proxy with the signed-in session, to arrange data and check what was stored.
 export class Backend {
     private readonly claimedMonths: string[] = [];
-    private readonly agentIds: number[] = [];
+    private agentIds: number[] = [];
     private readonly orderTokens: string[] = [];
 
     constructor(private readonly api: APIRequestContext) {}
@@ -241,6 +241,11 @@ export class Backend {
     // An agent the test creates through the UI, so cleanup deletes it too.
     trackAgent(id: number): void {
         this.agentIds.push(id);
+    }
+
+    // An agent the test deleted through the UI, so cleanup doesn't ask the API to delete it again.
+    untrackAgent(id: number): void {
+        this.agentIds = this.agentIds.filter((tracked) => tracked !== id);
     }
 
     // No API creates an order, so pending orders are written to the database. Each carries the token in its customer,

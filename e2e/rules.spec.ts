@@ -12,6 +12,9 @@ const DEFAULT_RULE = "Importo fisso euro mese";
 
 const UNTYPED_RULE = "Regola che si basa sul consumo moltiplicato per un valore legato al prodotto di fornitura";
 
+// A rule with a customer type, so its switch is enabled.
+const TOGGLED_RULE = "Gettone Business Standard";
+
 const TIER = "0-1.000 Smc";
 
 const MONTH = "2031-07";
@@ -25,6 +28,11 @@ async function openRules(page: Page): Promise<void> {
 
 function tableRow(page: Page, description: string): Locator {
     return page.getByRole("row").filter({ hasText: description });
+}
+
+// Saved rule and tier edits show in the row itself. Only failures raise a notice.
+async function expectNoSuccessNotice(page: Page): Promise<void> {
+    await expect(page.getByText("Successo", { exact: true })).toHaveCount(0);
 }
 
 async function startEditingDefault(row: Locator, value: string): Promise<Locator> {
@@ -54,8 +62,9 @@ test.describe("rules", () => {
 
         await dialog.getByRole("button", { name: "Conferma" }).click();
 
-        await expect(page.getByText("Valore predefinito aggiornato", { exact: true })).toBeVisible();
+        await expect(tableRow(page, DEFAULT_RULE).getByTitle("Clicca per modificare")).toContainText("2,50 €");
         await expect.poll(async () => (await catalog.current("regole", rule.id)).valore_default).toBe(2.5);
+        await expectNoSuccessNotice(page);
 
         await page.reload();
 
@@ -79,14 +88,17 @@ test.describe("rules", () => {
         expect((await catalog.current("regole", rule.id)).valore_default).toBe(1);
     });
 
-    test("should name the type change in the toast instead of the default value when a rule's service type changes", async ({
+    test("should name the old and new type in the confirm dialog and save it without a success notice when a rule's service type changes", async ({
         page,
         catalog,
     }) => {
         const rule = catalog.rule(UNTYPED_RULE);
 
         await openRules(page);
-        await tableRow(page, UNTYPED_RULE).getByRole("combobox").nth(1).click();
+
+        const serviceType = tableRow(page, UNTYPED_RULE).getByRole("combobox").nth(1);
+
+        await serviceType.click();
         await page.getByRole("option", { name: "Gas" }).click();
 
         const dialog = page.getByRole("alertdialog", { name: "Conferma Modifica" });
@@ -94,9 +106,69 @@ test.describe("rules", () => {
         await expect(dialog).toContainText("Tipo Servizio da non impostato a Gas.");
         await dialog.getByRole("button", { name: "Conferma" }).click();
 
-        await expect(page.getByText("Tipo aggiornato", { exact: true })).toBeVisible();
-        await expect(page.getByText("Valore predefinito aggiornato")).toHaveCount(0);
+        await expect(serviceType).toHaveText("Gas");
         await expect.poll(async () => (await catalog.current("regole", rule.id)).tipo_servizio).toBe("gas");
+        await expectNoSuccessNotice(page);
+    });
+
+    test("should keep asking to confirm a rule change after a cancel and stop asking after a confirm when Non mostrare più is ticked", async ({
+        page,
+        catalog,
+    }) => {
+        const rule = catalog.rule(DEFAULT_RULE);
+        const row = tableRow(page, DEFAULT_RULE);
+        const shown = row.getByTitle("Clicca per modificare");
+        const dialog = page.getByRole("alertdialog", { name: "Conferma Modifica" });
+        const savedDefault = async (): Promise<number> => (await catalog.current("regole", rule.id)).valore_default;
+
+        await openRules(page);
+        await (await startEditingDefault(row, "2,5")).press("Enter");
+        await dialog.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await dialog.getByRole("button", { name: "Annulla" }).click();
+        await expect(dialog).toBeHidden();
+
+        await (await startEditingDefault(row, "2,5")).press("Enter");
+
+        await expect(dialog).toBeVisible();
+        expect(await savedDefault()).toBe(1);
+
+        await dialog.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await dialog.getByRole("button", { name: "Conferma" }).click();
+        await expect.poll(savedDefault).toBe(2.5);
+
+        const writes = recordApiWrites(page);
+
+        await (await startEditingDefault(row, "3,75")).press("Enter");
+
+        await expect(shown).toContainText("3,75 €");
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
+        await expect.poll(savedDefault).toBe(3.75);
+        // Enter and the blur that follows it both commit the edit, and only one of them may save.
+        expect(writes.filter((write) => write.startsWith("start "))).toEqual([`start PUT /api/regole/${rule.id}`]);
+
+        // The choice lives in the browser's storage, so it outlasts a reload.
+        await page.reload();
+        await (await startEditingDefault(row, "4")).press("Enter");
+
+        await expect(shown).toContainText("4,00 €");
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
+        await expect.poll(savedDefault).toBe(4);
+    });
+
+    test("should switch a rule off without a success notice when its switch is clicked", async ({ page, catalog }) => {
+        const rule = catalog.rule(TOGGLED_RULE);
+
+        await openRules(page);
+
+        const toggle = tableRow(page, TOGGLED_RULE).getByRole("switch");
+        const saved = page.waitForResponse((response) => response.request().method() === "PUT" && response.url().endsWith(`/api/regole/${rule.id}`));
+
+        await toggle.click();
+        await saved;
+
+        await expect(toggle).not.toBeChecked();
+        expect((await catalog.current("regole", rule.id)).utilizzato).toBe(false);
+        await expectNoSuccessNotice(page);
     });
 
     test("should show the placeholder and mark no option as selected when a rule has no service type", async ({ page }) => {
@@ -121,21 +193,20 @@ test.describe("rules", () => {
 
         await expect(page.getByRole("tooltip")).toHaveText("Imposta il tipo utenza per attivare questa regola.");
     });
-
 });
 
 test.describe("tiers", () => {
-    test("should save the new type without asking and say so when a tier's type is changed", async ({ page, catalog }) => {
+    test("should save the new type without asking and without a success notice when a tier's type is changed", async ({ page, catalog }) => {
         const tier = catalog.tier(TIER);
 
         await openRules(page);
         await tableRow(page, TIER).getByRole("combobox").nth(1).click();
         await page.getByRole("option", { name: "Luce" }).click();
 
-        await expect(page.getByText("Tipo aggiornato", { exact: true })).toBeVisible();
+        await expect(tableRow(page, TIER).getByRole("combobox").nth(1)).toHaveText("Luce");
         await expect(page.getByRole("alertdialog")).toHaveCount(0);
         await expect.poll(async () => (await catalog.current("scaglioni", tier.id)).tipo_servizio).toBe("luce");
-        await expect(tableRow(page, TIER).getByRole("combobox").nth(1)).toHaveText("Luce");
+        await expectNoSuccessNotice(page);
     });
 
     test("should offer only the two user types when a tier's user type is opened", async ({ page }) => {
@@ -178,7 +249,7 @@ test.describe("preview after a configuration change", () => {
         await openTab(page, "Regole");
         await (await startEditingDefault(tableRow(page, rule.descrizione), "2,5")).press("Enter");
         await page.getByRole("alertdialog").getByRole("button", { name: "Conferma" }).click();
-        await expect(page.getByText("Valore predefinito aggiornato", { exact: true })).toBeVisible();
+        await expect.poll(async () => (await catalog.current("regole", rule.id)).valore_default).toBe(2.5);
         await openTab(page, "Provvigioni");
 
         await expect(stale).toBeVisible();

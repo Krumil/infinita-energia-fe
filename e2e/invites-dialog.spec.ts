@@ -65,6 +65,25 @@ async function seedAndOpen(page: Page, backend: Backend, patch?: InvitePatch): P
     return { agent, inviteId, dialog, opener };
 }
 
+async function seedAndOpenAttachments(page: Page, backend: Backend, files: string[]): Promise<{ inviteId: number; dialog: Locator }> {
+    const token = uniqueToken();
+    const agent = await backend.createAgent({ name: `Allegati ${token}`, ruleValues: {} });
+    const inviteId = await backend.seedInvite(INVITE_MONTH, agent, [detailRow(agent)], "bozza");
+
+    for (const file of files) await backend.seedAttachment(inviteId, file);
+
+    await page.goto("/");
+    await openTab(page, "Inviti");
+    await page.getByRole("textbox", { name: "Filtra..." }).fill(token);
+    await page.getByRole("button", { name: agent.name, exact: true }).click();
+
+    const dialog = page.getByRole("dialog", { name: agent.name });
+
+    await dialog.getByRole("tab", { name: "Allegati" }).click();
+
+    return { inviteId, dialog };
+}
+
 function attachment(id: number, inviteId: number, name: string, bytes: number, uploadedAt: string): AttachmentFixture {
     return {
         id,
@@ -299,6 +318,61 @@ test.describe("invite attachments", () => {
         await confirmation.getByRole("button", { name: "Annulla" }).click();
 
         await expect(confirmation).toBeHidden();
+        await expect(page.getByRole("button", { name: "Elimina: bloccato.pdf" })).toBeVisible();
+    });
+
+    test("should keep asking to confirm an attachment deletion after a cancel and stop asking after a confirm when Non mostrare più is ticked", async ({
+        page,
+        backend,
+    }) => {
+        // The seeded rows have no file behind them, so these deletes are real: only the database row goes away.
+        const { inviteId } = await seedAndOpenAttachments(page, backend, ["primo.pdf", "secondo.pdf"]);
+        const confirmation = page.getByRole("alertdialog");
+        const remove = (name: string): Locator => page.getByRole("button", { name: `Elimina: ${name}` });
+
+        await remove("primo.pdf").click();
+        await confirmation.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await confirmation.getByRole("button", { name: "Annulla" }).click();
+        await expect(confirmation).toBeHidden();
+
+        await remove("primo.pdf").click();
+        await expect(confirmation).toContainText("primo.pdf");
+        await confirmation.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await confirmation.getByRole("button", { name: "Elimina" }).click();
+        await expect(remove("primo.pdf")).toHaveCount(0);
+
+        await remove("secondo.pdf").click();
+
+        await expect(remove("secondo.pdf")).toHaveCount(0);
+        await expect(confirmation).toHaveCount(0);
+
+        const stored = await page.request.get(`/api/storico-inviti/${inviteId}/allegati`);
+
+        expect(await stored.json()).toEqual([]);
+    });
+
+    test("should show the backend's message in the list and keep the file when a deletion without confirmation fails with a 502", async ({
+        page,
+        backend,
+    }) => {
+        const { inviteId, dialog } = await seedAndOpenAttachments(page, backend, ["primo.pdf", "bloccato.pdf"]);
+        const confirmation = page.getByRole("alertdialog");
+
+        await page.getByRole("button", { name: "Elimina: primo.pdf" }).click();
+        await confirmation.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await confirmation.getByRole("button", { name: "Elimina" }).click();
+        await expect(page.getByRole("button", { name: "Elimina: primo.pdf" })).toHaveCount(0);
+
+        // The backend can't be made to refuse a delete on demand, so its answer when storage refuses it is stubbed.
+        await page.route(`**/api/storico-inviti/${inviteId}/allegati/*`, (route) =>
+            route.request().method() === "DELETE"
+                ? route.fulfill({ status: 502, json: { error: "Impossibile eliminare il file su R2: allegato non eliminato." } })
+                : route.fallback(),
+        );
+        await page.getByRole("button", { name: "Elimina: bloccato.pdf" }).click();
+
+        await expect(dialog.getByRole("alert")).toHaveText("Impossibile eliminare il file su R2: allegato non eliminato.");
+        await expect(confirmation).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Elimina: bloccato.pdf" })).toBeVisible();
     });
 

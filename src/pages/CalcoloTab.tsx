@@ -17,6 +17,8 @@ import { EmptyState, CalculationResults } from "@/components";
 import { ConfirmationOutcome } from "@/components/ConfirmationOutcome";
 import { PreviewOutline } from "@/components/PreviewOutline";
 import { ZipDownloadButton } from "@/components/ZipDownloadButton";
+import { SkipConfirmCheckbox } from "@/components/SkipConfirmCheckbox";
+import { useConfirmSkip } from "@/hooks/useConfirmSkip";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { ConfirmationState, LoadedPreview, PreviewState } from "@/hooks/useCalcolo";
 import { summarizeDraft, type DraftActions, type DraftSummary } from "@/lib/calculationDraft";
@@ -58,6 +60,9 @@ export const CalculationTab = memo(function CalculationTab({
     const { t, language } = useTranslation();
     const confirmReasonId = useId();
     const [discardTarget, setDiscardTarget] = useState<DiscardTarget | null>(null);
+    const [confirmingSave, setConfirmingSave] = useState(false);
+    const skipSave = useConfirmSkip("commissions-save");
+    const skipDiscard = useConfirmSkip("preview-discard");
     const monthButtonRef = useRef<HTMLButtonElement>(null);
     const previewButtonRef = useRef<HTMLButtonElement>(null);
     const discardOpenerRef = useRef<HTMLButtonElement | null>(null);
@@ -73,20 +78,22 @@ export const CalculationTab = memo(function CalculationTab({
     const handleMonthChange = (nextMonth: string): void => {
         if (nextMonth === month) return;
 
-        if (dirty) {
+        if (dirty && !skipDiscard.isSkipped()) {
             discardOpenerRef.current = monthButtonRef.current;
             setDiscardTarget({ kind: "month", month: nextMonth });
         } else onMonthChange(nextMonth);
     };
 
     const handlePreview = (): void => {
-        if (dirty) {
+        if (dirty && !skipDiscard.isSkipped()) {
             discardOpenerRef.current = previewButtonRef.current;
             setDiscardTarget({ kind: "recalculate" });
         } else onPreview();
     };
 
     const handleDiscard = (): void => {
+        skipDiscard.remember();
+
         if (discardTarget?.kind === "month") onMonthChange(discardTarget.month);
         else if (discardTarget?.kind === "recalculate") onPreview();
         setDiscardTarget(null);
@@ -147,7 +154,13 @@ export const CalculationTab = memo(function CalculationTab({
                         build={() => buildPreviewZip(shownMonth, shown.draft, sellerName)}
                         describeError={() => t("exportFailed")}
                     />
-                    <AlertDialog>
+                    <AlertDialog
+                        open={confirmingSave}
+                        onOpenChange={(open) => {
+                            if (open && skipSave.isSkipped()) onConfirm();
+                            else setConfirmingSave(open);
+                        }}
+                    >
                         <AlertDialogTrigger asChild>
                             <Button size="sm" className="btn-primary shrink-0" disabled={loading || confirmBlock !== null} aria-describedby={confirmReasonId}>
                                 <CheckCircle2 className="h-4 w-4" />
@@ -172,9 +185,17 @@ export const CalculationTab = memo(function CalculationTab({
                                 <dd className="text-right font-mono">{shown.data.non_associati.length}</dd>
                             </dl>
                             <p className="text-sm text-muted-foreground">{t("confirmReviewReplaceNote")}</p>
+                            <SkipConfirmCheckbox skip={skipSave} />
                             <AlertDialogFooter>
                                 <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                                <AlertDialogAction onClick={onConfirm}>{t("confirmReviewAction")}</AlertDialogAction>
+                                <AlertDialogAction
+                                    onClick={() => {
+                                        skipSave.remember();
+                                        onConfirm();
+                                    }}
+                                >
+                                    {t("confirmReviewAction")}
+                                </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
@@ -327,6 +348,7 @@ export const CalculationTab = memo(function CalculationTab({
                             {discardTarget?.kind === "month" ? t("previewDiscardMonth") : t("previewDiscardRecalculate")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    <SkipConfirmCheckbox skip={skipDiscard} />
                     <AlertDialogFooter>
                         <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDiscard}>{t("previewDiscardConfirm")}</AlertDialogAction>

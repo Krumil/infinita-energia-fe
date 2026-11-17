@@ -439,6 +439,47 @@ test.describe("preview review and editing", () => {
         await expect(confirmButton(page)).toHaveCount(0);
     });
 
+    test("should keep asking to discard edits after a cancel and stop asking after a discard when Non mostrare più is ticked", async ({
+        page,
+        backend,
+    }) => {
+        await backend.claimMonth(OTHER_MONTH);
+
+        const fixture = await loadPreview(page, backend);
+        const prompt = page.getByRole("alertdialog", { name: "Scartare le modifiche?" });
+
+        const edit = async (): Promise<void> => {
+            await expand(page, fixture.twins);
+            await amountInputs(page, fixture.twinCustomer).first().fill("175,50");
+            await expect(overallTotal(page)).toHaveText("364,50 €");
+        };
+
+        await edit();
+        await previewButton(page).click();
+        await prompt.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await prompt.getByRole("button", { name: "Annulla" }).click();
+        await expect(prompt).toBeHidden();
+        await expect(overallTotal(page)).toHaveText("364,50 €");
+
+        await previewButton(page).click();
+        await expect(prompt).toBeVisible();
+        await prompt.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await prompt.getByRole("button", { name: "Scarta modifiche" }).click();
+        await expect(overallTotal(page)).toHaveText("339,00 €");
+
+        await edit();
+        await previewButton(page).click();
+
+        await expect(overallTotal(page)).toHaveText("339,00 €");
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
+
+        await edit();
+        await chooseMonth(page, OTHER_MONTH);
+
+        await expect(monthGroup(page)).toContainText(monthLabel(OTHER_MONTH));
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
+    });
+
     test("should mark the edited draft stale and keep confirmation disabled until it is recalculated when the month is reimported", async ({
         page,
         backend,

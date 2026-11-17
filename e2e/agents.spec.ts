@@ -1,5 +1,7 @@
-import { uniqueToken, type RuleName } from "./support/backend";
-import { holdRequests } from "./support/network";
+import type { Response } from "@playwright/test";
+
+import { uniqueToken, type RuleName, type TestAgent } from "./support/backend";
+import { holdRequests, recordApiWrites } from "./support/network";
 import { expect, test } from "./support/test";
 import { openAgent } from "./support/ui";
 
@@ -205,5 +207,53 @@ test.describe("agents", () => {
 
         await expect(page.getByText("Il server ha riscontrato un errore. Riprova tra poco.", { exact: true })).toBeVisible();
         await expect(page.getByText(/HTTP 502/)).toHaveCount(0);
+    });
+
+    test("should keep asking to confirm an agent deletion after a cancel and stop asking after a confirm when Non mostrare più is ticked", async ({
+        page,
+        backend,
+    }) => {
+        const token = uniqueToken();
+        const first = await backend.createAgent({ name: `Primo ${token}`, ruleValues: { [STANDARD]: 1 } });
+        const second = await backend.createAgent({ name: `Secondo ${token}`, ruleValues: { [STANDARD]: 1 } });
+        const kept = await backend.createAgent({ name: `Terzo ${token}`, ruleValues: { [STANDARD]: 1 } });
+        const confirmation = page.getByRole("alertdialog", { name: "Sei sicuro di voler eliminare questo agente?" });
+        const writes = recordApiWrites(page);
+
+        const deleted = (agent: TestAgent): Promise<Response> =>
+            page.waitForResponse((response) => response.request().method() === "DELETE" && new URL(response.url()).pathname === `/api/agenti/${agent.id}`);
+
+        const firstDialog = await openAgent(page, first);
+
+        await firstDialog.getByRole("button", { name: "Elimina Agente" }).click();
+        await confirmation.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await confirmation.getByRole("button", { name: "Annulla" }).click();
+        await expect(confirmation).toBeHidden();
+
+        await firstDialog.getByRole("button", { name: "Elimina Agente" }).click();
+        await expect(confirmation).toBeVisible();
+        expect(writes).toEqual([]);
+
+        const firstDeleted = deleted(first);
+
+        await confirmation.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await confirmation.getByRole("button", { name: "Elimina Agente" }).click();
+        expect((await firstDeleted).ok()).toBe(true);
+        backend.untrackAgent(first.id);
+
+        const secondDialog = await openAgent(page, second);
+        const secondDeleted = deleted(second);
+
+        await secondDialog.getByRole("button", { name: "Elimina Agente" }).click();
+
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
+        expect((await secondDeleted).ok()).toBe(true);
+        backend.untrackAgent(second.id);
+
+        await page.reload();
+        await page.getByPlaceholder("Filtra...").fill(token);
+
+        await expect(page.getByRole("checkbox", { name: `Statistiche ${kept.name}`, exact: true })).toBeVisible();
+        await expect(page.getByRole("checkbox", { name: new RegExp(`^Statistiche .*${token}`) })).toHaveCount(1);
     });
 });

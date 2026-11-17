@@ -25,6 +25,8 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { SkipConfirmCheckbox } from "@/components/SkipConfirmCheckbox";
+import { useConfirmSkip } from "@/hooks/useConfirmSkip";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ApiError } from "@/api/client";
 import { saveParentRuleConfiguration } from "@/api/agents";
@@ -79,6 +81,7 @@ export function AgentDialog({
 
     const [formData, setFormData] = useState<CreateAgentRequest>(() => createInitialFormData(agent));
     const [confirmingDelete, setConfirmingDelete] = useState(false);
+    const skipDelete = useConfirmSkip("agent-delete");
     const [editedValues, setEditedValues] = useState<Map<string, string>>(new Map());
     const [parentEdits, setParentEdits] = useState<Map<string, ParentValueEdit>>(new Map());
     const [parentSaving, setParentSaving] = useState(false);
@@ -372,7 +375,13 @@ export function AgentDialog({
                     <DialogFooter className="shrink-0 pt-4 border-t border-border/50 flex items-center gap-2">
                         {isEdit && onDelete && (
                             <div className="flex-1">
-                                <AlertDialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
+                                <AlertDialog
+                                    open={confirmingDelete}
+                                    onOpenChange={(open) => {
+                                        if (open && skipDelete.isSkipped()) onDelete();
+                                        else setConfirmingDelete(open);
+                                    }}
+                                >
                                     <AlertDialogTrigger asChild>
                                         <Button
                                             type="button"
@@ -396,10 +405,12 @@ export function AgentDialog({
                                                 </span>
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
+                                        <SkipConfirmCheckbox skip={skipDelete} />
                                         <AlertDialogFooter>
                                             <AlertDialogCancel className="btn-ghost">{t("cancel")}</AlertDialogCancel>
                                             <AlertDialogAction
                                                 onClick={() => {
+                                                    skipDelete.remember();
                                                     setConfirmingDelete(false);
                                                     onDelete();
                                                 }}

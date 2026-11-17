@@ -350,4 +350,34 @@ test.describe("parent values", () => {
         }
     });
 
+    test("should keep asking to confirm a prefill after a cancel and stop asking after a confirm when Non mostrare più is ticked", async ({
+        page,
+        backend,
+    }) => {
+        const { child } = await createFamily(backend);
+        const dialog = await openParentValues(page, child);
+        const confirm = page.getByRole("alertdialog", { name: "Sovrascrivere i valori padre?" });
+        const prefill = dialog.getByRole("button", { name: "Precompila da percentuale" });
+
+        await dialog.getByLabel("Percentuale").fill("50");
+        await prefill.click();
+        await confirm.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await confirm.getByRole("button", { name: "Annulla" }).click();
+        await expect(confirm).toBeHidden();
+        await expect(parentValue(dialog, STANDARD)).toHaveValue("0");
+
+        await prefill.click();
+        await expect(confirm).toBeVisible();
+        await confirm.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await confirm.getByRole("button", { name: "Precompila" }).click();
+        await expect(parentValue(dialog, STANDARD)).toHaveValue("3");
+        await expect(parentValue(dialog, RENEWAL)).toHaveValue("2");
+
+        await dialog.getByLabel("Percentuale").fill("100");
+        await prefill.click();
+
+        await expect(parentValue(dialog, STANDARD)).toHaveValue("6");
+        await expect(parentValue(dialog, RENEWAL)).toHaveValue("4");
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
+    });
 });

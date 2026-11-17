@@ -553,6 +553,37 @@ test.describe("commission confirmation", () => {
         expect(await backend.invites(fixture.uno)).toHaveLength(1);
     });
 
+    test("should keep showing the review after a cancel and save in one click after a save when Non mostrare più is ticked", async ({ page, backend }) => {
+        const fixture = await createAndPreview(page, backend);
+        const writes = recordApiWrites(page);
+        const dialog = reviewDialog(page);
+
+        await confirmButton(page).click();
+        await dialog.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await dialog.getByRole("button", { name: "Annulla" }).click();
+        await expect(dialog).toBeHidden();
+
+        await confirmButton(page).click();
+        await expect(dialog).toBeVisible();
+        expect(writes).toEqual([]);
+
+        await dialog.getByRole("checkbox", { name: "Non mostrare più" }).check();
+        await saveButton(page).click();
+        await expect(outcome(page).getByRole("status")).toHaveText("Salvataggio completato. Agenti salvati: 3.");
+        expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE]);
+
+        const savedAgain = page.waitForResponse((response) => response.url().endsWith(CONFIRM_PATH));
+
+        await confirmButton(page).click();
+
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
+        expect((await savedAgain).ok()).toBe(true);
+        await expect(outcome(page).getByRole("status")).toHaveText("Salvataggio completato. Agenti salvati: 3.");
+        expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE, CONFIRM_WRITE]);
+        // The second save replaces the draft invite instead of adding one.
+        expect(await backend.invites(fixture.uno)).toHaveLength(1);
+    });
+
     // The real backend can't be made to reject a well-formed draft, so these responses are injected at the browser.
     test("should keep the edits and show the backend message without saving anything when the save is rejected with 400 or 404", async ({
         page,

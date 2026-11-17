@@ -1,10 +1,9 @@
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { useState, useCallback, useEffect } from "react";
-import { Check, X as XIcon, Pencil, AlertTriangle } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Pencil, AlertTriangle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -16,6 +15,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { SkipConfirmCheckbox } from "@/components/SkipConfirmCheckbox";
+import { useConfirmSkip } from "@/hooks/useConfirmSkip";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -49,7 +50,8 @@ export function RulesTable({
     const { toast } = useToast();
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState("");
-    const [popoverState, setPopoverState] = useState<{ ruleId: number; activated: boolean } | null>(null);
+    const skipConfirm = useConfirmSkip("rule-change");
+    const { isSkipped, remember } = skipConfirm;
 
     const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
 
@@ -59,26 +61,31 @@ export function RulesTable({
             .map((tier) => normalizeDescription(tier.descrizione)),
     );
 
-    useEffect(() => {
-        if (popoverState) {
-            const timer = setTimeout(() => setPopoverState(null), 1500);
-
-            return () => clearTimeout(timer);
-        }
-    }, [popoverState]);
-
-    const handleToggle = useCallback(
-        (rule: Rule, checked: boolean) => {
-            setPopoverState({ ruleId: rule.id, activated: checked });
-            onToggleEnabled(rule, checked);
-        },
-        [onToggleEnabled],
-    );
-
     const startEditing = useCallback((rule: Rule) => {
         setEditingId(rule.id);
         setEditValue(String(rule.valore_default));
     }, []);
+
+    const applyChange = useCallback(
+        (change: PendingChange) => {
+            if (change.field === "tipo_utenza") {
+                void onUpdateCustomerType(change.rule, change.value);
+            } else if (change.field === "tipo_servizio") {
+                void onUpdateServiceType(change.rule, change.value);
+            } else {
+                void onUpdateDefault(change.rule, change.value);
+            }
+        },
+        [onUpdateCustomerType, onUpdateServiceType, onUpdateDefault],
+    );
+
+    const requestChange = useCallback(
+        (change: PendingChange) => {
+            if (isSkipped()) applyChange(change);
+            else setPendingChange(change);
+        },
+        [isSkipped, applyChange],
+    );
 
     const commitEdit = useCallback(
         (rule: Rule) => {
@@ -87,12 +94,12 @@ export function RulesTable({
             if (parsed === undefined) {
                 toast({ title: t("error"), description: t("invalidDefaultValue"), variant: "destructive" });
             } else if (parsed !== rule.valore_default) {
-                setPendingChange({ rule, field: "valore_default", value: parsed });
+                requestChange({ rule, field: "valore_default", value: parsed });
             }
 
             setEditingId(null);
         },
-        [editValue, toast, t],
+        [editValue, toast, t, requestChange],
     );
 
     const handleKeyDown = useCallback(
@@ -108,27 +115,12 @@ export function RulesTable({
         [commitEdit],
     );
 
-    const handleFieldChange = useCallback(
-        (rule: Rule, field: "tipo_utenza", value: z.infer<typeof customerTypeSchema> | null) => {
-            setPendingChange({ rule, field, value });
-        },
-        [],
-    );
-
     const confirmChange = useCallback(() => {
         if (!pendingChange) return;
-        const { rule, field, value } = pendingChange;
-
-        if (field === "tipo_utenza") {
-            void onUpdateCustomerType(rule, value);
-        } else if (field === "tipo_servizio") {
-            void onUpdateServiceType(rule, value);
-        } else {
-            void onUpdateDefault(rule, value);
-        }
-
+        remember();
+        applyChange(pendingChange);
         setPendingChange(null);
-    }, [pendingChange, onUpdateCustomerType, onUpdateServiceType, onUpdateDefault]);
+    }, [pendingChange, remember, applyChange]);
 
     const typeLabel = (value: Rule["tipo_utenza"] | Rule["tipo_servizio"]): string => t(value ?? "typeNotSet");
 
@@ -193,7 +185,7 @@ export function RulesTable({
                                             const parsedValue = customerTypeSchema.safeParse(value);
 
                                             if (parsedValue.success) {
-                                                handleFieldChange(rule, "tipo_utenza", parsedValue.data);
+                                                requestChange({ rule, field: "tipo_utenza", value: parsedValue.data });
                                             }
                                         }}
                                     >
@@ -211,7 +203,7 @@ export function RulesTable({
                                         value={rule.tipo_servizio ?? ""}
                                         onValueChange={(value) => {
                                             if (value === "__none__") {
-                                                setPendingChange({ rule, field: "tipo_servizio", value: null });
+                                                requestChange({ rule, field: "tipo_servizio", value: null });
 
                                                 return;
                                             }
@@ -219,7 +211,7 @@ export function RulesTable({
                                             const parsedValue = serviceTypeSchema.safeParse(value);
 
                                             if (parsedValue.success) {
-                                                setPendingChange({ rule, field: "tipo_servizio", value: parsedValue.data });
+                                                requestChange({ rule, field: "tipo_servizio", value: parsedValue.data });
                                             }
                                         }}
                                     >
@@ -258,50 +250,23 @@ export function RulesTable({
                                 </TableCell>
                                 <TableCell className="text-center align-middle">
                                     <div className="flex items-center justify-center">
-                                        <Popover open={popoverState?.ruleId === rule.id}>
-                                            <PopoverTrigger asChild>
-                                                <div>
-                                                    {/* A disabled switch gets no pointer events, so the tooltip hangs on a wrapper. */}
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <span className="inline-flex" tabIndex={rule.tipo_utenza === null ? 0 : undefined}>
-                                                                <Switch
-                                                                    checked={rule.utilizzato}
-                                                                    onCheckedChange={(checked) =>
-                                                                        handleToggle(rule, checked)
-                                                                    }
-                                                                    disabled={rule.tipo_utenza === null}
-                                                                    aria-label={`${t("ruleActive")} ${rule.descrizione}`}
-                                                                    className="data-[state=checked]:bg-energia-accent"
-                                                                />
-                                                            </span>
-                                                        </TooltipTrigger>
-                                                        {rule.tipo_utenza === null && (
-                                                            <TooltipContent>{t("ruleNeedsCustomerType")}</TooltipContent>
-                                                        )}
-                                                    </Tooltip>
-                                                </div>
-                                            </PopoverTrigger>
-                                            <PopoverContent
-                                                side="top"
-                                                className="w-auto px-3 py-2 text-sm font-medium"
-                                                sideOffset={8}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    {popoverState?.activated ? (
-                                                        <>
-                                                            <Check className="h-4 w-4 text-energia-accent" />
-                                                            <span>{t("ruleActivated")}</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <XIcon className="h-4 w-4 text-muted-foreground" />
-                                                            <span>{t("ruleDeactivated")}</span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </PopoverContent>
-                                        </Popover>
+                                        {/* A disabled switch gets no pointer events, so the tooltip hangs on a wrapper. */}
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="inline-flex" tabIndex={rule.tipo_utenza === null ? 0 : undefined}>
+                                                    <Switch
+                                                        checked={rule.utilizzato}
+                                                        onCheckedChange={(checked) => void onToggleEnabled(rule, checked)}
+                                                        disabled={rule.tipo_utenza === null}
+                                                        aria-label={`${t("ruleActive")} ${rule.descrizione}`}
+                                                        className="data-[state=checked]:bg-energia-accent"
+                                                    />
+                                                </span>
+                                            </TooltipTrigger>
+                                            {rule.tipo_utenza === null && (
+                                                <TooltipContent>{t("ruleNeedsCustomerType")}</TooltipContent>
+                                            )}
+                                        </Tooltip>
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -320,6 +285,7 @@ export function RulesTable({
                             {t("confirmRuleChangeDescription")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    <SkipConfirmCheckbox skip={skipConfirm} />
                     <AlertDialogFooter>
                         <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmChange}>{t("confirm")}</AlertDialogAction>

@@ -418,7 +418,10 @@ test.describe("release", () => {
         await page.keyboard.press("Tab");
         await expect(save).toBeFocused();
         await page.keyboard.press("Tab");
+        await expect(review.getByRole("checkbox", { name: "Non mostrare più" })).toBeFocused();
+        await page.keyboard.press("Tab");
         await expect(reviewCancel).toBeFocused();
+        await page.keyboard.press("Shift+Tab");
         await page.keyboard.press("Shift+Tab");
         await expect(save).toBeFocused();
         await page.keyboard.press("Escape");

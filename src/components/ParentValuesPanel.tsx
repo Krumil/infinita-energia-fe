@@ -16,6 +16,8 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { SkipConfirmCheckbox } from "@/components/SkipConfirmCheckbox";
+import { useConfirmSkip } from "@/hooks/useConfirmSkip";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ApiError } from "@/api/client";
 import { getParentRuleConfiguration } from "@/api/agents";
@@ -69,6 +71,7 @@ export function ParentValuesPanel({ agent, agentEdits, edits, onEditsChange }: P
     const [loadError, setLoadError] = useState<unknown>(null);
     const [percentInput, setPercentInput] = useState("");
     const [confirmingPrefill, setConfirmingPrefill] = useState(false);
+    const skipPrefill = useConfirmSkip("parent-prefill");
     // Inline instead of a toast: a toast sits on top of the dialog's Save button.
     const [prefilledPercent, setPrefilledPercent] = useState<string | null>(null);
 
@@ -141,7 +144,13 @@ export function ParentValuesPanel({ agent, agentEdits, edits, onEditsChange }: P
     }
 
     return (
-        <AlertDialog open={confirmingPrefill} onOpenChange={setConfirmingPrefill}>
+        <AlertDialog
+            open={confirmingPrefill}
+            onOpenChange={(open) => {
+                if (open && skipPrefill.isSkipped()) handlePrefill(configuration);
+                else setConfirmingPrefill(open);
+            }}
+        >
             <div className="space-y-4">
                 <p className="font-body text-sm text-muted-foreground">
                     {t("parentValuesDescription")
@@ -234,9 +243,17 @@ export function ParentValuesPanel({ agent, agentEdits, edits, onEditsChange }: P
                             {t("prefillConfirmDescription").replace("{percent}", percentInput.trim())}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    <SkipConfirmCheckbox skip={skipPrefill} />
                     <AlertDialogFooter>
                         <AlertDialogCancel className="btn-ghost">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handlePrefill(configuration)}>{t("prefill")}</AlertDialogAction>
+                        <AlertDialogAction
+                            onClick={() => {
+                                skipPrefill.remember();
+                                handlePrefill(configuration);
+                            }}
+                        >
+                            {t("prefill")}
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </div>

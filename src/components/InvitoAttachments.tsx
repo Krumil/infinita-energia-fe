@@ -13,6 +13,8 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
     AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SkipConfirmCheckbox } from "@/components/SkipConfirmCheckbox";
+import { useConfirmSkip } from "@/hooks/useConfirmSkip";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { InvoiceRequestAttachment } from "@/types";
 import type { TranslationKey } from "@/translations";
@@ -74,6 +76,7 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
     const [failures, setFailures] = useState<UploadFailure[]>([]);
     const [operation, setOperation] = useState<Operation>({ kind: "idle" });
     const [deleteTarget, setDeleteTarget] = useState<InvoiceRequestAttachment | null>(null);
+    const skipDelete = useConfirmSkip("attachment-delete");
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const busyRef = useRef(false);
     const loadedRef = useRef(false);
@@ -175,14 +178,14 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
         }
     };
 
-    const handleDelete = async (): Promise<void> => {
-        if (!deleteTarget || !startOperation({ kind: "delete", id: deleteTarget.id })) return;
+    const handleDelete = async (target: InvoiceRequestAttachment): Promise<void> => {
+        if (!startOperation({ kind: "delete", id: target.id })) return;
 
         try {
-            await deleteAttachment(invoiceRequestId, deleteTarget.id);
+            await deleteAttachment(invoiceRequestId, target.id);
 
             if (!mountedRef.current) return;
-            setItems((previous) => previous.filter((item) => item.id !== deleteTarget.id));
+            setItems((previous) => previous.filter((item) => item.id !== target.id));
             setDeleteTarget(null);
             await refresh();
         } catch (error) {
@@ -288,7 +291,12 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
                                             {operation.kind === "download" && operation.id === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                                         </Button>
                                         <Button size="icon" variant="ghost" className="h-11 w-11 text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} aria-label={`${t("attachmentDelete")}: ${item.nome_file}`}
-                                            onClick={() => { setActionError(null); setDeleteTarget(item); }}><Trash2 className="h-4 w-4" /></Button>
+                                            onClick={() => {
+                                                setActionError(null);
+
+                                                if (skipDelete.isSkipped()) void handleDelete(item);
+                                                else setDeleteTarget(item);
+                                            }}><Trash2 className="h-4 w-4" /></Button>
                                     </div></TableCell>
                                 </TableRow>
                             ))}</TableBody>
@@ -308,9 +316,15 @@ export function InvoiceRequestAttachments({ invoiceRequestId, active, onBusyChan
                         </div>
                     )}
                     {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
+                    <SkipConfirmCheckbox skip={skipDelete} />
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={busy}>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction disabled={busy} className={buttonVariants({ variant: "destructive" })} onClick={(event) => { event.preventDefault(); void handleDelete(); }}>
+                        <AlertDialogAction disabled={busy || !deleteTarget} className={buttonVariants({ variant: "destructive" })} onClick={(event) => {
+                            event.preventDefault();
+                            skipDelete.remember();
+
+                            if (deleteTarget) void handleDelete(deleteTarget);
+                        }}>
                             {operation.kind === "delete" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t("attachmentDelete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
