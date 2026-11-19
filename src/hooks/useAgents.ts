@@ -1,41 +1,54 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
-    getAgenti,
-    createAgente,
-    updateAgente,
-    deleteAgente,
-    getConfigurazioneRegole,
-    saveConfigurazioneRegole,
+    getAgents,
+    createAgent,
+    updateAgent,
+    deleteAgent as deleteAgentApi,
+    getRuleConfiguration,
+    saveRuleConfiguration,
 } from "@/api/agents";
 import { ApiError } from "@/api/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Agente, ConfigurazioneRegola, CreateAgentRequest } from "@/types";
+import type { Agent, RuleConfiguration, CreateAgentRequest } from "@/types";
 
-export function useAgents() {
+interface Options {
+    // Called after a change that can alter commission amounts, so an open preview can be marked stale.
+    onChanged?: () => void;
+}
+
+export function useAgents({ onChanged }: Options = {}) {
     const { toast } = useToast();
     const { t } = useTranslation();
 
-    const [agents, setAgents] = useState<Agente[]>([]);
+    const [agents, setAgents] = useState<Agent[]>([]);
     const [loading, setLoading] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingAgent, setEditingAgent] = useState<Agente | null>(null);
+    const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [parentLinked, setParentLinked] = useState(false);
 
-    const [configurazione, setConfigurazione] = useState<ConfigurazioneRegola[]>([]);
+    const [configuration, setConfiguration] = useState<RuleConfiguration[]>([]);
     const [configLoading, setConfigLoading] = useState(false);
 
     const initialLoadDone = useRef(false);
+    // Only the latest opened agent may fill the dialog; a slower answer for another agent would be saved onto this one.
+    const configRequestRef = useRef(0);
 
-    const loadAgents = useCallback(async () => {
+    const loadAgents = useCallback(async (): Promise<Agent[] | null> => {
         setLoading(true);
+
         try {
-            const data = await getAgenti();
+            const data = await getAgents();
             setAgents(data);
+
+            return data;
         } catch (error) {
             const errorMsg = error instanceof ApiError ? error.message : t("error");
             toast({ title: t("error"), description: errorMsg, variant: "destructive" });
+
+            return null;
         } finally {
             setLoading(false);
         }
@@ -48,85 +61,127 @@ export function useAgents() {
     }, [loadAgents]);
 
     const openCreateDialog = useCallback(() => {
+        configRequestRef.current += 1;
+        setConfigLoading(false);
         setEditingAgent(null);
-        setConfigurazione([]);
+        setParentLinked(false);
+        setConfiguration([]);
         setDialogOpen(true);
     }, []);
 
-    const openEditDialog = useCallback(async (agent: Agente) => {
+    const openEditDialog = useCallback(async (agent: Agent, linked = false) => {
+        const requestId = ++configRequestRef.current;
         setEditingAgent(agent);
-        setConfigurazione([]);
+        setParentLinked(linked);
+        setConfiguration([]);
         setDialogOpen(true);
         setConfigLoading(true);
+
         try {
-            const response = await getConfigurazioneRegole(agent.id);
-            setConfigurazione(response.configurazione);
+            const response = await getRuleConfiguration(agent.id);
+
+            if (requestId === configRequestRef.current) setConfiguration(response.configurazione);
         } catch (error) {
+            if (requestId !== configRequestRef.current) return;
+
             const errorMsg = error instanceof ApiError ? error.message : t("error");
             toast({ title: t("error"), description: errorMsg, variant: "destructive" });
-            setConfigurazione([]);
+            setConfiguration([]);
         } finally {
-            setConfigLoading(false);
+            if (requestId === configRequestRef.current) setConfigLoading(false);
         }
     }, [toast, t]);
 
     const saveAgent = useCallback(
-        async (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>): Promise<string | null> => {
+        async (data: CreateAgentRequest, customValues?: Array<{ regola_id: number; scaglione_id: number; valore: number }>): Promise<string | null> => {
             setSaving(true);
+
             try {
+                let agentId: number;
+
                 if (editingAgent) {
-                    await updateAgente(editingAgent.id, data);
-                    if (customValori && customValori.length > 0) {
-                        await saveConfigurazioneRegole(editingAgent.id, { valori: customValori });
+                    await updateAgent(editingAgent.id, data);
+
+                    if (customValues && customValues.length > 0) {
+                        await saveRuleConfiguration(editingAgent.id, { valori: customValues });
                     }
-                    toast({ title: t("success"), description: t("agentUpdated") });
-                    setDialogOpen(false);
-                    await loadAgents();
-                    return t("agentUpdated");
+
+                    agentId = editingAgent.id;
                 } else {
-                    await createAgente(data);
-                    toast({ title: t("success"), description: t("agentCreated") });
+                    agentId = (await createAgent(data)).agente_id;
+                }
+
+                const message = editingAgent ? t("agentUpdated") : t("agentCreated");
+                const linked = Boolean(data.agente_padre) && data.agente_padre !== (editingAgent?.agente_padre ?? null);
+
+                onChanged?.();
+                toast({ title: t("success"), description: message });
+
+                if (!linked) {
                     setDialogOpen(false);
                     await loadAgents();
-                    return t("agentCreated");
+
+                    return message;
                 }
+
+                // The backend doesn't set the values a newly linked parent earns, so the dialog moves to them instead of closing.
+                const saved = (await loadAgents())?.find((agent) => agent.id === agentId);
+
+                if (saved) {
+                    await openEditDialog(saved, true);
+                } else {
+                    setDialogOpen(false);
+                }
+
+                return message;
             } catch (error) {
                 const errorMsg = error instanceof ApiError ? error.message : t("error");
                 toast({ title: t("error"), description: errorMsg, variant: "destructive" });
+
+                // A failed edit can still have stored the agent row or the parent values the dialog sends first.
+                if (editingAgent) {
+                    onChanged?.();
+                    await loadAgents();
+                }
+
                 return null;
             } finally {
                 setSaving(false);
             }
         },
-        [editingAgent, loadAgents, toast, t],
+        [editingAgent, loadAgents, onChanged, openEditDialog, toast, t],
     );
 
     const deleteAgent = useCallback(
-        async (agent: Agente): Promise<string | null> => {
+        async (agent: Agent): Promise<string | null> => {
             setDeleting(true);
+
             try {
-                await deleteAgente(agent.id);
+                await deleteAgentApi(agent.id);
+                onChanged?.();
                 toast({ title: t("success"), description: t("agentDeleted") });
                 setDialogOpen(false);
                 await loadAgents();
+
                 return t("agentDeleted");
             } catch (error) {
                 const errorMsg = error instanceof ApiError ? error.message : t("error");
                 toast({ title: t("error"), description: errorMsg, variant: "destructive" });
+
                 return null;
             } finally {
                 setDeleting(false);
             }
         },
-        [loadAgents, toast, t],
+        [loadAgents, onChanged, toast, t],
     );
 
-    const toggleStatistiche = useCallback(
-        async (agent: Agente, value: boolean): Promise<void> => {
+    const toggleStatistics = useCallback(
+        async (agent: Agent, value: boolean): Promise<void> => {
             setAgents((prev) => prev.map((current) => (current.id === agent.id ? { ...current, statistiche: value } : current)));
 
             try {
-                await updateAgente(agent.id, { statistiche: value });
+                await updateAgent(agent.id, { statistiche: value });
             } catch (error) {
                 setAgents((prev) =>
                     prev.map((current) => (current.id === agent.id ? { ...current, statistiche: agent.statistiche } : current)),
@@ -144,6 +199,7 @@ export function useAgents() {
         dialogOpen,
         setDialogOpen,
         editingAgent,
+        parentLinked,
         saving,
         deleting,
         loadAgents,
@@ -151,8 +207,8 @@ export function useAgents() {
         openEditDialog,
         saveAgent,
         deleteAgent,
-        toggleStatistiche,
-        configurazione,
+        toggleStatistics,
+        configuration,
         configLoading,
     };
 }

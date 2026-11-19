@@ -1,45 +1,43 @@
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useState, useMemo, useCallback } from "react";
-import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "@/hooks/useTranslation";
+import { matchesSearch } from "@/lib/utils";
 import { SearchableSelect } from "./SearchableSelect";
+import { ROWS_PAGE_SIZE, ShowMoreRows } from "./ShowMoreRows";
+import { SortableTableHead, type SortDirection } from "./SortableTableHead";
 import type { AgentsTableProps } from "@/types/components";
-import type { Agente } from "@/types/domain";
 
-export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTableProps) {
+type SortKey = "nome_cognome" | "agente_padre_nome" | "mail";
+
+export function AgentsTable({ data, onEdit, onToggleStatistics }: AgentsTableProps) {
     const { t } = useTranslation();
 
-    const [sortKey, setSortKey] = useState<keyof Agente>("nome_cognome");
-    const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+    const [sortKey, setSortKey] = useState<SortKey>("nome_cognome");
+    const [sortDir, setSortDir] = useState<SortDirection>("asc");
     const [filter, setFilter] = useState("");
     const [parentFilter, setParentFilter] = useState<string | undefined>(undefined);
-    const [page, setPage] = useState(0);
-    const pageSize = 20;
+    const [shown, setShown] = useState(ROWS_PAGE_SIZE);
 
     const parentOptions = useMemo(() => {
-        return Array.from(
-            new Set(
-                data
-                    .map((item) => item.agente_padre?.trim())
-                    .filter((value): value is string => Boolean(value)),
-            ),
-        )
-            .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }))
-            .map((value) => ({ value, label: value }));
+        const names = new Map<string, string>();
+
+        for (const item of data) {
+            if (item.agente_padre) names.set(item.agente_padre, item.agente_padre_nome ?? item.agente_padre);
+        }
+
+        return Array.from(names, ([value, label]) => ({ value, label })).sort((left, right) =>
+            left.label.localeCompare(right.label, undefined, { sensitivity: "base" }),
+        );
     }, [data]);
 
     const filtered = useMemo(() => {
-        const lowerFilter = filter.trim().toLowerCase();
-
         return data.filter((item) => {
-            const matchesText =
-                lowerFilter === "" ||
-                item.nome_cognome.toLowerCase().includes(lowerFilter) ||
-                item.agente_padre?.toLowerCase().includes(lowerFilter) ||
-                item.mail?.toLowerCase().includes(lowerFilter);
+            const matchesText = matchesSearch(filter, [item.nome_cognome, item.agente_padre_nome, item.mail]);
 
             const matchesParent = !parentFilter || item.agente_padre === parentFilter;
 
@@ -51,31 +49,31 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
         return [...filtered].sort((a, b) => {
             const aVal = a[sortKey];
             const bVal = b[sortKey];
+
             if (aVal === null || aVal === undefined) return 1;
+
             if (bVal === null || bVal === undefined) return -1;
             const aStr = String(aVal);
             const bStr = String(bVal);
+
             return sortDir === "asc" ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
         });
     }, [filtered, sortKey, sortDir]);
 
-    const paginated = sorted.slice(page * pageSize, (page + 1) * pageSize);
-    const totalPages = Math.ceil(sorted.length / pageSize);
+    const handleSort = useCallback((key: SortKey) => {
+        if (key === sortKey) {
+            setSortDir((d) => (d === "asc" ? "desc" : "asc"));
 
-    const handleSort = useCallback((key: keyof Agente) => {
-        setSortKey((prev) => {
-            if (prev === key) {
-                setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-                return prev;
-            }
-            setSortDir("asc");
-            return key;
-        });
-    }, []);
+            return;
+        }
+
+        setSortKey(key);
+        setSortDir("asc");
+    }, [sortKey]);
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+            <div className="flex shrink-0 flex-col gap-3 md:flex-row md:items-center">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                     <Input
@@ -83,7 +81,7 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
                         value={filter}
                         onChange={(e) => {
                             setFilter(e.target.value);
-                            setPage(0);
+                            setShown(ROWS_PAGE_SIZE);
                         }}
                         className="pl-10 font-mono text-sm"
                     />
@@ -93,7 +91,7 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
                         value={parentFilter}
                         onValueChange={(value) => {
                             setParentFilter(value);
-                            setPage(0);
+                            setShown(ROWS_PAGE_SIZE);
                         }}
                         options={parentOptions}
                         placeholder={t("allParentAgents")}
@@ -110,7 +108,7 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
                         onClick={() => {
                             setFilter("");
                             setParentFilter(undefined);
-                            setPage(0);
+                            setShown(ROWS_PAGE_SIZE);
                         }}
                         className="btn-ghost"
                     >
@@ -118,81 +116,65 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
                     </Button>
                 )}
             </div>
-            <div className="border border-border/50 overflow-x-auto rounded-sm shadow-sm">
-                <table className="ledger-table w-full">
-                    <thead>
-                        <tr>
-                            <th className="cursor-pointer hover:text-foreground" onClick={() => handleSort("nome_cognome")}>
+            <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
+                <Table containerClassName="min-h-0 flex-1">
+                    <TableHeader>
+                        <TableRow>
+                            <SortableTableHead label={t("agentName")} tooltip={t("agentNameTooltip")} field="nome_cognome"
+                                sortField={sortKey} direction={sortDir} onSort={handleSort} />
+                            <SortableTableHead label={t("parentAgent")} tooltip={t("parentAgentTooltip")} field="agente_padre_nome"
+                                sortField={sortKey} direction={sortDir} onSort={handleSort} />
+                            <SortableTableHead label={t("email")} field="mail" sortField={sortKey} direction={sortDir} onSort={handleSort} />
+                            <TableHead className="text-center">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-2">
-                                            {t("agentName")} <ArrowUpDown className="h-3 w-3 shrink-0" />
-                                        </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>{t("agentNameTooltip")}</TooltipContent>
-                                </Tooltip>
-                            </th>
-                            <th className="cursor-pointer hover:text-foreground" onClick={() => handleSort("agente_padre")}>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-2">
-                                            {t("parentAgent")} <ArrowUpDown className="h-3 w-3 shrink-0" />
-                                        </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>{t("parentAgentTooltip")}</TooltipContent>
-                                </Tooltip>
-                            </th>
-                            <th className="cursor-pointer hover:text-foreground" onClick={() => handleSort("mail")}>
-                                <div className="flex items-center gap-2">
-                                    {t("email")} <ArrowUpDown className="h-3 w-3 shrink-0" />
-                                </div>
-                            </th>
-                            <th className="text-center">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div className="flex items-center justify-center gap-2">
-                                            {t("statistics")}
-                                        </div>
+                                        <span>{t("statistics")}</span>
                                     </TooltipTrigger>
                                     <TooltipContent>{t("statisticsTooltip")}</TooltipContent>
                                 </Tooltip>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {paginated.length === 0 ? (
-                            <tr>
-                                <td colSpan={4} className="text-center py-12 font-display italic text-muted-foreground">
+                            </TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {sorted.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center py-12 font-display italic text-muted-foreground">
                                     {t("noDataFound")}
-                                </td>
-                            </tr>
+                                </TableCell>
+                            </TableRow>
                         ) : (
-                            paginated.map((row) => (
-                                <tr key={row.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onEdit(row)}>
-                                    <td className="font-body font-medium overflow-hidden">
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <span className="block line-clamp-2 leading-snug">{row.nome_cognome}</span>
-                                            </TooltipTrigger>
-                                            <TooltipContent>{row.nome_cognome}</TooltipContent>
-                                        </Tooltip>
-                                    </td>
-                                    <td className="text-muted-foreground overflow-hidden">
+                            sorted.slice(0, shown).map((row) => (
+                                <TableRow key={row.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onEdit(row)}>
+                                    <TableCell className="font-body font-medium overflow-hidden">
+                                        <Button
+                                            type="button"
+                                            variant="unstyled"
+                                            size="unstyled"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onEdit(row);
+                                            }}
+                                            className="block whitespace-normal text-left font-[inherit] font-medium line-clamp-2 leading-snug hover:underline"
+                                        >
+                                            {row.nome_cognome}
+                                        </Button>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground overflow-hidden">
                                         {row.agente_padre ? (
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <span className="block line-clamp-2 leading-snug">{row.agente_padre}</span>
+                                                    <span className="block line-clamp-2 leading-snug">{row.agente_padre_nome ?? row.agente_padre}</span>
                                                 </TooltipTrigger>
-                                                <TooltipContent>{row.agente_padre}</TooltipContent>
+                                                <TooltipContent>{row.agente_padre_nome ?? row.agente_padre}</TooltipContent>
                                             </Tooltip>
                                         ) : (
                                             "—"
                                         )}
-                                    </td>
-                                    <td className="text-muted-foreground">
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">
                                         {row.mail || "—"}
-                                    </td>
-                                    <td
+                                    </TableCell>
+                                    <TableCell
                                         className="text-center"
                                         onClick={(e) => e.stopPropagation()}
                                         onPointerDown={(e) => e.stopPropagation()}
@@ -200,45 +182,18 @@ export function AgentsTable({ data, onEdit, onToggleStatistiche }: AgentsTablePr
                                         <div className="flex items-center justify-center">
                                             <Checkbox
                                                 checked={row.statistiche ?? false}
-                                                onCheckedChange={(checked) => void onToggleStatistiche(row, checked === true)}
+                                                onCheckedChange={(checked) => void onToggleStatistics(row, checked === true)}
                                                 aria-label={`${t("statistics")} ${row.nome_cognome}`}
                                             />
                                         </div>
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             ))
                         )}
-                    </tbody>
-                </table>
+                        <ShowMoreRows shown={shown} total={sorted.length} onShowMore={setShown} colSpan={4} />
+                    </TableBody>
+                </Table>
             </div>
-            {totalPages > 1 && (
-                <div className="flex items-center justify-between">
-                    <p className="font-mono text-sm text-muted-foreground">
-                        {t("showing")} {page * pageSize + 1}–{Math.min((page + 1) * pageSize, sorted.length)} {t("of")}{" "}
-                        {sorted.length}
-                    </p>
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPage((p) => Math.max(0, p - 1))}
-                            disabled={page === 0}
-                            className="btn-ghost"
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                            disabled={page === totalPages - 1}
-                            className="btn-ghost"
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

@@ -1,4 +1,4 @@
-export interface Regola {
+export interface Rule {
     id: number;
     descrizione: string;
     utilizzato: boolean;
@@ -7,23 +7,26 @@ export interface Regola {
     tipo_servizio: "gas" | "luce" | null;
 }
 
-export interface Scaglione {
+export interface Tier {
     id: number;
     descrizione: string;
     tipo_utenza: "residenziale" | "business" | null;
     tipo_servizio: "gas" | "luce" | null;
 }
 
-export interface Agente {
+export interface Agent {
     id: number;
     nome_cognome: string;
+    // The words of nome_cognome in alphabetical order: the key agente_padre points to.
+    nome_normalizzato: string;
     agente_padre: string | null;
+    // The parent's nome_cognome, null when no agent has the agente_padre key.
+    agente_padre_nome: string | null;
     mail: string | null;
     statistiche: boolean | null;
-    percentuale_provvigione_figlio: number | null;
 }
 
-export interface ConfigurazioneRegola {
+export interface RuleConfiguration {
     regola_id: number;
     regola_nome: string;
     scaglione_id: number;
@@ -32,13 +35,30 @@ export interface ConfigurazioneRegola {
     is_custom: boolean;
 }
 
-export interface ConfigurazioneResponse {
+export interface RuleConfigurationResponse {
     agente_id: number;
     nome_agente: string;
-    configurazione: ConfigurazioneRegola[];
+    configurazione: RuleConfiguration[];
 }
 
-export interface Liquidazione {
+// valore is the sub-agent's own commission, shown read-only next to the parent's share.
+export interface ParentRuleConfiguration {
+    regola_id: number;
+    regola_nome: string;
+    scaglione_id: number | null;
+    scaglione_nome: string;
+    valore: number;
+    valore_padre: number;
+}
+
+export interface ParentRuleConfigurationResponse {
+    agente_id: number;
+    nome_agente: string;
+    agente_padre: string;
+    configurazione: ParentRuleConfiguration[];
+}
+
+export interface Settlement {
     id?: number;
     piano_provvigionale?: string;
     regola?: string;
@@ -73,7 +93,7 @@ export interface Liquidazione {
     competenza_liquidazione?: string; // Format: "YYYY-MM-DD" from Excel (MM/YYYY)
 }
 
-export interface StoricoInvito {
+export interface InvoiceRequest {
     id: number;
     agente_id: number;
     nome_agente: string;

@@ -1,0 +1,1051 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-12T20:40:12.976Z",
+  "title": "Design System: Calcolo Provvigioni",
+  "extensions": {
+    "colorMeta": {
+      "energia-sky": {
+        "canonical": "oklch(67.5% 0.123 230.1)",
+        "role": "primary",
+        "displayName": "Energia Sky",
+        "cssVar": "--primary",
+        "dark": "hsl(197 60% 55%)",
+        "tonalRamp": [
+          "#000d15",
+          "#022939",
+          "#014962",
+          "#056a8d",
+          "#028ebc",
+          "#3fb3e3",
+          "#80d6fe",
+          "#dcf3fe"
+        ]
+      },
+      "energia-leaf": {
+        "canonical": "oklch(66.4% 0.175 146.0)",
+        "role": "secondary",
+        "displayName": "Energia Leaf",
+        "cssVar": "--energia-accent",
+        "dark": "hsl(130 50% 55%)",
+        "tonalRamp": [
+          "#001002",
+          "#002f09",
+          "#015116",
+          "#047624",
+          "#1d9c39",
+          "#4dc15d",
+          "#74e781",
+          "#caffcc"
+        ]
+      },
+      "sky-ink": {
+        "canonical": "oklch(50.0% 0.094 230.9)",
+        "role": "primary",
+        "displayName": "Sky Ink",
+        "cssVar": "--primary-text",
+        "dark": "hsl(197 60% 55%)",
+        "tonalRamp": [
+          "#000d15",
+          "#01293a",
+          "#004963",
+          "#116a8d",
+          "#3d8cb0",
+          "#62b0d5",
+          "#87d5fb",
+          "#dcf2fe"
+        ]
+      },
+      "leaf-ink": {
+        "canonical": "oklch(50.1% 0.132 146.0)",
+        "role": "secondary",
+        "displayName": "Leaf Ink",
+        "cssVar": "--energia-accent-text",
+        "dark": "hsl(130 50% 55%)",
+        "tonalRamp": [
+          "#001002",
+          "#002f09",
+          "#025116",
+          "#1f742e",
+          "#46974f",
+          "#6abb71",
+          "#8ee094",
+          "#caffcc"
+        ]
+      },
+      "night-grid-navy": {
+        "canonical": "oklch(29.8% 0.096 254.5)",
+        "role": "tertiary",
+        "displayName": "Night Grid Navy",
+        "cssVar": "--header-gradient-start",
+        "dark": "hsl(210 20% 11%)",
+        "tonalRamp": [
+          "#000b1f",
+          "#01244d",
+          "#184274",
+          "#386397",
+          "#5985bb",
+          "#7ba8e1",
+          "#a5ccff",
+          "#e5f0fe"
+        ]
+      },
+      "night-grid-navy-deep": {
+        "canonical": "oklch(25.5% 0.079 253.3)",
+        "role": "tertiary",
+        "displayName": "Night Grid Navy Deep",
+        "cssVar": "--header-gradient-end",
+        "dark": "hsl(210 20% 7%)",
+        "tonalRamp": [
+          "#000b1d",
+          "#02254a",
+          "#21436b",
+          "#40638d",
+          "#6085b1",
+          "#82a8d6",
+          "#a5cdfc",
+          "#e4f0fe"
+        ]
+      },
+      "slate-ink": {
+        "canonical": "oklch(36.4% 0.035 248.8)",
+        "role": "neutral",
+        "displayName": "Slate Ink",
+        "cssVar": "--foreground",
+        "dark": "hsl(210 5% 90%)",
+        "tonalRamp": [
+          "#010c19",
+          "#172635",
+          "#344454",
+          "#526374",
+          "#738597",
+          "#95a7ba",
+          "#b8ccdf",
+          "#e2f0ff"
+        ]
+      },
+      "muted-ink": {
+        "canonical": "oklch(50.5% 0.021 248.2)",
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "cssVar": "--muted-foreground",
+        "dark": "hsl(210 5% 55%)",
+        "tonalRamp": [
+          "#050c13",
+          "#1d262f",
+          "#3a434d",
+          "#58636d",
+          "#79848e",
+          "#9ba6b2",
+          "#bfcbd6",
+          "#e4f0fc"
+        ]
+      },
+      "metric-graphite": {
+        "canonical": "oklch(46.2% 0.011 248.1)",
+        "role": "neutral",
+        "displayName": "Metric Graphite",
+        "cssVar": "--metric-value",
+        "dark": "hsl(210 5% 90%)",
+        "tonalRamp": [
+          "#080c10",
+          "#21262a",
+          "#3e4348",
+          "#5c6267",
+          "#7d8389",
+          "#a0a6ac",
+          "#c4cad0",
+          "#e9eff6"
+        ]
+      },
+      "mist-paper": {
+        "canonical": "oklch(96.1% 0.005 238.4)",
+        "role": "neutral",
+        "displayName": "Mist Paper",
+        "cssVar": "--background",
+        "dark": "hsl(210 15% 10%)",
+        "tonalRamp": [
+          "#090b0d",
+          "#232527",
+          "#404244",
+          "#5f6264",
+          "#808385",
+          "#a2a5a8",
+          "#c6cacc",
+          "#ebeff1"
+        ]
+      },
+      "card-paper": {
+        "canonical": "oklch(97.7% 0.003 238.4)",
+        "role": "neutral",
+        "displayName": "Card Paper",
+        "cssVar": "--card",
+        "dark": "hsl(210 12% 13%)",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242526",
+          "#414243",
+          "#606163",
+          "#818284",
+          "#a3a5a6",
+          "#c7c9cb",
+          "#edeff0"
+        ]
+      },
+      "secondary-wash": {
+        "canonical": "oklch(92.3% 0.008 238.5)",
+        "role": "neutral",
+        "displayName": "Secondary Wash",
+        "cssVar": "--secondary",
+        "dark": "hsl(210 10% 18%)",
+        "tonalRamp": [
+          "#080c0e",
+          "#222628",
+          "#3e4346",
+          "#5d6265",
+          "#7e8386",
+          "#a1a6a9",
+          "#c5cace",
+          "#eaeff3"
+        ]
+      },
+      "muted-wash": {
+        "canonical": "oklch(93.8% 0.006 238.4)",
+        "role": "neutral",
+        "displayName": "Muted Wash",
+        "cssVar": "--muted",
+        "dark": "hsl(210 10% 18%)",
+        "tonalRamp": [
+          "#090c0d",
+          "#232527",
+          "#3f4245",
+          "#5e6264",
+          "#7f8385",
+          "#a2a6a8",
+          "#c6cacc",
+          "#ebeff2"
+        ]
+      },
+      "hairline": {
+        "canonical": "oklch(86.0% 0.011 238.5)",
+        "role": "neutral",
+        "displayName": "Hairline",
+        "cssVar": "--border",
+        "dark": "hsl(210 10% 22%)",
+        "tonalRamp": [
+          "#070c0f",
+          "#20262a",
+          "#3d4347",
+          "#5c6267",
+          "#7d8388",
+          "#9fa6ab",
+          "#c3cad0",
+          "#e8f0f5"
+        ]
+      },
+      "input-line": {
+        "canonical": "oklch(90.7% 0.007 238.5)",
+        "role": "neutral",
+        "displayName": "Input Line",
+        "cssVar": "--input",
+        "dark": "hsl(210 10% 22%)",
+        "tonalRamp": [
+          "#080c0e",
+          "#222628",
+          "#3f4345",
+          "#5e6265",
+          "#7e8386",
+          "#a1a6a9",
+          "#c5cacd",
+          "#eaeff3"
+        ]
+      },
+      "sky-wash": {
+        "canonical": "oklch(91.5% 0.029 223.5)",
+        "role": "neutral",
+        "displayName": "Sky Wash",
+        "cssVar": "--page-wash",
+        "tonalRamp": [
+          "#000d13",
+          "#15282f",
+          "#31464d",
+          "#50656d",
+          "#70868f",
+          "#92a9b2",
+          "#b6ced7",
+          "#dbf3fd"
+        ]
+      },
+      "on-color": {
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "role": "neutral",
+        "displayName": "On Color",
+        "cssVar": "--destructive-foreground",
+        "dark": "hsl(0 0% 100%)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "alarm-red": {
+        "canonical": "oklch(54.8% 0.195 26.6)",
+        "role": "error",
+        "displayName": "Alarm Red",
+        "cssVar": "--destructive",
+        "dark": "hsl(0 55% 50%)",
+        "tonalRamp": [
+          "#1f0001",
+          "#4d0004",
+          "#80010c",
+          "#b60d18",
+          "#df423d",
+          "#ff7368",
+          "#feb3aa",
+          "#fee9e6"
+        ]
+      },
+      "status-draft-bg": {
+        "canonical": "oklch(96.2% 0.058 95.6)",
+        "role": "status",
+        "displayName": "Draft fill (Tailwind amber)",
+        "dark": "#78350f at 40%",
+        "tonalRamp": [
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fcd34d",
+          "#fde68a",
+          "#fef3c7"
+        ]
+      },
+      "status-draft-text": {
+        "canonical": "oklch(55.5% 0.146 49.0)",
+        "role": "status",
+        "displayName": "Draft text (Tailwind amber)",
+        "dark": "#fbbf24",
+        "tonalRamp": [
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fcd34d",
+          "#fde68a",
+          "#fef3c7"
+        ]
+      },
+      "status-sent-bg": {
+        "canonical": "oklch(93.2% 0.032 255.6)",
+        "role": "status",
+        "displayName": "Sent fill (Tailwind blue)",
+        "dark": "#1e3a8a at 40%",
+        "tonalRamp": [
+          "#1e3a8a",
+          "#1e40af",
+          "#1d4ed8",
+          "#2563eb",
+          "#3b82f6",
+          "#93c5fd",
+          "#bfdbfe",
+          "#dbeafe"
+        ]
+      },
+      "status-sent-text": {
+        "canonical": "oklch(48.8% 0.217 264.4)",
+        "role": "status",
+        "displayName": "Sent text (Tailwind blue)",
+        "dark": "#60a5fa",
+        "tonalRamp": [
+          "#1e3a8a",
+          "#1e40af",
+          "#1d4ed8",
+          "#2563eb",
+          "#3b82f6",
+          "#93c5fd",
+          "#bfdbfe",
+          "#dbeafe"
+        ]
+      },
+      "status-approved-bg": {
+        "canonical": "oklch(95.0% 0.051 163.1)",
+        "role": "status",
+        "displayName": "Approved fill (Tailwind emerald)",
+        "dark": "#064e3b at 40%",
+        "tonalRamp": [
+          "#064e3b",
+          "#065f46",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#6ee7b7",
+          "#a7f3d0",
+          "#d1fae5"
+        ]
+      },
+      "status-approved-text": {
+        "canonical": "oklch(50.8% 0.105 165.6)",
+        "role": "status",
+        "displayName": "Approved text (Tailwind emerald)",
+        "dark": "#34d399",
+        "tonalRamp": [
+          "#064e3b",
+          "#065f46",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#6ee7b7",
+          "#a7f3d0",
+          "#d1fae5"
+        ]
+      },
+      "status-neutral-bg": {
+        "canonical": "oklch(96.8% 0.007 247.9)",
+        "role": "status",
+        "displayName": "Neutral fill (Tailwind slate)",
+        "dark": "#1e293b at 40%",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#cbd5e1",
+          "#e2e8f0",
+          "#f1f5f9"
+        ]
+      },
+      "status-neutral-text": {
+        "canonical": "oklch(44.6% 0.037 257.3)",
+        "role": "status",
+        "displayName": "Neutral text (Tailwind slate)",
+        "dark": "#94a3b8",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#cbd5e1",
+          "#e2e8f0",
+          "#f1f5f9"
+        ]
+      },
+      "status-failed-bg": {
+        "canonical": "oklch(93.6% 0.031 17.7)",
+        "role": "status",
+        "displayName": "Failed fill (Tailwind red)",
+        "dark": "#7f1d1d at 40%",
+        "tonalRamp": [
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#ef4444",
+          "#fca5a5",
+          "#fecaca",
+          "#fee2e2"
+        ]
+      },
+      "status-failed-text": {
+        "canonical": "oklch(50.5% 0.190 27.5)",
+        "role": "status",
+        "displayName": "Failed text (Tailwind red)",
+        "dark": "#f87171",
+        "tonalRamp": [
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#ef4444",
+          "#fca5a5",
+          "#fecaca",
+          "#fee2e2"
+        ]
+      },
+      "notice-warning-bg": {
+        "canonical": "oklch(98.7% 0.021 95.3)",
+        "role": "notice",
+        "displayName": "Notice warning bg (Tailwind amber)",
+        "tonalRamp": [
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fcd34d",
+          "#fde68a",
+          "#fef3c7"
+        ]
+      },
+      "notice-warning-text": {
+        "canonical": "oklch(47.3% 0.125 46.2)",
+        "role": "notice",
+        "displayName": "Notice warning text (Tailwind amber)",
+        "tonalRamp": [
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fcd34d",
+          "#fde68a",
+          "#fef3c7"
+        ]
+      },
+      "notice-warning-border": {
+        "canonical": "oklch(76.9% 0.165 70.1)",
+        "role": "notice",
+        "displayName": "Notice warning border (Tailwind amber)",
+        "tonalRamp": [
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fcd34d",
+          "#fde68a",
+          "#fef3c7"
+        ]
+      },
+      "notice-success-bg": {
+        "canonical": "oklch(97.9% 0.021 166.1)",
+        "role": "notice",
+        "displayName": "Notice success bg (Tailwind emerald)",
+        "tonalRamp": [
+          "#064e3b",
+          "#065f46",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#6ee7b7",
+          "#a7f3d0",
+          "#d1fae5"
+        ]
+      },
+      "notice-success-text": {
+        "canonical": "oklch(43.2% 0.086 166.9)",
+        "role": "notice",
+        "displayName": "Notice success text (Tailwind emerald)",
+        "tonalRamp": [
+          "#064e3b",
+          "#065f46",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#6ee7b7",
+          "#a7f3d0",
+          "#d1fae5"
+        ]
+      },
+      "notice-info-bg": {
+        "canonical": "oklch(97.7% 0.012 236.6)",
+        "role": "notice",
+        "displayName": "Notice info bg (Tailwind sky)",
+        "tonalRamp": [
+          "#0c4a6e",
+          "#075985",
+          "#0369a1",
+          "#0284c7",
+          "#0ea5e9",
+          "#7dd3fc",
+          "#bae6fd",
+          "#e0f2fe"
+        ]
+      },
+      "notice-info-text": {
+        "canonical": "oklch(44.3% 0.100 240.8)",
+        "role": "notice",
+        "displayName": "Notice info text (Tailwind sky)",
+        "tonalRamp": [
+          "#0c4a6e",
+          "#075985",
+          "#0369a1",
+          "#0284c7",
+          "#0ea5e9",
+          "#7dd3fc",
+          "#bae6fd",
+          "#e0f2fe"
+        ]
+      },
+      "series-1": {
+        "canonical": "oklch(57.5% 0.163 255.5)",
+        "role": "chart",
+        "displayName": "Series 1",
+        "cssVar": "--series-1",
+        "dark": "#3987e5",
+        "tonalRamp": [
+          "#000b1f",
+          "#00244f",
+          "#004083",
+          "#055fba",
+          "#3582e1",
+          "#63a7ff",
+          "#a6ccff",
+          "#e5f0fe"
+        ]
+      },
+      "series-2": {
+        "canonical": "oklch(67.1% 0.175 40.6)",
+        "role": "chart",
+        "displayName": "Series 2",
+        "cssVar": "--series-2",
+        "dark": "#d95926",
+        "tonalRamp": [
+          "#1a0400",
+          "#441300",
+          "#722500",
+          "#a43903",
+          "#d5531b",
+          "#fd7845",
+          "#feb59b",
+          "#fee9e2"
+        ]
+      },
+      "series-3": {
+        "canonical": "oklch(66.9% 0.141 162.1)",
+        "role": "chart",
+        "displayName": "Series 3",
+        "cssVar": "--series-3",
+        "dark": "#199e70",
+        "tonalRamp": [
+          "#000f07",
+          "#012d1c",
+          "#004f34",
+          "#04734e",
+          "#019a69",
+          "#37c08a",
+          "#65e5ad",
+          "#c2ffdf"
+        ]
+      },
+      "series-4": {
+        "canonical": "oklch(76.4% 0.161 75.1)",
+        "role": "chart",
+        "displayName": "Series 4",
+        "cssVar": "--series-4",
+        "dark": "#c98500",
+        "tonalRamp": [
+          "#130900",
+          "#342000",
+          "#5a3b01",
+          "#835702",
+          "#ae7503",
+          "#db9505",
+          "#febb53",
+          "#feebd2"
+        ]
+      },
+      "series-5": {
+        "canonical": "oklch(71.6% 0.141 357.4)",
+        "role": "chart",
+        "displayName": "Series 5",
+        "cssVar": "--series-5",
+        "dark": "#d55181",
+        "tonalRamp": [
+          "#1d000b",
+          "#490025",
+          "#771042",
+          "#9c3762",
+          "#c35a83",
+          "#ea7da6",
+          "#feaec9",
+          "#ffe7ee"
+        ]
+      },
+      "series-6": {
+        "canonical": "oklch(52.9% 0.180 142.5)",
+        "role": "chart",
+        "displayName": "Series 6",
+        "cssVar": "--series-6",
+        "dark": "#008300",
+        "tonalRamp": [
+          "#001000",
+          "#002f00",
+          "#015101",
+          "#047703",
+          "#2e9c29",
+          "#57c051",
+          "#7de675",
+          "#cbffc6"
+        ]
+      },
+      "series-7": {
+        "canonical": "oklch(43.3% 0.167 283.6)",
+        "role": "chart",
+        "displayName": "Series 7",
+        "cssVar": "--series-7",
+        "dark": "#9085e9",
+        "tonalRamp": [
+          "#0b002d",
+          "#24016b",
+          "#3d2895",
+          "#594cbb",
+          "#7870e1",
+          "#9a96ff",
+          "#c2c3fe",
+          "#ecedfe"
+        ]
+      },
+      "series-8": {
+        "canonical": "oklch(51.1% 0.075 32.2)",
+        "role": "chart",
+        "displayName": "Series 8",
+        "cssVar": "--series-8",
+        "dark": "#b07c6f",
+        "tonalRamp": [
+          "#1d0100",
+          "#42140b",
+          "#643228",
+          "#865146",
+          "#aa7266",
+          "#cf9488",
+          "#f6b8ab",
+          "#ffe9e4"
+        ]
+      },
+      "series-9": {
+        "canonical": "oklch(64.5% 0.110 211.5)",
+        "role": "chart",
+        "displayName": "Series 9",
+        "cssVar": "--series-9",
+        "dark": "#22b5ca",
+        "tonalRamp": [
+          "#000e11",
+          "#022b31",
+          "#044b55",
+          "#076e7d",
+          "#0a92a6",
+          "#3ab7cc",
+          "#66dcf2",
+          "#cff7ff"
+        ]
+      },
+      "series-10": {
+        "canonical": "oklch(55.7% 0.172 21.2)",
+        "role": "chart",
+        "displayName": "Series 10",
+        "cssVar": "--series-10",
+        "dark": "#e0636b",
+        "tonalRamp": [
+          "#1e0002",
+          "#4c000c",
+          "#80001b",
+          "#ae2533",
+          "#d64d53",
+          "#fe7275",
+          "#ffb2b0",
+          "#fee9e7"
+        ]
+      },
+      "series-11": {
+        "canonical": "oklch(61.4% 0.124 109.5)",
+        "role": "chart",
+        "displayName": "Series 11",
+        "cssVar": "--series-11",
+        "dark": "#b3b33a",
+        "tonalRamp": [
+          "#0c0c00",
+          "#272700",
+          "#454501",
+          "#666605",
+          "#88881b",
+          "#abab46",
+          "#cfd06c",
+          "#f4f691"
+        ]
+      },
+      "series-12": {
+        "canonical": "oklch(41.6% 0.089 260.9)",
+        "role": "chart",
+        "displayName": "Series 12",
+        "cssVar": "--series-12",
+        "dark": "#6f8fc7",
+        "tonalRamp": [
+          "#000825",
+          "#09224f",
+          "#254171",
+          "#446194",
+          "#6483b8",
+          "#85a6dd",
+          "#abcaff",
+          "#e6efff"
+        ]
+      },
+      "series-muted": {
+        "canonical": "oklch(73.0% 0.011 100.9)",
+        "role": "chart",
+        "displayName": "Series Muted (Altri agenti)",
+        "cssVar": "--series-muted",
+        "dark": "#5f5e59",
+        "tonalRamp": [
+          "#0c0b06",
+          "#26251f",
+          "#43423b",
+          "#62615a",
+          "#84837b",
+          "#a6a59d",
+          "#cac9c1",
+          "#f0efe6"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The single commission total on the Provvigioni preview. One per screen."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "Dashboard KPI figures, in Metric Graphite."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Tab section titles (Agenti, Regole, Ordini, Calcola provvigioni). The dashboard page title uses the same voice at 2.25rem."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card, sheet, dialog-section and chart titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prose, descriptions and empty states."
+      },
+      "body-sm": {
+        "displayName": "Body Small",
+        "purpose": "The working size: table cells, controls, captions, helper text."
+      },
+      "label": {
+        "displayName": "Field Label",
+        "purpose": "Form labels above their field."
+      },
+      "caps": {
+        "displayName": "Caps",
+        "purpose": "KPI labels and ledger table headers (headers at 0.08em)."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Slab caps for primary and secondary buttons."
+      },
+      "nav": {
+        "displayName": "Nav",
+        "purpose": "Header navigation items, uppercase."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "Amounts, counts, codes and dates in tables, right-aligned with tabular figures."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ledger-rest",
+        "value": "0 1px 3px hsl(211 30% 50% / 0.08)",
+        "cssVar": "--ledger-card-shadow",
+        "dark": "none",
+        "purpose": "Resting ledger and dashboard cards."
+      },
+      {
+        "name": "ledger-hover",
+        "value": "0 4px 12px hsl(211 30% 50% / 0.12), 0 1px 3px hsl(211 30% 50% / 0.08)",
+        "cssVar": "--ledger-card-hover-shadow",
+        "dark": "0 4px 20px hsl(0 0% 0% / 0.3), inset 0 1px 0 0 hsl(40 30% 92% / 0.03)",
+        "purpose": "A hovered ledger card."
+      },
+      {
+        "name": "dialog",
+        "value": "0 25px 50px -12px hsl(211 50% 30% / 0.25)",
+        "cssVar": "--dialog-shadow",
+        "dark": "0 25px 50px -12px hsl(0 0% 0% / 0.5)",
+        "purpose": "Alert dialogs; shadcn dialogs currently render Tailwind shadow-lg."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "200ms ease-out",
+        "purpose": "Color, background and border changes on buttons, nav items and cards."
+      },
+      {
+        "name": "fade-up",
+        "value": "fade-up 0.6s ease-out both, staggered 70ms per section",
+        "purpose": "Dashboard sections arriving. Disabled under prefers-reduced-motion."
+      },
+      {
+        "name": "number-roll",
+        "value": "numberRoll 0.8s ease-out forwards (8px rise with fade)",
+        "purpose": "The commission total settling into place."
+      },
+      {
+        "name": "settings-cog",
+        "value": "rotate(45deg) over 300ms",
+        "purpose": "Settings icon on hover in the header."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "container",
+        "value": "1600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one Sky-filled commit action per decision point: Calcola, Conferma, Salva.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\"/><line x1=\"8\" x2=\"16\" y1=\"6\" y2=\"6\"/><line x1=\"16\" x2=\"16\" y1=\"14\" y2=\"18\"/><path d=\"M16 10h.01\"/><path d=\"M12 10h.01\"/><path d=\"M8 10h.01\"/><path d=\"M12 14h.01\"/><path d=\"M8 14h.01\"/><path d=\"M12 18h.01\"/><path d=\"M8 18h.01\"/></svg>Calcola</button>",
+      "css": ".ds-btn-primary { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 2.5rem; padding: 0.5rem 1rem; border: 0; border-radius: 4.375px; background: hsl(var(--primary, 197 66% 50%)); color: hsl(var(--primary-foreground, 211 100% 18%)); font-family: \"Roboto Slab\", Georgia, serif; font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: background-color 0.2s ease-out, box-shadow 0.2s ease-out; } .ds-btn-primary::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(180deg, hsl(0 0% 100% / 0.1) 0%, transparent 50%); pointer-events: none; } .ds-btn-primary:hover { background: hsl(var(--primary, 197 66% 50%) / 0.9); } .ds-btn-primary:focus-visible { outline: 2px solid transparent; box-shadow: 0 0 0 2px hsl(var(--background, 205 24% 95%)), 0 0 0 4px hsl(var(--primary, 197 66% 50%)); } .ds-btn-primary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Refresh, cancel and toolbar actions: quiet Slab caps on paper that fill Energia Leaf on hover.",
+      "html": "<button type=\"button\" class=\"ds-btn-secondary\">Aggiorna</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; height: 2.25rem; padding: 0.5rem 0.75rem; border: 1px solid hsl(var(--input, 205 14% 88%)); border-radius: 4.375px; background: hsl(var(--background, 205 24% 95%)); color: hsl(var(--muted-foreground, 210 10% 40%)); font-family: \"Roboto Slab\", Georgia, serif; font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s ease-out; } .ds-btn-secondary:hover { background: hsl(var(--energia-accent, 130 52% 45%)); border-color: hsl(var(--energia-accent, 130 52% 45%)); color: hsl(var(--accent-foreground, 211 100% 18%)); } .ds-btn-secondary:focus-visible { outline: 2px solid transparent; box-shadow: 0 0 0 2px hsl(var(--background, 205 24% 95%)), 0 0 0 4px hsl(var(--primary, 197 66% 50%)); }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled field with near-square corners and the Sky focus ring.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Codice fiscale</span><input class=\"ds-input\" type=\"text\" placeholder=\"RSSMRA80A01H501U\" /></label>",
+      "css": ".ds-field { display: grid; gap: 0.5rem; width: 18rem; } .ds-field-label { color: hsl(var(--foreground, 210 25% 25%)); font-family: Roboto, system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.02em; } .ds-input { height: 2.5rem; padding: 0.5rem 0.75rem; border: 1px solid hsl(var(--input, 205 14% 88%)); border-radius: 2.375px; background: hsl(var(--background, 205 24% 95%)); color: hsl(var(--foreground, 210 25% 25%)); font-family: Roboto, system-ui, sans-serif; font-size: 0.9375rem; transition: border-color 0.2s, box-shadow 0.2s; } .ds-input::placeholder { color: hsl(var(--muted-foreground, 210 10% 40%) / 0.7); } .ds-input:hover { border-color: hsl(var(--border, 205 14% 82%)); } .ds-input:focus-visible { outline: 2px solid transparent; box-shadow: 0 0 0 2px hsl(var(--background, 205 24% 95%)), 0 0 0 4px hsl(var(--primary, 197 66% 50%)); }"
+    },
+    {
+      "name": "Header Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Night Grid Navy band with Slab caps items; the active item gets a white fill, a Leaf icon and a Leaf underline.",
+      "html": "<nav class=\"ds-header\" aria-label=\"Main navigation\"><a class=\"ds-nav-item\" href=\"#\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\"/></svg>Dashboard</a><a class=\"ds-nav-item\" href=\"#\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg>Agenti</a><a class=\"ds-nav-item\" href=\"#\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 7v14\"/><path d=\"M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z\"/></svg>Regole<span class=\"ds-nav-count\">3</span></a><a class=\"ds-nav-item is-active\" href=\"#\" aria-current=\"page\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"16\" height=\"20\" x=\"4\" y=\"2\" rx=\"2\"/><line x1=\"8\" x2=\"16\" y1=\"6\" y2=\"6\"/><line x1=\"16\" x2=\"16\" y1=\"14\" y2=\"18\"/><path d=\"M16 10h.01\"/><path d=\"M12 10h.01\"/><path d=\"M8 10h.01\"/><path d=\"M12 14h.01\"/><path d=\"M8 14h.01\"/><path d=\"M12 18h.01\"/><path d=\"M8 18h.01\"/></svg>Provvigioni<span class=\"ds-nav-indicator\"></span></a><a class=\"ds-nav-item\" href=\"#\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M10 9H8\"/><path d=\"M16 13H8\"/><path d=\"M16 17H8\"/></svg>Inviti</a></nav>",
+      "css": ".ds-header { position: relative; display: flex; align-items: center; gap: 0.25rem; height: 72px; padding: 0 1.5rem; background: linear-gradient(180deg, hsl(var(--header-gradient-start, 211 100% 18%)) 0%, hsl(var(--header-gradient-end, 211 100% 14%)) 100%); } .ds-header::after { content: \"\"; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, hsl(var(--energia-accent, 130 52% 45%) / 0.5), transparent); } .ds-nav-item { position: relative; display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 1rem; border-radius: 4.375px; color: hsl(0 0% 100% / 0.6); font-family: \"Roboto Slab\", Georgia, serif; font-size: 13px; line-height: 1.65; letter-spacing: 0.04em; text-transform: uppercase; text-decoration: none; transition: all 0.2s ease-out; } .ds-nav-item:hover { color: hsl(0 0% 100%); background: hsl(0 0% 100% / 0.06); } .ds-nav-item.is-active { color: hsl(0 0% 100%); background: hsl(0 0% 100% / 0.12); } .ds-nav-item.is-active svg { color: hsl(var(--energia-accent, 130 52% 45%)); } .ds-nav-item:focus-visible { outline: 2px solid hsl(var(--energia-accent, 130 52% 45%) / 0.5); outline-offset: 2px; } .ds-nav-indicator { position: absolute; bottom: 0; left: 50%; width: 24px; height: 2px; border-radius: 9999px; background: hsl(var(--energia-accent, 130 52% 45%)); transform: translateX(-50%); } .ds-nav-count { display: flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 0.25rem; border-radius: 9999px; background: #f59e0b; color: #fff; font-size: 10px; font-weight: 700; line-height: 1; }"
+    },
+    {
+      "name": "Status Badges",
+      "kind": "chip",
+      "refersTo": "badge-status-draft",
+      "description": "Money and order state: pale fill, dark text, fully round, paired with a word or an icon.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge ds-badge-draft\">Bozza</span><span class=\"ds-badge ds-badge-sent\">Inviato</span><span class=\"ds-badge ds-badge-approved\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg>Pagato</span><span class=\"ds-badge ds-badge-neutral\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/></svg>Non pagato</span><span class=\"ds-badge ds-badge-failed\">KO</span></div>",
+      "css": ".ds-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; } .ds-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.125rem 0.625rem; border-radius: 9999px; font-family: Roboto, system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; line-height: 1rem; } .ds-badge-draft { background: #fef3c7; color: #b45309; } .ds-badge-sent { background: #dbeafe; color: #1d4ed8; } .ds-badge-approved { background: #d1fae5; color: #047857; } .ds-badge-neutral { background: #f1f5f9; color: #475569; } .ds-badge-failed { background: #fee2e2; color: #b91c1c; }"
+    },
+    {
+      "name": "Ledger Card with Table",
+      "kind": "card",
+      "refersTo": "card-ledger",
+      "description": "The standard workflow container: hairline card framing a mono ledger table with Slab caps headers over a Leaf rule.",
+      "html": "<div class=\"ds-ledger-card\"><table class=\"ds-ledger-table\"><thead><tr><th>Agente</th><th class=\"ds-num\">Contratti</th><th class=\"ds-num\">Provvigione</th></tr></thead><tbody><tr><td>Agente A</td><td class=\"ds-num\">42</td><td class=\"ds-num\">1.284,50 €</td></tr><tr><td>Agente B</td><td class=\"ds-num\">17</td><td class=\"ds-num\">512,00 €</td></tr></tbody></table></div>",
+      "css": ".ds-ledger-card { overflow: hidden; width: 28rem; border: 1px solid hsl(var(--border, 205 14% 82%) / 0.6); border-radius: 2.375px; background: hsl(var(--card, 205 22% 97%)); box-shadow: var(--ledger-card-shadow, 0 1px 3px hsl(211 30% 50% / 0.08)); transition: box-shadow 0.2s ease-out, border-color 0.2s ease-out; } .ds-ledger-card:hover { border-color: hsl(var(--border, 205 14% 82%)); box-shadow: var(--ledger-card-hover-shadow, 0 4px 12px hsl(211 30% 50% / 0.12), 0 1px 3px hsl(211 30% 50% / 0.08)); } .ds-ledger-table { width: 100%; border-collapse: collapse; color: hsl(var(--foreground, 210 25% 25%)); font-family: \"IBM Plex Mono\", Consolas, monospace; font-size: 0.875rem; } .ds-ledger-table th { padding: 0.875rem 1rem; border-bottom: 2px solid hsl(var(--energia-accent, 130 52% 45%) / 0.25); background: hsl(var(--secondary, 205 18% 90%) / 0.8); color: hsl(var(--muted-foreground, 210 10% 40%)); font-family: \"Roboto Slab\", Georgia, serif; font-size: 0.75rem; font-weight: 400; letter-spacing: 0.08em; text-align: left; text-transform: uppercase; } .ds-ledger-table td { padding: 0.875rem 1rem; border-bottom: 1px solid hsl(var(--border, 205 14% 82%) / 0.5); } .ds-ledger-table tbody tr:hover td { background: hsl(var(--secondary, 205 18% 90%) / 0.4); } .ds-ledger-table .ds-num { text-align: right; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Commission Total",
+      "kind": "card",
+      "refersTo": "card-kpi",
+      "description": "The single display figure on the Provvigioni preview: Leaf caps label over a 3rem Plex Mono total.",
+      "html": "<div class=\"ds-kpi-card\"><span class=\"ds-kpi-label\">Totale provvigioni, marzo 2026</span><div class=\"ds-kpi-value\">18.420,75 €</div><p class=\"ds-kpi-meta\">12 agenti · 214 righe</p></div>",
+      "css": ".ds-kpi-card { position: relative; overflow: hidden; width: 26rem; padding: 1.5rem; border: 1px solid hsl(var(--energia-accent, 130 52% 45%) / 0.2); border-radius: 2.375px; background: linear-gradient(135deg, hsl(var(--card, 205 22% 97%)) 0%, hsl(var(--surface-tint, 205 20% 95%)) 100%); text-align: center; } .ds-kpi-card::before { content: \"\"; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent 0%, hsl(var(--energia-accent, 130 52% 45%) / 0.4) 50%, transparent 100%); } .ds-kpi-label { color: hsl(var(--energia-accent-text, 130 55% 30%)); font-family: \"Roboto Slab\", Georgia, serif; font-size: 0.875rem; letter-spacing: 0.12em; text-transform: uppercase; } .ds-kpi-value { margin-top: 0.75rem; color: hsl(var(--metric-value, 210 6% 35%)); font-family: \"IBM Plex Mono\", Consolas, monospace; font-size: 3rem; font-weight: 600; line-height: 1; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; animation: ds-number-roll 0.8s ease-out both; } .ds-kpi-meta { margin: 0.75rem 0 0; color: hsl(var(--muted-foreground, 210 10% 40%)); font-family: Roboto, system-ui, sans-serif; font-size: 0.875rem; } @keyframes ds-number-roll { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } } @media (prefers-reduced-motion: reduce) { .ds-kpi-value { animation: none; } }"
+    },
+    {
+      "name": "Warning Notice",
+      "kind": "custom",
+      "refersTo": "notice-warning",
+      "description": "Inline amber notice for anything the operator must act on before saving.",
+      "html": "<div class=\"ds-notice\" role=\"status\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg><div><p class=\"ds-notice-title\">3 righe non abbinate a nessun agente</p><p class=\"ds-notice-body\">Non verranno salvate. Controlla il venditore o aggiungi l'agente.</p></div></div>",
+      "css": ".ds-notice { display: flex; gap: 0.75rem; width: 28rem; padding: 1rem; border: 1px solid rgb(245 158 11 / 0.5); border-radius: 4.375px; background: #fffbeb; color: #92400e; font-family: Roboto, system-ui, sans-serif; font-size: 0.875rem; } .ds-notice svg { flex-shrink: 0; margin-top: 0.125rem; } .ds-notice-title { margin: 0; font-weight: 500; } .ds-notice-body { margin: 0.25rem 0 0; color: rgb(146 64 14 / 0.8); }"
+    },
+    {
+      "name": "Dashboard Chart Card",
+      "kind": "card",
+      "refersTo": "card-chart",
+      "description": "Dashboard only: the soft exception, borderless with 17px corners, a sentence-case Slab title and a chart/table toggle.",
+      "html": "<section class=\"ds-chart-card\"><header class=\"ds-chart-head\"><div><h3 class=\"ds-chart-title\">Contratti per mese</h3><p class=\"ds-chart-sub\">Gennaio a giugno 2026</p></div><div class=\"ds-toggle\" role=\"group\" aria-label=\"Vista\"><button type=\"button\" class=\"is-active\" aria-pressed=\"true\">Grafico</button><button type=\"button\" aria-pressed=\"false\">Tabella</button></div></header><div class=\"ds-bars\" aria-hidden=\"true\"><span style=\"height:40%\"></span><span style=\"height:62%\"></span><span style=\"height:55%\"></span><span style=\"height:78%\"></span><span style=\"height:70%\"></span><span style=\"height:90%\"></span></div></section>",
+      "css": ".ds-chart-card { width: 28rem; padding: 2rem; border-radius: 17px; background: hsl(var(--card, 205 22% 97%)); box-shadow: var(--ledger-card-shadow, 0 1px 3px hsl(211 30% 50% / 0.08)); color: hsl(var(--foreground, 210 25% 25%)); } .ds-chart-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; } .ds-chart-title { margin: 0; font-family: \"Roboto Slab\", Georgia, serif; font-size: 1.25rem; font-weight: 400; line-height: 1.75rem; letter-spacing: 0.025em; } .ds-chart-sub { margin: 0.25rem 0 0; color: hsl(var(--muted-foreground, 210 10% 40%)); font-family: Roboto, system-ui, sans-serif; font-size: 0.875rem; } .ds-toggle { display: inline-flex; padding: 0.125rem; border-radius: 9999px; background: hsl(var(--muted, 205 16% 92%)); } .ds-toggle button { height: 1.75rem; padding: 0 0.75rem; border: 0; border-radius: 9999px; background: transparent; color: hsl(var(--muted-foreground, 210 10% 40%)); font-family: Roboto, system-ui, sans-serif; font-size: 0.75rem; cursor: pointer; transition: background-color 0.2s, color 0.2s; } .ds-toggle button:hover { color: hsl(var(--foreground, 210 25% 25%)); } .ds-toggle button.is-active { background: hsl(var(--background, 205 24% 95%)); color: hsl(var(--foreground, 210 25% 25%)); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); } .ds-toggle button:focus-visible { outline: 2px solid transparent; box-shadow: 0 0 0 2px hsl(var(--background, 205 24% 95%)), 0 0 0 4px hsl(var(--primary, 197 66% 50%)); } .ds-bars { display: flex; align-items: flex-end; gap: 0.75rem; height: 8rem; margin-top: 1.5rem; border-bottom: 1px solid hsl(var(--border, 205 14% 82%) / 0.6); } .ds-bars span { flex: 1; border-radius: 4px 4px 0 0; background: var(--series-1, #2a78d6); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Monthly Close Desk",
+    "overview": "This is a workbench for one to three back-office experts who run the same commission close every month. The interface should feel like a tidy desk at the end of the day: everything squared away, every figure where it was left, nothing asking for attention it hasn't earned. The ledger style is the standard: cool mist paper behind hairline-bordered cards with near-square corners, Roboto Slab for headings and capitalized labels, and IBM Plex Mono for every figure. A Night Grid Navy band holds the navigation at the top, and the work area below it stays quiet.\n\nColor does a job or stays out. Energia Sky marks the action that commits something. Energia Leaf marks a state change: the hovered button, the active tab, the focused field, the selected text. A small set of status hues carries money state (draft, sent, approved, paid, failed), and those hues appear nowhere else. The canvas is desktop-first and wide (up to 1600px), and tables carry most of the weight.\n\nThe dashboard is the one sanctioned exception. Its chart cards are soft (borderless, 17px corners, a quiet shadow, sentence-case titles) because they hold charts rather than records. That treatment stays on the dashboard and doesn't spread into the workflow tabs.",
+    "keyCharacteristics": [
+      "Near-square corners (2.375px on cards and fields, 4.375px on buttons) on a cool blue-grey paper.",
+      "Three type voices: Roboto Slab for headings and caps labels, Roboto for prose and controls, IBM Plex Mono for amounts, counts, dates and codes.",
+      "Two brand hues with fixed jobs: Sky commits, Leaf signals.",
+      "Flat at rest, with a whisper of cool shadow under cards. Depth comes from paper tone, not from lift.",
+      "A 17px root, so every rem in the system is 17px.",
+      "Motion is short and functional: 150 to 300ms ease-out color and opacity changes, one fade-up as dashboard sections arrive, and none of it when reduced motion is requested.",
+      "Light, dark and system themes, all driven by the same semantic tokens."
+    ],
+    "rules": [
+      {
+        "name": "The Sky Commits Rule",
+        "body": "Energia Sky fills only the button that commits or advances the work. A screen has one Sky-filled button per decision point.",
+        "section": "colors"
+      },
+      {
+        "name": "The Leaf Signals Rule",
+        "body": "Energia Leaf is a response, not a decoration. It appears when something is hovered, active, focused or selected, and in the few ledger accents listed above. It never fills a resting surface.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Hue Rule",
+        "body": "Amber, blue, emerald, slate and red mean state. Don't use them for categories, charts or decoration, or a draft will look like a chart series.",
+        "section": "colors"
+      },
+      {
+        "name": "The Small Text Contrast Rule",
+        "body": "Sky and Leaf fills sit below 3:1 against white and against Card Paper (white on Sky measured 2.85:1, Leaf on Card Paper 2.69:1). So neither fill carries white text, and neither color is used as text on a light surface. Text on a Sky or Leaf fill is Night Grid Navy (4.8:1). Text that has to read as Sky or Leaf uses Sky Ink or Leaf Ink (5 to 5.5:1 on paper). Spinners and decorative icons can stay in full Leaf.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Figures Rule",
+        "body": "Any number a user might compare or dispute (an amount, a count, a percentage, a competence month) is set in IBM Plex Mono with tabular figures and right-aligned in its column.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence-Case Prose Rule",
+        "body": "Caps belong to buttons, nav, KPI labels and ledger table headers. Titles, descriptions, notices and dashboard chart titles stay in sentence case.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "No surface floats until the user acts on it. A resting card gets the Ledger rest edge and nothing deeper; real lift appears only on hover or on a modal.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do build new workflow screens from the ledger card, the ledger or workflow table, Slab headlines and Plex Mono figures.",
+      "Do use the semantic tokens (background, card, foreground, muted-foreground, border, primary, accent) so light, dark and system themes all follow.",
+      "Do give each decision point one Sky primary button, with refresh and cancel as secondary buttons.",
+      "Do right-align money and counts in Plex Mono with tabular figures.",
+      "Do show money state with the Status palette and pair the color with a word or an icon.",
+      "Do keep warnings and skipped results inline next to the work they affect.",
+      "Do honor reduced motion: wrap any entrance animation in motion-reduce and keep transitions at or under 300ms."
+    ],
+    "donts": [
+      "Don't copy the ledger card's left hover rail into a new component, and don't add any other colored stripe along a card's left edge.",
+      "Don't put a small caps label above a heading. KPI labels above a figure are the only stacked caps label.",
+      "Don't use the dashboard's soft chart card (17px corners, no border) outside the dashboard.",
+      "Don't set text in Energia Sky or Energia Leaf on a light surface, or white text on either fill (both below 3:1). Use Sky Ink, Leaf Ink or Night Grid Navy.",
+      "Don't use amber, blue, emerald or red for anything but state.",
+      "Don't give a resting card a shadow deeper than Ledger rest, a glow, or a gradient (the KPI card's diagonal wash is the one existing exception); depth comes from paper tone and a hairline.",
+      "Don't introduce a new typeface or a fourth text voice."
+    ]
+  }
+}

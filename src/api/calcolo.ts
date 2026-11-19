@@ -1,69 +1,57 @@
 import type {
-    CalcoloInput,
-    CalcoloNonPagatiResponse,
-    CalcoloResult,
-    CheckAgentiResponse,
-    ProvvigioneData,
+    PreviewRequest,
+    PreviewResponse,
+    ConfirmationRequest,
+    ConfirmationResponse,
+    UnpaidCalculationRequest,
+    UnpaidCalculationResponse,
 } from "@/types";
+import { z } from "zod";
+import { monthToStartDate } from "@/lib/competenceDates";
+import { previewResponseSchema, confirmationRequestSchema, confirmationResponseSchema } from "./calculationSchemas";
 import {
-    ApiError,
     authFetch,
     getApiUrl,
-    handleResponse,
+    handleEmptyResponse,
     handleResponseWithSanitization,
 } from "./client";
 
-export async function calcolaProvvigioni(data: CalcoloInput[]): Promise<CalcoloResult> {
-    const res = await authFetch(getApiUrl("/calcolo"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-    });
-    return handleResponseWithSanitization<CalcoloResult>(res);
-}
+const commissionDataSchema = z.object({
+    cf_piva: z.string(),
+    cliente: z.string(),
+    comp_al: z.string().nullable(),
+    importo_provvigione: z.number().nullable(),
+    pod_pdr: z.string(),
+    regola: z.string(),
+    venditore: z.string(),
+});
 
-export async function checkAgenti(nomi: string[]): Promise<CheckAgentiResponse> {
-    const res = await authFetch(getApiUrl("/check-agenti"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nomi }),
-    });
-    return handleResponse<CheckAgentiResponse>(res);
-}
+const unpaidResponseSchema = z.object({
+    totale_provvigione: z.number().nullish(),
+    dati_provvigione: z.array(commissionDataSchema).nullish(),
+    message: z.string().optional(),
+    data: z.object({}).passthrough().optional(),
+    error: z.string().optional(),
+});
 
-interface NonPagatiBody {
-    totale_provvigione?: number;
-    dati_provvigione?: ProvvigioneData[];
-    message?: string;
-    data?: Record<string, unknown>;
-    error?: string;
-}
+export async function getUnpaidCalculation(
+    agentId: number,
+    months: string[],
+): Promise<UnpaidCalculationResponse> {
+    // Older invites carry full dates, so two invites of one month must become a single month start.
+    const payload: UnpaidCalculationRequest = { agente_id: agentId, mesi_competenza: [...new Set(months.map(monthToStartDate))] };
 
-export async function getCalcoloNonPagati(
-    agenteId: number,
-    mesi: string[],
-): Promise<CalcoloNonPagatiResponse> {
     const res = await authFetch(getApiUrl("/non-pagati"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agente_id: agenteId, mesi_competenza: mesi }),
+        body: JSON.stringify(payload),
     });
 
-    if (!res.ok) {
-        let errorMessage = `HTTP ${res.status}: ${res.statusText}`;
-        try {
-            const errorData = (await res.json()) as NonPagatiBody;
-            if (errorData.error) {
-                errorMessage = errorData.error;
-            }
-        } catch {
-            // Ignore JSON parsing errors
-        }
-        throw new ApiError(res.status, errorMessage);
-    }
+    await handleEmptyResponse(res);
 
-    const body = (await res.json()) as NonPagatiBody;
-    const emptyData = body.data && typeof body.data === "object" && Object.keys(body.data).length === 0;
+    const body = unpaidResponseSchema.parse(await res.json());
+    const emptyData = body.data && Object.keys(body.data).length === 0;
+
     if (emptyData && body.message) {
         return { kind: "empty", message: body.message };
     }
@@ -73,4 +61,31 @@ export async function getCalcoloNonPagati(
         totale_provvigione: body.totale_provvigione ?? 0,
         dati_provvigione: body.dati_provvigione ?? [],
     };
+}
+
+export async function previewCommissions(month: string): Promise<PreviewResponse> {
+    const payload: PreviewRequest = { competenza_liquidazione: monthToStartDate(month) };
+
+    const res = await authFetch(getApiUrl("/calcolo/anteprima"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    return handleResponseWithSanitization(res, previewResponseSchema);
+}
+
+export async function confirmCommissions(data: ConfirmationRequest): Promise<ConfirmationResponse> {
+    const payload = confirmationRequestSchema.parse({
+        ...data,
+        mese_competenza: monthToStartDate(data.mese_competenza),
+    });
+
+    const res = await authFetch(getApiUrl("/calcolo/conferma"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    return handleResponseWithSanitization(res, confirmationResponseSchema);
 }

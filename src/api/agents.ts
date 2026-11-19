@@ -1,54 +1,81 @@
 import type {
-    Agente,
-    ConfigurazioneResponse,
+    Agent,
+    RuleConfigurationResponse,
     CreateAgentRequest,
     AgentCreateResponse,
     AgentMessageResponse,
-    SaveConfigurazioneRequest,
+    SaveRuleConfigurationRequest,
+    ParentRuleConfigurationResponse,
+    SaveParentRuleConfigurationRequest,
 } from "@/types";
 import { authFetch, getApiUrl, handleResponse } from "./client";
 
-export async function getAgenti(): Promise<Agente[]> {
+export async function getAgents(): Promise<Agent[]> {
     const res = await authFetch(getApiUrl("/agenti"));
-    return handleResponse<Agente[]>(res);
+
+    return handleResponse<Agent[]>(res);
 }
 
-export async function createAgente(data: CreateAgentRequest): Promise<AgentCreateResponse> {
+export async function createAgent(data: CreateAgentRequest): Promise<AgentCreateResponse> {
     const res = await authFetch(getApiUrl("/agenti"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
+
     return handleResponse<AgentCreateResponse>(res);
 }
 
-export async function updateAgente(id: number, data: Partial<CreateAgentRequest>): Promise<AgentMessageResponse> {
+export async function updateAgent(id: number, data: Partial<CreateAgentRequest>): Promise<AgentMessageResponse> {
     const res = await authFetch(getApiUrl(`/agenti/${id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
+
     return handleResponse<AgentMessageResponse>(res);
 }
 
-export async function deleteAgente(id: number): Promise<AgentMessageResponse> {
+export async function deleteAgent(id: number): Promise<AgentMessageResponse> {
     const res = await authFetch(getApiUrl(`/agenti/${id}`), { method: "DELETE" });
+
     return handleResponse<AgentMessageResponse>(res);
 }
 
-export async function getConfigurazioneRegole(agenteId: number): Promise<ConfigurazioneResponse> {
-    const res = await authFetch(getApiUrl(`/${agenteId}/configurazione-regole`));
-    return handleResponse<ConfigurazioneResponse>(res);
+export async function getRuleConfiguration(agentId: number): Promise<RuleConfigurationResponse> {
+    const res = await authFetch(getApiUrl(`/${agentId}/configurazione-regole`));
+
+    return handleResponse<RuleConfigurationResponse>(res);
 }
 
-export async function saveConfigurazioneRegole(
-    agenteId: number,
-    data: SaveConfigurazioneRequest,
+export async function saveRuleConfiguration(
+    agentId: number,
+    data: SaveRuleConfigurationRequest,
 ): Promise<AgentMessageResponse> {
-    const res = await authFetch(getApiUrl(`/${agenteId}/configurazione-regole`), {
+    const res = await authFetch(getApiUrl(`/${agentId}/configurazione-regole`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
+
     return handleResponse<AgentMessageResponse>(res);
+}
+
+export async function getParentRuleConfiguration(agentId: number): Promise<ParentRuleConfigurationResponse> {
+    const res = await authFetch(getApiUrl(`/${agentId}/configurazione-regole-padre`));
+
+    return handleResponse<ParentRuleConfigurationResponse>(res);
+}
+
+export async function saveParentRuleConfiguration(
+    agentId: number,
+    data: SaveParentRuleConfigurationRequest,
+): Promise<ParentRuleConfigurationResponse> {
+    const res = await authFetch(getApiUrl(`/${agentId}/configurazione-regole-padre`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+
+    return handleResponse<ParentRuleConfigurationResponse>(res);
 }

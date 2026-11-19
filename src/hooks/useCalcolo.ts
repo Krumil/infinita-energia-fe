@@ -1,154 +1,198 @@
-import { useState, useCallback } from "react";
-import { calcolaProvvigioni, checkAgenti } from "@/api/calcolo";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { confirmCommissions, previewCommissions } from "@/api/calcolo";
 import { ApiError } from "@/api/client";
-import { parseLiquidazioniExcel, convertToCalcoloInput } from "@/importers/liquidazioni";
-import { useToast } from "@/hooks/use-toast";
-import { useTranslation } from "@/hooks/useTranslation";
-import type { Liquidazione, CalcoloResult } from "@/types";
+import { buildConfirmation, type ConfirmationSnapshot } from "@/lib/calculationConfirmation";
+import {
+    addDraftRow,
+    createDraft,
+    removeDraftRow,
+    setDraftAgentIncluded,
+    setDraftRowAmount,
+    summarizeDraft,
+    type CalculationDraft,
+    type DraftActions,
+} from "@/lib/calculationDraft";
+import { currentMonth } from "@/lib/competenceDates";
+import type { ConfirmationResult, PreviewResponse } from "@/types";
 
-export interface UnmatchedAgent {
-    name: string;
-    count: number;
+export interface LoadedPreview {
+    data: PreviewResponse;
+    draft: CalculationDraft;
 }
 
-export function useCalcolo() {
-    const { toast } = useToast();
-    const { t } = useTranslation();
+export type PreviewState =
+    | { status: "idle" }
+    | { status: "loading"; month: string; previous: LoadedPreview | null }
+    | { status: "ready"; month: string; data: PreviewResponse; draft: CalculationDraft; stale: boolean }
+    | { status: "error"; month: string; reason: "setup" | "request"; message: string | null };
 
-    const [data, setData] = useState<Liquidazione[]>([]);
-    const [result, setResult] = useState<CalcoloResult | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [unmatchedAgents, setUnmatchedAgents] = useState<UnmatchedAgent[]>([]);
-    const [matchedNames, setMatchedNames] = useState<Set<string> | null>(null);
+// Only 400 and 404 prove nothing was written; any other failure may have lost the response to a completed save.
+export type ConfirmationState =
+    | { status: "idle" }
+    | { status: "submitting"; snapshot: ConfirmationSnapshot }
+    | { status: "done"; snapshot: ConfirmationSnapshot; results: ConfirmationResult[] }
+    | { status: "rejected"; snapshot: ConfirmationSnapshot; message: string }
+    | { status: "unknown"; snapshot: ConfirmationSnapshot; message: string | null };
 
-    const handleUpload = useCallback(
-        async (files: File[]) => {
-            const file = files[0];
-            if (!file) return;
+interface PendingPreview {
+    month: string;
+    invalidated: boolean;
+}
 
+export interface UseCalculationResult {
+    month: string;
+    preview: PreviewState;
+    selectMonth: (month: string) => void;
+    requestPreview: () => void;
+    invalidateMonth: (month: string) => void;
+    invalidateAll: () => void;
+    editDraft: DraftActions;
+    confirmation: ConfirmationState;
+    confirmDraft: () => void;
+    clearConfirmedPreview: () => void;
+}
+
+export function useCalculation(): UseCalculationResult {
+    const [month, setMonth] = useState(currentMonth);
+    const [preview, setPreview] = useState<PreviewState>({ status: "idle" });
+    // Only the latest request may update the preview; month changes and newer requests replace it.
+    const latestRequest = useRef<PendingPreview | null>(null);
+    const [confirmation, setConfirmation] = useState<ConfirmationState>({ status: "idle" });
+    // Set synchronously, so a second click or Enter before React re-renders can't start a parallel write.
+    const submitting = useRef(false);
+
+    const selectMonth = useCallback(
+        (nextMonth: string): void => {
+            if (nextMonth === month) return;
+            latestRequest.current = null;
+            setMonth(nextMonth);
+            setPreview({ status: "idle" });
+            setConfirmation({ status: "idle" });
+        },
+        [month],
+    );
+
+    const requestPreview = useCallback((): void => {
+        if (!month) return;
+
+        const request: PendingPreview = { month, invalidated: false };
+        latestRequest.current = request;
+
+        setPreview((current) => {
+            const previous =
+                current.status === "ready" && current.month === month
+                    ? { data: current.data, draft: current.draft }
+                    : current.status === "loading" && current.month === month
+                      ? current.previous
+                      : null;
+
+            return { status: "loading", month, previous };
+        });
+
+        const run = async (): Promise<void> => {
             try {
-                const parsed = await parseLiquidazioniExcel(file);
-                setData(parsed);
-                setResult(null);
-                setMatchedNames(null);
+                const data = await previewCommissions(month);
 
-                const uniqueVenditori = [
-                    ...new Set(
-                        parsed
-                            .map((r) => r.venditore?.trim())
-                            .filter((v): v is string => !!v),
-                    ),
-                ];
+                if (latestRequest.current !== request) return;
+                latestRequest.current = null;
+                setPreview({ status: "ready", month, data, draft: createDraft(data), stale: request.invalidated });
+            } catch (error) {
+                if (latestRequest.current !== request) return;
+                latestRequest.current = null;
 
-                if (uniqueVenditori.length === 0) {
-                    setUnmatchedAgents([]);
-                    toast({
-                        title: t("uploadSuccessful"),
-                        description: `${t("parsedRecords")}: ${parsed.length}.`,
-                    });
+                if (error instanceof ApiError) {
+                    // The preview endpoint only answers 404 when the commission configuration is missing.
+                    const reason = error.status === 404 ? "setup" : "request";
+                    setPreview({ status: "error", month, reason, message: error.message });
+
                     return;
                 }
 
-                const checkResult = await checkAgenti(uniqueVenditori);
-                const matched = new Set(checkResult.matches);
-                setMatchedNames(matched);
-
-                const venditoreCounts = new Map<string, number>();
-                for (const record of parsed) {
-                    const v = record.venditore?.trim() || "";
-                    if (v) venditoreCounts.set(v, (venditoreCounts.get(v) || 0) + 1);
-                }
-
-                const unmatched: UnmatchedAgent[] = checkResult.not_found
-                    .map((name) => ({
-                        name,
-                        count: venditoreCounts.get(name) || 0,
-                    }))
-                    .sort((a, b) => b.count - a.count);
-
-                setUnmatchedAgents(unmatched);
-
-                if (unmatched.length > 0) {
-                    toast({
-                        title: t("unmatchedAgentsWarning"),
-                        description: `${unmatched.length} ${t("unmatchedAgentsCount")}`,
-                        variant: "destructive",
-                    });
-                } else {
-                    toast({
-                        title: t("uploadSuccessful"),
-                        description: `${t("parsedRecords")}: ${parsed.length}. ${t("allAgentsMatched")}`,
-                    });
-                }
-            } catch (error) {
-                const errorMsg = error instanceof Error ? error.message : t("error");
-                toast({
-                    title: t("uploadFailed"),
-                    description: errorMsg,
-                    variant: "destructive",
-                });
+                console.error("Preview request failed", { month, error });
+                setPreview({ status: "error", month, reason: "request", message: null });
             }
-        },
-        [toast, t],
+        };
+
+        void run();
+    }, [month]);
+
+    const invalidateMonth = useCallback((changedMonth: string): void => {
+        // A response already in flight may have been computed from the old source rows.
+        if (latestRequest.current?.month === changedMonth) latestRequest.current.invalidated = true;
+
+        setPreview((current) =>
+            current.status === "ready" && current.month === changedMonth ? { ...current, stale: true } : current,
+        );
+    }, []);
+
+    // Rules, tiers and agent values feed every month's preview, so a change marks whichever one is loaded.
+    const invalidateAll = useCallback((): void => {
+        if (latestRequest.current) latestRequest.current.invalidated = true;
+
+        setPreview((current) => (current.status === "ready" ? { ...current, stale: true } : current));
+    }, []);
+
+    // Edits apply only to a loaded draft; a draft shown while its recalculation loads is read-only.
+    const updateDraft = useCallback((edit: (draft: CalculationDraft) => CalculationDraft): void => {
+        setPreview((current) => (current.status === "ready" ? { ...current, draft: edit(current.draft) } : current));
+    }, []);
+
+    const editDraft = useMemo<DraftActions>(
+        () => ({
+            setRowAmount: (agentId, rowId, amountText) => updateDraft((draft) => setDraftRowAmount(draft, agentId, rowId, amountText)),
+            removeRow: (agentId, rowId) => updateDraft((draft) => removeDraftRow(draft, agentId, rowId)),
+            addRow: (agentId, detail, amountText) => updateDraft((draft) => addDraftRow(draft, agentId, detail, amountText)),
+            setAgentIncluded: (agentId, included) => updateDraft((draft) => setDraftAgentIncluded(draft, agentId, included)),
+        }),
+        [updateDraft],
     );
 
-    const calculate = useCallback(async (): Promise<string | null> => {
-        if (data.length === 0) return null;
+    const confirmDraft = useCallback((): void => {
+        if (submitting.current || preview.status !== "ready" || preview.stale) return;
 
-        setLoading(true);
-        setResult(null);
+        const { month: confirmedMonth, draft } = preview;
+        const summary = summarizeDraft(draft);
 
-        try {
-            if (!matchedNames || matchedNames.size === 0) {
-                toast({
-                    title: t("error"),
-                    description: t("noMatchedRecordsToCalculate"),
-                    variant: "destructive",
-                });
-                return null;
+        if (summary.includedAgents === 0 || summary.invalidIncludedRows > 0) return;
+
+        const { request, snapshot } = buildConfirmation(confirmedMonth, draft);
+
+        submitting.current = true;
+        setConfirmation({ status: "submitting", snapshot });
+
+        const run = async (): Promise<void> => {
+            try {
+                const response = await confirmCommissions(request);
+
+                setConfirmation({ status: "done", snapshot, results: response.risultati });
+                // Only the draft that was sent is saved; an edit made since then keeps it unsaved.
+                setPreview((current) =>
+                    current.status === "ready" && current.draft === draft ? { ...current, draft: { ...draft, baseline: draft.agents, dirty: false } } : current,
+                );
+            } catch (error) {
+                if (error instanceof ApiError && (error.status === 400 || error.status === 404)) {
+                    setConfirmation({ status: "rejected", snapshot, message: error.message });
+
+                    return;
+                }
+
+                console.error("Commission confirmation ended with an unknown outcome", { month: confirmedMonth, error });
+                setConfirmation({ status: "unknown", snapshot, message: error instanceof ApiError ? error.message : null });
+            } finally {
+                submitting.current = false;
             }
+        };
 
-            const matchedData = data.filter((record) => {
-                const v = record.venditore?.trim() || "";
-                return v !== "" && matchedNames.has(v);
-            });
+        void run();
+    }, [preview]);
 
-            if (matchedData.length === 0) {
-                toast({
-                    title: t("error"),
-                    description: t("noMatchedRecordsToCalculate"),
-                    variant: "destructive",
-                });
-                return null;
-            }
+    // A saved draft has nothing left to review. Edits made after the save aren't saved yet, so they stay.
+    const clearConfirmedPreview = useCallback((): void => {
+        if (confirmation.status !== "done" || preview.status !== "ready" || preview.draft.dirty) return;
 
-            const inputData = convertToCalcoloInput(matchedData);
-            const calcResult = await calcolaProvvigioni(inputData);
-            setResult(calcResult);
-            toast({
-                title: t("success"),
-                description: t("calculationResults"),
-            });
-            return t("calculateCommissions");
-        } catch (error) {
-            const errorMsg = error instanceof ApiError ? error.message : t("error");
-            toast({
-                title: t("error"),
-                description: errorMsg,
-                variant: "destructive",
-            });
-            return null;
-        } finally {
-            setLoading(false);
-        }
-    }, [matchedNames, data, toast, t]);
+        setPreview({ status: "idle" });
+        setConfirmation({ status: "idle" });
+    }, [confirmation.status, preview]);
 
-    return {
-        data,
-        result,
-        loading,
-        unmatchedAgents,
-        handleUpload,
-        calculate,
-    };
+    return { month, preview, selectMonth, requestPreview, invalidateMonth, invalidateAll, editDraft, confirmation, confirmDraft, clearConfirmedPreview };
 }

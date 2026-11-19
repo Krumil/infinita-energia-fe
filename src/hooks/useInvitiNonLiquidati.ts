@@ -1,14 +1,15 @@
 import { useCallback, useState } from "react";
-import { getCalcoloNonPagati } from "@/api/calcolo";
-import { getStoricoInviti } from "@/api/inviti";
+import { getUnpaidCalculation } from "@/api/calcolo";
+import { getInvoiceRequests } from "@/api/inviti";
 import { ApiError } from "@/api/client";
 import { downloadCsv, toCsv } from "@/lib/csvUtils";
-import { PROVVIGIONE_HEADERS, provvigioneToRow } from "@/lib/exportUtils";
+import { COMMISSION_HEADERS, commissionToRow } from "@/lib/exportUtils";
+import { normalizeName } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { StoricoInvito } from "@/types";
+import type { CommissionData, InvoiceRequest } from "@/types";
 
-export interface NonLiquidatiAgent {
+export interface UnpaidAgent {
     id: number;
     name: string;
 }
@@ -18,6 +19,7 @@ function formatToday(): string {
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(now.getDate()).padStart(2, "0");
+
     return `${yyyy}-${mm}-${dd}`;
 }
 
@@ -25,29 +27,51 @@ function sanitizeFilename(name: string): string {
     return name.trim().replace(/[^\w.-]+/g, "_");
 }
 
-export function useInvitiNonLiquidati() {
+// The origin goes last so the shared commission columns keep their order and meaning.
+const UNPAID_REPORT_HEADERS: string[] = [...COMMISSION_HEADERS, "Origine"];
+
+// Excel reads dd/mm/yyyy as a date in the Italian locale, while an ISO string stays text.
+function csvDate(isoDate: string | null): string {
+    if (!isoDate) return "";
+
+    const [year, month, day] = isoDate.slice(0, 10).split("-");
+
+    return `${day}/${month}/${year}`;
+}
+
+// The backend returns the agent's own sales and, for a parent, only its share of each child sale under the child's name.
+function unpaidReportRow(item: CommissionData, agentKey: string, sellerName: (seller: string) => string): (string | number | null)[] {
+    const origin = normalizeName(item.venditore) === agentKey ? "Vendita diretta" : "Provvigione figlio";
+
+    const row = commissionToRow({ ...item, venditore: sellerName(item.venditore), comp_al: csvDate(item.comp_al) });
+
+    return [...row, origin];
+}
+
+export function useUnpaidInvoiceRequests(sellerName: (seller: string) => string) {
     const { toast } = useToast();
     const { t } = useTranslation();
 
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
-    const [selectedInvitoIds, setSelectedInvitoIds] = useState<Set<number>>(new Set());
+    const [selectedInvoiceRequestIds, setSelectedInvoiceRequestIds] = useState<Set<number>>(new Set());
     const [loading, setLoading] = useState(false);
-    const [nonLiquidatiInviti, setNonLiquidatiInviti] = useState<StoricoInvito[]>([]);
+    const [unpaidInvoiceRequests, setUnpaidInvoiceRequests] = useState<InvoiceRequest[]>([]);
     const [selectionLoading, setSelectionLoading] = useState(false);
 
     const enterSelectionMode = useCallback(async () => {
         setSelectionMode(true);
         setSelectedAgentId(null);
-        setSelectedInvitoIds(new Set());
+        setSelectedInvoiceRequestIds(new Set());
         setSelectionLoading(true);
+
         try {
-            const data = await getStoricoInviti({ pagato: false });
-            setNonLiquidatiInviti(data);
+            const data = await getInvoiceRequests({ pagato: false });
+            setUnpaidInvoiceRequests(data);
         } catch (err) {
             const reason = err instanceof ApiError ? err.message : t("fetchError");
             toast({ title: t("error"), description: reason, variant: "destructive" });
-            setNonLiquidatiInviti([]);
+            setUnpaidInvoiceRequests([]);
         } finally {
             setSelectionLoading(false);
         }
@@ -56,60 +80,68 @@ export function useInvitiNonLiquidati() {
     const exitSelectionMode = useCallback(() => {
         setSelectionMode(false);
         setSelectedAgentId(null);
-        setSelectedInvitoIds(new Set());
-        setNonLiquidatiInviti([]);
+        setSelectedInvoiceRequestIds(new Set());
+        setUnpaidInvoiceRequests([]);
     }, []);
 
-    const selectAgent = useCallback((agentId: number, eligibleInvitoIds: number[]) => {
+    const selectAgent = useCallback((agentId: number, eligibleInvoiceRequestIds: number[]) => {
         setSelectedAgentId(agentId);
-        setSelectedInvitoIds(new Set(eligibleInvitoIds));
+        setSelectedInvoiceRequestIds(new Set(eligibleInvoiceRequestIds));
     }, []);
 
-    const toggleInvito = useCallback((invitoId: number) => {
-        setSelectedInvitoIds((prev) => {
+    const toggleInvoiceRequest = useCallback((invoiceRequestId: number) => {
+        setSelectedInvoiceRequestIds((prev) => {
             const next = new Set(prev);
-            if (next.has(invitoId)) {
-                next.delete(invitoId);
+
+            if (next.has(invoiceRequestId)) {
+                next.delete(invoiceRequestId);
             } else {
-                next.add(invitoId);
+                next.add(invoiceRequestId);
             }
+
             return next;
         });
     }, []);
 
     const runCalculation = useCallback(
-        async (agent: NonLiquidatiAgent, mesi: string[]) => {
-            if (mesi.length === 0 || loading) return;
+        async (agent: UnpaidAgent, months: string[]) => {
+            if (months.length === 0 || loading) return;
 
             setLoading(true);
-            try {
-                const response = await getCalcoloNonPagati(agent.id, mesi);
 
+            try {
+                const response = await getUnpaidCalculation(agent.id, months);
+
+                // An empty answer isn't a failure, and the selection stays so the operator can adjust it.
                 if (response.kind === "empty" || response.dati_provvigione.length === 0) {
                     toast({
-                        title: t("error"),
-                        description: t("unpaidCalcNoData"),
-                        variant: "destructive",
+                        title: t("unpaidCalcEmptyTitle"),
+                        description: response.kind === "empty" ? response.message : t("unpaidCalcNoData"),
                     });
+
                     return;
                 }
 
+                const agentKey = normalizeName(agent.name);
+
                 const csv = toCsv(
-                    [...PROVVIGIONE_HEADERS],
-                    response.dati_provvigione.map(provvigioneToRow),
+                    UNPAID_REPORT_HEADERS,
+                    response.dati_provvigione.map((item) => unpaidReportRow(item, agentKey, sellerName)),
                     { delimiter: ";", decimal: "," },
                 );
+
                 downloadCsv(`non-liquidati_${sanitizeFilename(agent.name)}_${formatToday()}.csv`, csv);
 
                 const summary = t("unpaidCalcDoneSingle")
                     .replace("{rows}", String(response.dati_provvigione.length))
                     .replace("{agent}", agent.name);
+
                 toast({ title: t("success"), description: summary });
 
                 setSelectionMode(false);
                 setSelectedAgentId(null);
-                setSelectedInvitoIds(new Set());
-                setNonLiquidatiInviti([]);
+                setSelectedInvoiceRequestIds(new Set());
+                setUnpaidInvoiceRequests([]);
             } catch (err) {
                 const reason = err instanceof ApiError ? err.message : t("error");
                 toast({ title: t("error"), description: reason, variant: "destructive" });
@@ -117,20 +149,20 @@ export function useInvitiNonLiquidati() {
                 setLoading(false);
             }
         },
-        [loading, t, toast],
+        [loading, sellerName, t, toast],
     );
 
     return {
         selectionMode,
         selectedAgentId,
-        selectedInvitoIds,
+        selectedInvoiceRequestIds,
         loading,
-        nonLiquidatiInviti,
+        unpaidInvoiceRequests,
         selectionLoading,
         enterSelectionMode,
         exitSelectionMode,
         selectAgent,
-        toggleInvito,
+        toggleInvoiceRequest,
         runCalculation,
     };
 }

@@ -1,21 +1,24 @@
-import type { Scaglione, UpdateScaglioneRequest, ImportScaglioniResponse } from "@/types";
+import type { Tier, UpdateTierRequest, ImportTiersResponse } from "@/types";
 import { authFetch, getApiUrl, handleResponse } from "./client";
 
-export async function getScaglioni(): Promise<Scaglione[]> {
+export async function getTiers(): Promise<Tier[]> {
     const res = await authFetch(getApiUrl("/scaglioni"));
-    return handleResponse<Scaglione[]>(res);
+
+    return handleResponse<Tier[]>(res);
 }
 
-export async function importScaglioni(): Promise<ImportScaglioniResponse> {
+export async function importTiers(): Promise<ImportTiersResponse> {
     const res = await authFetch(getApiUrl("/scaglioni"), { method: "POST" });
-    return handleResponse<ImportScaglioniResponse>(res);
+
+    return handleResponse<ImportTiersResponse>(res);
 }
 
-export async function updateScaglione(id: number, data: UpdateScaglioneRequest): Promise<Scaglione> {
+export async function updateTier(id: number, data: UpdateTierRequest): Promise<Tier> {
     const res = await authFetch(getApiUrl(`/scaglioni/${id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
-    return handleResponse<Scaglione>(res);
+
+    return handleResponse<Tier>(res);
 }

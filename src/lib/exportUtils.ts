@@ -1,95 +1,14 @@
-import type { CalcoloResult, PendingOrder, ProvvigioneData } from "@/types";
-import { formatDate } from "@/lib/utils";
+import type { CellObject } from "xlsx";
+import type { PendingOrder } from "@/types";
 
-/**
- * Parses comp_dal date string to a Date object.
- * Handles multiple date formats:
- * - DD/MM/YYYY (Italian format)
- * - YYYY-MM-DD (ISO format)
- * - Excel serial number (days since 1900-01-01)
- * @returns Date object or null if parsing fails
- */
-function parseCompDalToDate(compDal: string | undefined): Date | null {
-    if (!compDal || compDal.trim() === "") {
-        return null;
+class SpreadsheetExportError extends Error {
+    constructor(context: string) {
+        super(`Failed to export ${context}: expected an ArrayBuffer from SheetJS`);
+        this.name = "SpreadsheetExportError";
     }
-
-    const value = compDal.trim();
-    let date: Date | null = null;
-
-    // Try Excel serial number (numeric string)
-    if (/^\d+(\.\d+)?$/.test(value)) {
-        const serial = parseFloat(value);
-        date = new Date((serial - 25569) * 86400 * 1000);
-    }
-    // Try Italian format DD/MM/YYYY
-    else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
-        const parts = value.split("/");
-        const day = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1;
-        const year = parseInt(parts[2], 10);
-        date = new Date(year, month, day);
-    }
-    // Try ISO format YYYY-MM-DD
-    else if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        date = new Date(value);
-    }
-    // Try ISO format with time YYYY-MM-DDTHH:mm:ss
-    else if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
-        date = new Date(value);
-    }
-
-    if (date && !isNaN(date.getTime())) {
-        return date;
-    }
-
-    return null;
 }
 
-/**
- * Formats the period for display (e.g., "Gennaio 2025" or "January 2025").
- * @param compDal - The comp_dal date string
- * @param locale - The locale for month name formatting ("it" or "en")
- * @returns Formatted period string (e.g., "Gennaio 2025") or null if parsing fails
- */
-export function formatPeriodDisplay(compDal: string | undefined, locale: string = "it"): string | null {
-    const date = parseCompDalToDate(compDal);
-    if (!date) {
-        return null;
-    }
-
-    const monthName = date.toLocaleDateString(locale === "it" ? "it-IT" : "en-US", { month: "long" });
-    const year = date.getFullYear();
-
-    // Capitalize first letter
-    const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-
-    return `${capitalizedMonth} ${year}`;
-}
-
-/**
- * Extracts YYYY-MM folder name from comp_dal date string.
- * @returns Folder name in "YYYY-MM" format, or "unknown-period" if parsing fails
- */
-export function extractPeriodFromCompDal(compDal: string | undefined): string {
-    const date = parseCompDalToDate(compDal);
-    if (!date) {
-        return "unknown-period";
-    }
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    return `${year}-${month}`;
-}
-
-/**
- * Sanitizes a filename by replacing invalid characters.
- */
-function sanitizeFilename(name: string): string {
-    return name.replace(/[<>:"/\\|?*]/g, "_");
-}
-
-export const PROVVIGIONE_HEADERS = [
+export const COMMISSION_HEADERS = [
     "Cliente",
     "CF/PIVA",
     "POD/PDR",
@@ -99,7 +18,37 @@ export const PROVVIGIONE_HEADERS = [
     "Venditore",
 ] as const;
 
-export function provvigioneToRow(item: ProvvigioneData): (string | number)[] {
+const COMP_AL_COLUMN = COMMISSION_HEADERS.indexOf("Comp. al");
+
+// Unpaid reports send non-null strings, while preview and saved invite rows may leave any text field empty.
+export interface CommissionRow {
+    cliente: string | null;
+    cf_piva: string | null;
+    pod_pdr: string | null;
+    comp_al: string | null;
+    regola: string | null;
+    importo_provvigione: number | null;
+    venditore: string | null;
+}
+
+export interface AgentWorkbook {
+    agentId: number;
+    agentName: string | null;
+    rows: CommissionRow[];
+    total: number;
+}
+
+// A number with a date format sorts and filters as a date in Excel, while an ISO string stays text.
+function excelDate(isoDate: string | null): CellObject | string {
+    if (!isoDate) return "";
+
+    const [year, month, day] = isoDate.slice(0, 10).split("-").map(Number);
+
+    // Excel counts days from 1899-12-30, which is 25569 days before the Unix epoch.
+    return { t: "n", v: Date.UTC(year, month - 1, day) / 86_400_000 + 25_569, z: "dd/mm/yyyy" };
+}
+
+export function commissionToRow(item: CommissionRow): (string | number | null)[] {
     return [
         item.cliente,
         item.cf_piva,
@@ -111,28 +60,25 @@ export function provvigioneToRow(item: ProvvigioneData): (string | number)[] {
     ];
 }
 
-/**
- * Creates an Excel workbook (binary) for a single seller's commissions.
- * @param sellerName - Name of the seller (used in header)
- * @param data - Array of ProvvigioneData records
- * @param totalCommission - Pre-calculated total commission
- * @returns Binary Excel file content (Uint8Array)
- */
-export async function createSellerExcel(
-    sellerName: string,
-    data: ProvvigioneData[],
-    totalCommission: number,
-): Promise<Uint8Array> {
+// The ID keeps two agents with the same display name from overwriting each other in the ZIP.
+export function agentWorkbookName(agentId: number, agentName: string | null): string {
+    const name = (agentName ?? "").trim().replace(/[<>:"/\\|?*\s]+/g, "_") || "AGENTE";
+
+    return `${name}-${agentId}.xlsx`;
+}
+
+async function createAgentWorkbook(workbook: AgentWorkbook): Promise<Uint8Array<ArrayBuffer>> {
     const XLSX = await import("xlsx");
 
-    const rows = data.map(provvigioneToRow);
-    const summaryRow = ["TOTALE", "", "", "", "", totalCommission, sellerName];
-    const worksheetData = [[...PROVVIGIONE_HEADERS], ...rows, summaryRow];
+    const summaryRow = ["TOTALE", "", "", "", "", workbook.total, ""];
 
-    // Create worksheet
-    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    // The unpaid CSV keeps Comp. al as ISO text, so only the workbook swaps it for a date cell.
+    const dataRows = workbook.rows.map((row) =>
+        commissionToRow(row).map((cell, column) => (column === COMP_AL_COLUMN ? excelDate(row.comp_al) : cell)),
+    );
 
-    // Set column widths for better readability
+    const worksheet = XLSX.utils.aoa_to_sheet([[...COMMISSION_HEADERS], ...dataRows, summaryRow]);
+
     worksheet["!cols"] = [
         { wch: 30 }, // Cliente
         { wch: 20 }, // CF/PIVA
@@ -143,48 +89,35 @@ export async function createSellerExcel(
         { wch: 25 }, // Venditore
     ];
 
-    // Create workbook
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Provvigioni");
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, worksheet, "Provvigioni");
 
-    // Write to binary array
-    const excelBuffer = XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as Uint8Array;
+    const buffer: unknown = XLSX.write(book, { type: "array", bookType: "xlsx" });
 
-    return excelBuffer;
+    if (!(buffer instanceof ArrayBuffer)) {
+        throw new SpreadsheetExportError(`commissions for agent ${workbook.agentId}`);
+    }
+
+    return new Uint8Array(buffer);
 }
 
-/**
- * Generates a ZIP file containing Excel files for each seller.
- * @param result - CalcoloResult with seller data
- * @param periodFolder - Folder name (YYYY-MM format)
- * @returns Blob of the ZIP file
- */
-export async function generateCommissionsZip(result: CalcoloResult, periodFolder: string): Promise<Blob> {
+// One workbook per agent inside a YYYY-MM folder, the layout the operators already file.
+export async function zipAgentWorkbooks(month: string, workbooks: AgentWorkbook[]): Promise<Blob> {
     const JSZip = (await import("jszip")).default;
     const zip = new JSZip();
 
-    // Create folder with period name
-    const folder = zip.folder(periodFolder);
-    if (!folder) {
-        throw new Error("Failed to create ZIP folder");
+    for (const workbook of workbooks) {
+        zip.file(`${month}/${agentWorkbookName(workbook.agentId, workbook.agentName)}`, await createAgentWorkbook(workbook));
     }
 
-    // Generate Excel file for each seller
-    for (const [sellerName, sellerData] of Object.entries(result)) {
-        const excelBuffer = await createSellerExcel(
-            sellerName,
-            sellerData.dati_provvigione,
-            sellerData.totale_provvigione,
-        );
+    return zip.generateAsync({ type: "blob" });
+}
 
-        const safeFilename = sanitizeFilename(sellerName);
-        folder.file(`${safeFilename}.xlsx`, excelBuffer);
-    }
+// Without the ZIP's month folder, the month goes in the file name.
+export async function downloadAgentWorkbook(month: string, workbook: AgentWorkbook): Promise<void> {
+    const blob = new Blob([await createAgentWorkbook(workbook)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 
-    // Generate ZIP blob
-    const zipBlob = await zip.generateAsync({ type: "blob" });
-
-    return zipBlob;
+    downloadBlob(blob, `${month}-${agentWorkbookName(workbook.agentId, workbook.agentName)}`);
 }
 
 export async function exportPendingOrdersExcel(orders: PendingOrder[]): Promise<void> {
@@ -199,7 +132,7 @@ export async function exportPendingOrdersExcel(orders: PendingOrder[]): Promise<
         o.prodotto,
         o.agente || "",
         o.stato || "",
-        formatDate(o.data_firma, ""),
+        excelDate(o.data_firma),
         o.metodo_pagam || "",
     ]);
 
@@ -219,7 +152,12 @@ export async function exportPendingOrdersExcel(orders: PendingOrder[]): Promise<
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Ordini Inevasi");
 
-    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as ArrayBuffer;
+    const buffer: unknown = XLSX.write(workbook, { type: "array", bookType: "xlsx" });
+
+    if (!(buffer instanceof ArrayBuffer)) {
+        throw new SpreadsheetExportError("pending orders");
+    }
+
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     downloadBlob(blob, "ordini-inevasi.xlsx");
 }

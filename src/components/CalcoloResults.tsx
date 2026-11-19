@@ -1,264 +1,441 @@
-import { useState, useEffect } from "react";
-import { ChevronRight, Download, Loader2, Search, X } from "lucide-react";
+import { Fragment, useMemo, useState, type ReactElement } from "react";
+import { AlertTriangle, ChevronRight, Search, Trash2, X } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { AddDraftRowDialog } from "@/components/AddDraftRowDialog";
+import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { formatCurrency } from "@/lib/utils";
-import type { CalcoloResultsProps } from "@/types/components";
-import type { ProvvigioneData } from "@/types";
+import { rowAmount, type DraftAgent, type DraftRow } from "@/lib/calculationDraft";
+import { formatMonthLabel } from "@/lib/competenceDates";
+import { formatCurrency, formatDate, matchesSearch, normalizeName, sellerNameLookup } from "@/lib/utils";
+import type { CalculationResultsProps } from "@/types/components";
+import type { CalculationDetail } from "@/types";
+import type { TranslationKey } from "@/translations";
 
-function sortByCliente(items: ProvvigioneData[]): ProvvigioneData[] {
-    return [...items].sort((a, b) => a.cliente.localeCompare(b.cliente, "it"));
+const EMPTY_VALUE = "—";
+
+function compareCustomers(a: CalculationDetail, b: CalculationDetail): number {
+    return (a.cliente ?? "").localeCompare(b.cliente ?? "", "it");
 }
 
-function filterItems(items: ProvvigioneData[], query: string): ProvvigioneData[] {
-    if (!query.trim()) return items;
-    const lowerQuery = query.toLowerCase();
-    return items.filter(
-        (item) =>
-            item.cliente.toLowerCase().includes(lowerQuery) ||
-            item.pod_pdr.toLowerCase().includes(lowerQuery) ||
-            item.regola.toLowerCase().includes(lowerQuery),
+// Sorting and filtering return the same row objects, so a row keeps its identity whatever the operator sees.
+function sortByCustomer(rows: DraftRow[]): DraftRow[] {
+    return [...rows].sort((a, b) => compareCustomers(a.detail, b.detail));
+}
+
+function filterRows(rows: DraftRow[], query: string): DraftRow[] {
+    if (!query.trim()) return rows;
+
+    return rows.filter(({ detail }) =>
+        matchesSearch(query, [detail.cliente, detail.pod_pdr, detail.regola, detail.venditore, detail.cf_piva]),
     );
 }
 
-export function CalcoloResults({ data, compDal }: CalcoloResultsProps) {
+export function CalculationResults({ month, draft, summary, unmatched, agents, rules, editDraft, actions, outcome }: CalculationResultsProps): ReactElement {
     const { t, language } = useTranslation();
-    const [expandedSeller, setExpandedSeller] = useState<string | null>(null);
+    const [expandedAgentId, setExpandedAgentId] = useState<number | null>(null);
     const [filterQuery, setFilterQuery] = useState<string>("");
-    const [isGeneratingZip, setIsGeneratingZip] = useState(false);
-    const [periodDisplay, setPeriodDisplay] = useState<string | null>(null);
+    const [unmatchedOpen, setUnmatchedOpen] = useState(false);
+    const [unmatchedShown, setUnmatchedShown] = useState(ROWS_PAGE_SIZE);
+    const [detailShown, setDetailShown] = useState(ROWS_PAGE_SIZE);
 
-    const sellers = Object.entries(data).sort((a, b) => b[1].totale_provvigione - a[1].totale_provvigione);
-    const grandTotal = sellers.reduce((sum, [, val]) => sum + val.totale_provvigione, 0);
+    const agentNames = useMemo(() => new Map(agents.map((agent) => [agent.id, agent.nome_cognome])), [agents]);
+    const sellerName = useMemo(() => sellerNameLookup(agents), [agents]);
+    const periodDisplay = formatMonthLabel(month, language);
+    const provisional = summary.invalidIncludedRows > 0;
 
-    useEffect(() => {
-        import("@/lib/exportUtils").then(({ formatPeriodDisplay }) => {
-            setPeriodDisplay(formatPeriodDisplay(compDal, language));
-        });
-    }, [compDal, language]);
+    const countLabel = (count: number, one: TranslationKey, other: TranslationKey): string =>
+        count === 1 ? t(one) : t(other).replace("{count}", count.toLocaleString(language));
 
-    // Reset filter when changing seller
-    const handleExpandSeller = (sellerName: string) => {
-        if (expandedSeller !== sellerName) {
-            setFilterQuery("");
-        }
-        setExpandedSeller(expandedSeller === sellerName ? null : sellerName);
+    const displayName = (agent: DraftAgent): string =>
+        agentNames.get(agent.agente_id) ?? agent.nome_agente ?? t("agentIdLabel").replace("{id}", String(agent.agente_id));
+
+    const agentTotals = (agent: DraftAgent): { total: number; invalidRows: number } =>
+        summary.agentTotals.get(agent.agente_id) ?? { total: 0, invalidRows: 0 };
+
+    // Rows sold by someone other than the beneficiary are the backend's parent override on a child's sale.
+    const childOriginSeller = (agent: DraftAgent, detail: CalculationDetail): string | null => {
+        const seller = detail.venditore?.trim();
+
+        const beneficiaryNames = [agentNames.get(agent.agente_id), agent.nome_agente].flatMap((name) =>
+            name?.trim() ? [normalizeName(name)] : [],
+        );
+
+        if (!seller || beneficiaryNames.length === 0) return null;
+
+        return beneficiaryNames.includes(normalizeName(seller)) ? null : sellerName(seller);
     };
 
-    const handleDownloadZip = async () => {
-        setIsGeneratingZip(true);
-        try {
-            const { extractPeriodFromCompDal, generateCommissionsZip, downloadBlob } =
-                await import("@/lib/exportUtils");
-            const periodFolder = extractPeriodFromCompDal(compDal);
-            const blob = await generateCommissionsZip(data, periodFolder);
-            downloadBlob(blob, `provvigioni-${periodFolder}.zip`);
-        } catch (error) {
-            console.error("Error generating ZIP:", error);
-        } finally {
-            setIsGeneratingZip(false);
+    const handleExpandAgent = (agentId: number): void => {
+        if (expandedAgentId !== agentId) {
+            setFilterQuery("");
+            setDetailShown(ROWS_PAGE_SIZE);
         }
+
+        setExpandedAgentId(expandedAgentId === agentId ? null : agentId);
+    };
+
+    const renderDetails = (agent: DraftAgent): ReactElement => {
+        const visibleRows = filterRows(sortByCustomer(agent.rows), filterQuery);
+        const visibleTotal = visibleRows.reduce((sum, row) => sum + (rowAmount(row) ?? 0), 0);
+
+        return (
+            <TableRow>
+                <TableCell colSpan={5} className="p-0 bg-secondary/10">
+                    <div className="p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder={t("filterPlaceholder")}
+                                    aria-label={t("filterPlaceholder")}
+                                    value={filterQuery}
+                                    onChange={(e) => setFilterQuery(e.target.value)}
+                                    className="pl-9 pr-9 h-9"
+                                />
+                                {filterQuery && (
+                                    <Button
+                                        type="button"
+                                        variant="unstyled"
+                                        size="unstyled"
+                                        aria-label={t("clearFilter")}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        onClick={() => setFilterQuery("")}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                            <AddDraftRowDialog
+                                agentName={displayName(agent)}
+                                seller={agentNames.get(agent.agente_id) ?? agent.nome_agente}
+                                month={month}
+                                rules={rules}
+                                disabled={!editDraft}
+                                onAdd={(detail, amountText) => {
+                                    editDraft?.addRow(agent.agente_id, detail, amountText);
+                                    // A filter that hides the new row would make the add look lost.
+                                    setFilterQuery("");
+                                    // The stable sort puts the appended row after every existing row with the same customer or an earlier one.
+                                    const position = agent.rows.filter((row) => compareCustomers(row.detail, detail) <= 0).length;
+                                    setDetailShown(Math.max(detailShown, position + 1));
+                                }}
+                            />
+                        </div>
+
+                        <div className="overflow-hidden rounded-md border bg-background/50">
+                            <Table containerClassName="max-h-[60dvh]">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>{t("client")}</TableHead>
+                                        <TableHead>{t("podPdr")}</TableHead>
+                                        <TableHead>{t("taxId")}</TableHead>
+                                        <TableHead>{t("seller")}</TableHead>
+                                        <TableHead>{t("rule")}</TableHead>
+                                        <TableHead>{t("competenceTo")}</TableHead>
+                                        <TableHead className="text-right">{t("commission")}</TableHead>
+                                        <TableHead className="w-12">
+                                            <span className="sr-only">{t("actions")}</span>
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {visibleRows.length > 0 ? (
+                                        visibleRows.slice(0, detailShown).map((row) => {
+                                            const { detail } = row;
+                                            const childSeller = childOriginSeller(agent, detail);
+                                            const client = detail.cliente ?? EMPTY_VALUE;
+                                            const invalid = rowAmount(row) === undefined;
+                                            const errorId = `amount-error-${row.id}`;
+
+                                            return (
+                                                <TableRow key={row.id}>
+                                                    <TableCell className="font-medium">{client}</TableCell>
+                                                    <TableCell className="font-mono text-xs">{detail.pod_pdr ?? EMPTY_VALUE}</TableCell>
+                                                    <TableCell className="font-mono text-xs">{detail.cf_piva ?? EMPTY_VALUE}</TableCell>
+                                                    <TableCell className="text-sm">
+                                                        {childSeller ? (
+                                                            <Badge variant="outline">
+                                                                {t("childOriginLabel").replace("{seller}", childSeller)}
+                                                            </Badge>
+                                                        ) : (
+                                                            (detail.venditore ? sellerName(detail.venditore) : EMPTY_VALUE)
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-sm text-muted-foreground">{detail.regola ?? EMPTY_VALUE}</TableCell>
+                                                    <TableCell className="font-mono text-xs">{formatDate(detail.comp_al, EMPTY_VALUE)}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Input
+                                                            inputMode="decimal"
+                                                            value={row.amountText}
+                                                            readOnly={!editDraft}
+                                                            aria-label={t("previewAmountLabel").replace("{client}", client)}
+                                                            aria-invalid={invalid}
+                                                            aria-describedby={invalid ? errorId : undefined}
+                                                            onChange={(e) => editDraft?.setRowAmount(agent.agente_id, row.id, e.target.value)}
+                                                            className="ml-auto h-8 w-28 text-right font-mono aria-[invalid=true]:border-destructive"
+                                                        />
+                                                        {invalid && (
+                                                            <p id={errorId} className="mt-1 text-xs font-medium text-destructive">
+                                                                {t("previewInvalidAmount")}
+                                                            </p>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="w-12">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            disabled={!editDraft}
+                                                            aria-label={t("previewRemoveRow").replace("{client}", client)}
+                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                            onClick={() => editDraft?.removeRow(agent.agente_id, row.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                                                {t("noDataFound")}
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                    <ShowMoreRows shown={detailShown} total={visibleRows.length} onShowMore={setDetailShown} colSpan={8} />
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>
+                                {filterQuery && visibleRows.length !== agent.rows.length
+                                    ? `${t("showing")} ${visibleRows.length} ${t("of")} ${agent.rows.length}`
+                                    : `${agent.rows.length} ${t("records").toLowerCase()}`}
+                            </span>
+                            {visibleRows.length > 0 && (
+                                <span className="font-mono">
+                                    {t("total")}: {formatCurrency(visibleTotal)}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </TableCell>
+            </TableRow>
+        );
     };
 
     return (
         <div className="space-y-6">
-            <div className="kpi-card p-6 text-center">
-                <span className="kpi-label">
-                    {t("totalCommission")}
-                    {periodDisplay && <span className="text-energia-accent"> — {periodDisplay}</span>}
-                </span>
-                <div className="kpi-value text-5xl mt-3">{formatCurrency(grandTotal)}</div>
-                <p className="font-body text-muted-foreground mt-3 text-sm italic">
-                    {sellers.length} {t("beneficiary").toLowerCase()}(i)
-                </p>
-                <div className="mt-4">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleDownloadZip}
-                        disabled={isGeneratingZip}
-                        className="gap-2"
-                    >
-                        {isGeneratingZip ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Download className="h-4 w-4" />
-                        )}
-                        {isGeneratingZip ? t("generatingZip") : t("downloadZip")}
-                    </Button>
+            {draft.agents.length > 0 ? (
+                <div className="kpi-card p-6 text-center">
+                    <span className="kpi-label">
+                        {t("totalCommission")}
+                        <span> — {periodDisplay}</span>
+                    </span>
+                    <div className="kpi-value text-5xl mt-3">{formatCurrency(summary.total)}</div>
+                    {provisional && (
+                        <p className="mt-3 text-sm font-medium text-destructive">
+                            {countLabel(summary.invalidIncludedRows, "previewProvisionalTotalOne", "previewProvisionalTotalOther")}
+                        </p>
+                    )}
+                    <p className="mt-3 text-sm text-muted-foreground">
+                        {countLabel(summary.includedAgents, "previewTotalAgentsOne", "previewTotalAgentsOther")}
+                        {" · "}
+                        {countLabel(summary.includedRows, "previewTotalRowsOne", "previewTotalRowsOther")}
+                    </p>
+                    {actions && <div className="mt-6 border-t border-border/50 pt-4 text-left">{actions}</div>}
                 </div>
-            </div>
+            ) : (
+                <p className="ledger-card p-6 text-center text-sm text-muted-foreground">{t("previewNoAgents")}</p>
+            )}
 
-            <div className="section-divider" />
+            {outcome}
 
-            <div className="space-y-4">
-                <h3 className="font-display text-xl">
-                    {t("summaryByBeneficiary")}
-                    {periodDisplay && <span className="text-muted-foreground font-normal"> — {periodDisplay}</span>}
-                </h3>
-                <div className="ledger-card overflow-hidden">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-12"></TableHead>
-                                <TableHead>{t("beneficiary")}</TableHead>
-                                <TableHead className="text-right">{t("records")}</TableHead>
-                                <TableHead className="text-right">{t("totalCommission")}</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sellers.map(([sellerName, sellerData]) => (
-                                <>
-                                    <TableRow
-                                        key={sellerName}
-                                        className="cursor-pointer hover:bg-secondary/20"
-                                        onClick={() => handleExpandSeller(sellerName)}
-                                    >
-                                        <TableCell className="w-12">
-                                            <ChevronRight
-                                                className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                                                    expandedSeller === sellerName ? "rotate-90" : ""
-                                                }`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">{sellerName}</TableCell>
-                                        <TableCell className="text-right font-mono">
-                                            {sellerData.dati_provvigione.length}
-                                        </TableCell>
-                                        <TableCell className="text-right font-mono font-semibold text-energia-accent">
-                                            {formatCurrency(sellerData.totale_provvigione)}
-                                        </TableCell>
+            {draft.agents.length > 0 && (
+                <>
+                    <div className="section-divider" />
+
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="font-display text-xl">
+                                {t("summaryByBeneficiary")}
+                                <span className="text-muted-foreground font-normal"> — {periodDisplay}</span>
+                            </h3>
+                            <p className="mt-1 text-sm text-muted-foreground">{t("previewExclusionNote")}</p>
+                        </div>
+                        <div className="ledger-card overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-12"></TableHead>
+                                        <TableHead className="w-16">{t("previewIncludeColumn")}</TableHead>
+                                        <TableHead className="w-full">{t("beneficiary")}</TableHead>
+                                        <TableHead className="text-right whitespace-nowrap">{t("records")}</TableHead>
+                                        <TableHead className="text-right whitespace-nowrap">{t("totalCommission")}</TableHead>
                                     </TableRow>
-                                    {expandedSeller === sellerName &&
-                                        (() => {
-                                            const sortedItems = sortByCliente(sellerData.dati_provvigione);
-                                            const filteredItems = filterItems(sortedItems, filterQuery);
-                                            return (
-                                                <TableRow key={`${sellerName}-details`}>
-                                                    <TableCell colSpan={4} className="p-0 bg-secondary/10">
-                                                        <div className="p-4 space-y-3">
-                                                            <div className="relative">
-                                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                                <Input
-                                                                    placeholder={t("filterPlaceholder")}
-                                                                    value={filterQuery}
-                                                                    onChange={(e) => setFilterQuery(e.target.value)}
-                                                                    className="pl-9 pr-9 h-9"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                />
-                                                                {filterQuery && (
-                                                                    <button
-                                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setFilterQuery("");
-                                                                        }}
-                                                                    >
-                                                                        <X className="h-4 w-4" />
-                                                                    </button>
-                                                                )}
-                                                            </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {draft.agents.map((agent) => {
+                                        const expanded = expandedAgentId === agent.agente_id;
+                                        const name = displayName(agent);
+                                        const totals = agentTotals(agent);
 
-                                                            <div className="max-h-80 overflow-y-auto border rounded-md bg-background/50">
-                                                                <Table>
-                                                                    <TableHeader className="sticky top-0 bg-secondary/80 backdrop-blur-sm">
-                                                                        <TableRow>
-                                                                            <TableHead>{t("client")}</TableHead>
-                                                                            <TableHead>{t("podPdr")}</TableHead>
-                                                                            <TableHead>{t("rule")}</TableHead>
-                                                                            <TableHead className="text-right">
-                                                                                {t("commission")}
-                                                                            </TableHead>
-                                                                        </TableRow>
-                                                                    </TableHeader>
-                                                                    <TableBody>
-                                                                        {filteredItems.length > 0 ? (
-                                                                            filteredItems.map((item, idx) => (
-                                                                                <TableRow key={idx}>
-                                                                                    <TableCell className="font-medium">
-                                                                                        {item.cliente}
-                                                                                    </TableCell>
-                                                                                    <TableCell className="font-mono text-xs">
-                                                                                        {item.pod_pdr}
-                                                                                    </TableCell>
-                                                                                    <TableCell
-                                                                                        className="text-sm text-muted-foreground"
-                                                                                    >
-                                                                                        {item.regola}
-                                                                                    </TableCell>
-                                                                                    <TableCell className="text-right font-mono font-semibold">
-                                                                                        {formatCurrency(
-                                                                                            item.importo_provvigione,
-                                                                                        )}
-                                                                                    </TableCell>
-                                                                                </TableRow>
-                                                                            ))
-                                                                        ) : (
-                                                                            <TableRow>
-                                                                                <TableCell
-                                                                                    colSpan={4}
-                                                                                    className="text-center text-muted-foreground py-8"
-                                                                                >
-                                                                                    {t("noDataFound")}
-                                                                                </TableCell>
-                                                                            </TableRow>
-                                                                        )}
-                                                                    </TableBody>
-                                                                </Table>
-                                                            </div>
-
-                                                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                                                <span>
-                                                                    {filterQuery &&
-                                                                    filteredItems.length !==
-                                                                        sellerData.dati_provvigione.length
-                                                                        ? `${t("showing")} ${filteredItems.length} ${t(
-                                                                              "of",
-                                                                          )} ${sellerData.dati_provvigione.length}`
-                                                                        : `${sellerData.dati_provvigione.length} ${t(
-                                                                              "records",
-                                                                          ).toLowerCase()}`}
-                                                                </span>
-                                                                {filteredItems.length > 0 && (
-                                                                    <span className="font-mono">
-                                                                        {t("total")}:{" "}
-                                                                        {formatCurrency(
-                                                                            filteredItems.reduce(
-                                                                                (sum, item) =>
-                                                                                    sum +
-                                                                                    (item.importo_provvigione || 0),
-                                                                                0,
-                                                                            ),
-                                                                        )}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
+                                        return (
+                                            <Fragment key={agent.agente_id}>
+                                                <TableRow
+                                                    className={`cursor-pointer hover:bg-secondary/20 ${agent.included ? "" : "text-muted-foreground"}`}
+                                                    onClick={() => handleExpandAgent(agent.agente_id)}
+                                                >
+                                                    <TableCell className="w-12">
+                                                        <Button
+                                                            type="button"
+                                                            variant="unstyled"
+                                                            size="unstyled"
+                                                            aria-expanded={expanded}
+                                                            aria-label={name}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleExpandAgent(agent.agente_id);
+                                                            }}
+                                                        >
+                                                            <ChevronRight
+                                                                className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                                                                    expanded ? "rotate-90" : ""
+                                                                }`}
+                                                            />
+                                                        </Button>
+                                                    </TableCell>
+                                                    <TableCell className="w-16">
+                                                        <Checkbox
+                                                            checked={agent.included}
+                                                            disabled={!editDraft || agent.rows.length === 0}
+                                                            aria-label={t("previewIncludeAgent").replace("{name}", name)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            onCheckedChange={(checked) =>
+                                                                editDraft?.setAgentIncluded(agent.agente_id, checked === true)
+                                                            }
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="font-medium">
+                                                        {name}
+                                                        <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">
+                                                            #{agent.agente_id}
+                                                        </span>
+                                                        {!agent.included && (
+                                                            <Badge variant="outline" className="ml-2">
+                                                                {agent.rows.length === 0 ? t("previewExcludedNoRows") : t("previewExcluded")}
+                                                            </Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono">{agent.rows.length}</TableCell>
+                                                    <TableCell
+                                                        className={`text-right font-mono font-semibold ${agent.included ? "text-energia-accent-text" : "line-through"}`}
+                                                    >
+                                                        {formatCurrency(totals.total)}
+                                                        {agent.included && totals.invalidRows > 0 && (
+                                                            <span className="block text-xs font-medium text-destructive">{t("previewProvisional")}</span>
+                                                        )}
                                                     </TableCell>
                                                 </TableRow>
-                                            );
-                                        })()}
-                                </>
-                            ))}
-                        </TableBody>
-                        <TableFooter>
-                            <TableRow>
-                                <TableCell colSpan={2} className="font-display font-semibold">
-                                    {t("total")}
-                                </TableCell>
-                                <TableCell className="text-right font-mono">
-                                    {sellers.reduce((sum, [, val]) => sum + val.dati_provvigione.length, 0)}
-                                </TableCell>
-                                <TableCell className="text-right font-mono font-bold text-lg text-energia-accent">
-                                    {formatCurrency(grandTotal)}
-                                </TableCell>
-                            </TableRow>
-                        </TableFooter>
-                    </Table>
-                </div>
-            </div>
+                                                {expanded && renderDetails(agent)}
+                                            </Fragment>
+                                        );
+                                    })}
+                                </TableBody>
+                                <TableFooter>
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="font-display font-semibold">
+                                            {t("total")}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono">{summary.includedRows}</TableCell>
+                                        <TableCell className="text-right font-mono font-bold text-lg text-energia-accent-text">
+                                            {formatCurrency(summary.total)}
+                                            {provisional && (
+                                                <span className="block text-xs font-medium text-destructive">{t("previewProvisional")}</span>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                </TableFooter>
+                            </Table>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Most sellers in a liquidation file aren't agents of ours, so the list stays closed below the results. */}
+            {unmatched.length > 0 && (
+                <Collapsible asChild open={unmatchedOpen} onOpenChange={setUnmatchedOpen}>
+                    <section
+                        aria-labelledby="unmatched-rows-title"
+                        className="overflow-hidden rounded-md border border-amber-500/50 bg-amber-50 dark:bg-amber-950/30"
+                    >
+                        <div className="flex flex-col gap-3 p-4 text-amber-800 sm:flex-row sm:items-center sm:justify-between dark:text-amber-300">
+                            <div className="flex gap-3">
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                <div className="space-y-1">
+                                    <h3 id="unmatched-rows-title" className="text-sm font-medium">
+                                        <span role="status">
+                                            {countLabel(unmatched.length, "unmatchedRowsWarningOne", "unmatchedRowsWarningOther")}
+                                        </span>
+                                    </h3>
+                                    <p className="text-sm text-amber-800/80 dark:text-amber-300/80">
+                                        {t(unmatched.length === 1 ? "unmatchedRowsDescriptionOne" : "unmatchedRowsDescription")}
+                                    </p>
+                                </div>
+                            </div>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="outline" size="sm" className="shrink-0 self-start sm:self-center">
+                                    <ChevronRight
+                                        className={`h-4 w-4 transition-transform duration-200 ${unmatchedOpen ? "rotate-90" : ""}`}
+                                    />
+                                    {unmatchedOpen ? t("unmatchedRowsHide") : t("unmatchedRowsShow")}
+                                </Button>
+                            </CollapsibleTrigger>
+                        </div>
+                        <CollapsibleContent className="border-t border-amber-500/30 bg-card">
+                            <Table containerClassName="max-h-[60dvh]">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>{t("seller")}</TableHead>
+                                        <TableHead>{t("client")}</TableHead>
+                                        <TableHead>{t("podPdr")}</TableHead>
+                                        <TableHead>{t("taxId")}</TableHead>
+                                        <TableHead>{t("rule")}</TableHead>
+                                        <TableHead>{t("consumptionTier")}</TableHead>
+                                        <TableHead>{t("competenceTo")}</TableHead>
+                                        <TableHead className="text-right">{t("amount")}</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {unmatched.slice(0, unmatchedShown).map((row, idx) => (
+                                        <TableRow key={idx}>
+                                            <TableCell className="font-medium">{row.venditore ? sellerName(row.venditore) : EMPTY_VALUE}</TableCell>
+                                            <TableCell>{row.cliente ?? EMPTY_VALUE}</TableCell>
+                                            <TableCell className="font-mono text-xs">{row.pod_pdr ?? EMPTY_VALUE}</TableCell>
+                                            <TableCell className="font-mono text-xs">{row.cf_piva ?? EMPTY_VALUE}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{row.regola ?? EMPTY_VALUE}</TableCell>
+                                            {/* The backend sends a missing scaglione as an empty string, not null. */}
+                                            <TableCell className="text-sm">{row.scaglione_consumo || EMPTY_VALUE}</TableCell>
+                                            <TableCell className="font-mono text-xs">{formatDate(row.comp_al, EMPTY_VALUE)}</TableCell>
+                                            <TableCell className="text-right font-mono">
+                                                {row.importo_euro === null ? EMPTY_VALUE : formatCurrency(row.importo_euro)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    <ShowMoreRows shown={unmatchedShown} total={unmatched.length} onShowMore={setUnmatchedShown} colSpan={8} />
+                                </TableBody>
+                            </Table>
+                        </CollapsibleContent>
+                    </section>
+                </Collapsible>
+            )}
         </div>
     );
 }

@@ -1,0 +1,47 @@
+export const parentValuesEn = {
+    parentValues: "Parent values",
+    agentValues: "Agent values",
+    parentValuesDescription: "Amount that goes to {parent} for each rule and tier sold by {agent}.",
+    tier: "Tier",
+    agentValue: "Agent value",
+    parentValue: "Parent value",
+    parentValuesNeedParent: "This agent has no parent agent. Select one and save to set the parent values.",
+    parentValuesNewParent: "Save the new parent to edit its values",
+    parentLinkedNotice:
+        "{parent} is now the parent agent. Check the parent values, or prefill them from a percentage, and press Save: the parent earns nothing on a rule whose value is 0.",
+    invalidValuesCount: "Invalid: {count}",
+    agentDialogDescription: "Agent details and commission values",
+    parentValuesEmpty: "No active rules to configure.",
+    parentValuesLoadFailed: "Unable to load parent values.",
+    parentValuesPrefilled: "Parent values set to {percent}% of the agent values. Press Save to keep them.",
+    prefillPercent: "Percentage",
+    prefillFromPercent: "Prefill from percentage",
+    prefillConfirmTitle: "Overwrite the parent values?",
+    prefillConfirmDescription:
+        "Every parent value will be set to {percent}% of the agent value. Saved values and unsaved changes will be overwritten. Nothing is saved until you press Save.",
+    prefill: "Prefill",
+} as const;
+
+export const parentValuesIt: Record<keyof typeof parentValuesEn, string> = {
+    parentValues: "Valori padre",
+    agentValues: "Valori agente",
+    parentValuesDescription: "Importo che va a {parent} per ogni regola e scaglione venduto da {agent}.",
+    tier: "Scaglione",
+    agentValue: "Valore agente",
+    parentValue: "Valore padre",
+    parentValuesNeedParent: "Questo agente non ha un agente padre. Selezionane uno e salva per configurare i valori padre.",
+    parentValuesNewParent: "Salva il nuovo padre per modificare i suoi valori",
+    parentLinkedNotice:
+        "{parent} è ora l'agente padre. Controlla i valori padre, o precompilali da una percentuale, e premi Salva: su una regola con valore 0 il padre non matura nulla.",
+    invalidValuesCount: "Non validi: {count}",
+    agentDialogDescription: "Dati dell'agente e valori provvigionali",
+    parentValuesEmpty: "Nessuna regola attiva da configurare.",
+    parentValuesLoadFailed: "Impossibile caricare i valori padre.",
+    parentValuesPrefilled: "Valori padre impostati al {percent}% dei valori agente. Premi Salva per mantenerli.",
+    prefillPercent: "Percentuale",
+    prefillFromPercent: "Precompila da percentuale",
+    prefillConfirmTitle: "Sovrascrivere i valori padre?",
+    prefillConfirmDescription:
+        "Ogni valore padre sarà impostato al {percent}% del valore agente. I valori salvati e le modifiche non salvate saranno sovrascritti. Niente viene salvato finché non premi Salva.",
+    prefill: "Precompila",
+};

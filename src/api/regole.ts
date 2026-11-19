@@ -1,21 +1,24 @@
-import type { Regola, UpdateRegolaRequest, UpdateRegolaResponse, ImportRegoleResponse } from "@/types";
+import type { Rule, UpdateRuleRequest, UpdateRuleResponse, ImportRulesResponse } from "@/types";
 import { authFetch, getApiUrl, handleResponse } from "./client";
 
-export async function getRegole(): Promise<Regola[]> {
+export async function getRules(): Promise<Rule[]> {
     const res = await authFetch(getApiUrl("/regole"));
-    return handleResponse<Regola[]>(res);
+
+    return handleResponse<Rule[]>(res);
 }
 
-export async function importRegole(): Promise<ImportRegoleResponse> {
+export async function importRules(): Promise<ImportRulesResponse> {
     const res = await authFetch(getApiUrl("/regole"), { method: "POST" });
-    return handleResponse<ImportRegoleResponse>(res);
+
+    return handleResponse<ImportRulesResponse>(res);
 }
 
-export async function updateRegola(id: number, data: UpdateRegolaRequest): Promise<UpdateRegolaResponse> {
+export async function updateRule(id: number, data: UpdateRuleRequest): Promise<UpdateRuleResponse> {
     const res = await authFetch(getApiUrl(`/regole/${id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
-    return handleResponse<UpdateRegolaResponse>(res);
+
+    return handleResponse<UpdateRuleResponse>(res);
 }

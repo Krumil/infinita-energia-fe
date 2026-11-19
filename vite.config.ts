@@ -1,11 +1,8 @@
-import fs from "node:fs";
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const packageJson = JSON.parse(
-    fs.readFileSync(new URL("./package.json", import.meta.url), "utf-8"),
-) as { version: string };
+import packageJson from "./package.json";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -17,5 +14,14 @@ export default defineConfig({
     },
     define: {
         __APP_VERSION__: JSON.stringify(packageJson.version),
+    },
+    server: {
+        host: "0.0.0.0",
+        proxy: {
+            "/api": {
+                target: "http://localhost:5000",
+                changeOrigin: true,
+            },
+        },
     },
 });

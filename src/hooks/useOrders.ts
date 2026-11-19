@@ -12,15 +12,18 @@ export function useOrders() {
     const [importing, setImporting] = useState(false);
     const [progress, setProgress] = useState(0);
     const [result, setResult] = useState<ImportExcelResponse | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const handleUpload = useCallback(
         async (files: File[]): Promise<string | null> => {
             const file = files[0];
+
             if (!file) return null;
 
             setImporting(true);
             setProgress(0);
             setResult(null);
+            setError(null);
 
             const progressInterval = setInterval(() => {
                 setProgress((p) => Math.min(p + 5, 90));
@@ -35,15 +38,13 @@ export function useOrders() {
                     title: t("uploadSuccessful"),
                     description: uploadResult.message,
                 });
+
                 return t("ordersImported");
             } catch (error) {
                 clearInterval(progressInterval);
-                const errorMsg = error instanceof ApiError ? error.message : t("uploadFailed");
-                toast({
-                    title: t("uploadFailed"),
-                    description: errorMsg,
-                    variant: "destructive",
-                });
+                // The dialog shows the error: a toast sits outside the modal, so screen readers never reach it.
+                setError(error instanceof ApiError ? error.message : t("uploadFailed"));
+
                 return null;
             } finally {
                 setImporting(false);
@@ -57,6 +58,7 @@ export function useOrders() {
         importing,
         progress,
         result,
+        error,
         handleUpload,
     };
 }

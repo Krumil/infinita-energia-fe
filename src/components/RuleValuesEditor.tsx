@@ -3,54 +3,56 @@ import { Loader2, ChevronRight, Home, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "@/hooks/useTranslation";
+import { parseEuroNumber } from "@/lib/numbers";
 import { cn } from "@/lib/utils";
-import type { ConfigurazioneRegola, Regola } from "@/types/domain";
+import type { RuleConfiguration, Rule } from "@/types/domain";
 
 interface RuleValuesEditorProps {
-    configurazione: ConfigurazioneRegola[];
-    regole: Regola[];
+    configuration: RuleConfiguration[];
+    rules: Rule[];
     loading: boolean;
     editedValues: Map<string, string>;
-    onValueChange: (regolaId: number, scaglioneId: number, value: string) => void;
+    onValueChange: (ruleId: number, tierId: number, value: string) => void;
 }
 
-interface GroupedScaglione {
-    scaglione_id: number;
-    scaglione_nome: string;
-    valore: number;
-    is_custom: boolean;
+interface GroupedTier {
+    tierId: number;
+    tierName: string;
+    value: number;
+    isCustom: boolean;
 }
 
 interface GroupedRule {
-    nome: string;
-    tipoUtenza: "residenziale" | "business" | null;
-    scaglioni: GroupedScaglione[];
+    name: string;
+    customerType: "residenziale" | "business" | null;
+    tiers: GroupedTier[];
 }
 
-function ScaglioneRow({
-    regolaId,
-    scaglione,
+function TierRow({
+    ruleId,
+    tier,
     editedValues,
     onValueChange,
 }: {
-    regolaId: number;
-    scaglione: GroupedScaglione;
+    ruleId: number;
+    tier: GroupedTier;
     editedValues: Map<string, string>;
-    onValueChange: (regolaId: number, scaglioneId: number, value: string) => void;
+    onValueChange: (ruleId: number, tierId: number, value: string) => void;
 }) {
-    const key = `${regolaId}_${scaglione.scaglione_id}`;
-    const currentVal = editedValues.get(key) ?? String(scaglione.valore);
+    const key = `${ruleId}_${tier.tierId}`;
+    const currentVal = editedValues.get(key) ?? String(tier.value);
 
     return (
         <div className="grid grid-cols-[1fr_5rem] items-center gap-2 px-3 py-1.5 text-xs">
             <span className="font-body">
-                {scaglione.scaglione_nome}
+                {tier.tierName}
             </span>
             <Input
                 type="text"
                 inputMode="decimal"
                 value={currentVal}
-                onChange={(e) => onValueChange(regolaId, scaglione.scaglione_id, e.target.value)}
+                onChange={(e) => onValueChange(ruleId, tier.tierId, e.target.value)}
+                aria-invalid={parseEuroNumber(currentVal) === undefined}
                 className="font-mono text-right h-7 px-2 text-xs border-border/50"
             />
         </div>
@@ -58,17 +60,17 @@ function ScaglioneRow({
 }
 
 function RuleGroup({
-    regolaId,
+    ruleId,
     group,
     isGeneral,
     editedValues,
     onValueChange,
 }: {
-    regolaId: number;
+    ruleId: number;
     group: GroupedRule;
     isGeneral: boolean;
     editedValues: Map<string, string>;
-    onValueChange: (regolaId: number, scaglioneId: number, value: string) => void;
+    onValueChange: (ruleId: number, tierId: number, value: string) => void;
 }) {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -80,21 +82,21 @@ function RuleGroup({
                     isOpen && "rotate-90",
                 )} />
                 <span className="font-display text-xs font-medium flex-1">
-                    {group.nome}
+                    {group.name}
                 </span>
                 {isGeneral && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary font-mono uppercase">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary-text font-mono uppercase">
                         Gen
                     </span>
                 )}
             </CollapsibleTrigger>
             <CollapsibleContent>
                 <div className="ml-1 border-l border-border/30 divide-y divide-border/10">
-                    {group.scaglioni.map((scaglione) => (
-                        <ScaglioneRow
-                            key={scaglione.scaglione_id}
-                            regolaId={regolaId}
-                            scaglione={scaglione}
+                    {group.tiers.map((tier) => (
+                        <TierRow
+                            key={tier.tierId}
+                            ruleId={ruleId}
+                            tier={tier}
                             editedValues={editedValues}
                             onValueChange={onValueChange}
                         />
@@ -118,9 +120,10 @@ function ColumnSection({
     accent: string;
     rules: Array<[number, GroupedRule]>;
     editedValues: Map<string, string>;
-    onValueChange: (regolaId: number, scaglioneId: number, value: string) => void;
+    onValueChange: (ruleId: number, tierId: number, value: string) => void;
 }) {
     const { t } = useTranslation();
+
     return (
         <div className="flex-1 min-w-0 border border-border/40 rounded-sm overflow-hidden">
             <div className={cn("flex items-center gap-2 px-4 py-2.5 border-b border-border/30", accent)}>
@@ -131,12 +134,12 @@ function ColumnSection({
                 </span>
             </div>
             <div className="divide-y divide-border/20 max-h-[45vh] overflow-y-auto">
-                {rules.map(([regolaId, group]) => (
+                {rules.map(([ruleId, group]) => (
                     <RuleGroup
-                        key={regolaId}
-                        regolaId={regolaId}
+                        key={ruleId}
+                        ruleId={ruleId}
                         group={group}
-                        isGeneral={group.tipoUtenza === null}
+                        isGeneral={group.customerType === null}
                         editedValues={editedValues}
                         onValueChange={onValueChange}
                     />
@@ -146,46 +149,51 @@ function ColumnSection({
     );
 }
 
-export function RuleValuesEditor({ configurazione, regole, loading, editedValues, onValueChange }: RuleValuesEditorProps) {
+export function RuleValuesEditor({ configuration, rules, loading, editedValues, onValueChange }: RuleValuesEditorProps) {
     const { t } = useTranslation();
 
-    const regolaUtenzaMap = useMemo(
-        () => new Map(regole.map((r) => [r.id, r.tipo_utenza])),
-        [regole],
+    const ruleCustomerTypeMap = useMemo(
+        () => new Map(rules.map((r) => [r.id, r.tipo_utenza])),
+        [rules],
     );
 
     const grouped = useMemo(() => {
-        const byRegola = new Map<number, GroupedRule>();
-        for (const item of configurazione) {
-            let group = byRegola.get(item.regola_id);
+        const byRule = new Map<number, GroupedRule>();
+
+        for (const item of configuration) {
+            let group = byRule.get(item.regola_id);
+
             if (!group) {
                 group = {
-                    nome: item.regola_nome,
-                    tipoUtenza: regolaUtenzaMap.get(item.regola_id) ?? null,
-                    scaglioni: [],
+                    name: item.regola_nome,
+                    customerType: ruleCustomerTypeMap.get(item.regola_id) ?? null,
+                    tiers: [],
                 };
-                byRegola.set(item.regola_id, group);
+                byRule.set(item.regola_id, group);
             }
-            group.scaglioni.push({
-                scaglione_id: item.scaglione_id,
-                scaglione_nome: item.scaglione_nome ?? "",
-                valore: item.valore,
-                is_custom: item.is_custom,
+
+            group.tiers.push({
+                tierId: item.scaglione_id,
+                tierName: item.scaglione_nome ?? "",
+                value: item.valore,
+                isCustom: item.is_custom,
             });
         }
-        return byRegola;
-    }, [configurazione, regolaUtenzaMap]);
 
-    const { residenziale, business } = useMemo(() => {
+        return byRule;
+    }, [configuration, ruleCustomerTypeMap]);
+
+    const { residenziale: residential, business } = useMemo(() => {
         const res: Array<[number, GroupedRule]> = [];
         const bus: Array<[number, GroupedRule]> = [];
 
-        for (const [regolaId, group] of grouped) {
-            if (group.tipoUtenza === "residenziale" || group.tipoUtenza === null) {
-                res.push([regolaId, group]);
+        for (const [ruleId, group] of grouped) {
+            if (group.customerType === "residenziale" || group.customerType === null) {
+                res.push([ruleId, group]);
             }
-            if (group.tipoUtenza === "business" || group.tipoUtenza === null) {
-                bus.push([regolaId, group]);
+
+            if (group.customerType === "business" || group.customerType === null) {
+                bus.push([ruleId, group]);
             }
         }
 
@@ -200,7 +208,7 @@ export function RuleValuesEditor({ configurazione, regole, loading, editedValues
         );
     }
 
-    if (configurazione.length === 0) {
+    if (configuration.length === 0) {
         return (
             <p className="text-center py-6 text-muted-foreground italic text-sm">
                 {t("noRegoleYet")}
@@ -215,7 +223,7 @@ export function RuleValuesEditor({ configurazione, regole, loading, editedValues
                     label={t("residenziale")}
                     icon={<Home className="h-4 w-4 text-primary" />}
                     accent="bg-primary/5"
-                    rules={residenziale}
+                    rules={residential}
                     editedValues={editedValues}
                     onValueChange={onValueChange}
                 />
@@ -230,7 +238,7 @@ export function RuleValuesEditor({ configurazione, regole, loading, editedValues
             </div>
             <div className="flex items-center gap-6 text-xs text-muted-foreground font-body px-1">
                 <span className="flex items-center gap-1.5">
-                    <span className="text-[9px] px-1 py-0.5 rounded-sm bg-primary/10 text-primary font-mono uppercase">Gen</span>
+                    <span className="text-[9px] px-1 py-0.5 rounded-sm bg-primary/10 text-primary-text font-mono uppercase">Gen</span>
                     {t("tipoUtenza")}: -
                 </span>
             </div>

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import type { Agente, Regola, Scaglione, ConfigurazioneRegola } from "./domain";
-import type { CreateAgentRequest, CalcoloResult } from "./api";
+import type { Agent, Rule, Tier, RuleConfiguration } from "./domain";
+import type { CreateAgentRequest, UnmatchedSettlement } from "./api";
+import type { CalculationDraft, DraftActions, DraftSummary } from "@/lib/calculationDraft";
 
 export interface FileDropzoneProps {
     accept: string;
@@ -8,14 +9,6 @@ export interface FileDropzoneProps {
     multiple?: boolean;
     onFiles: (files: File[]) => void;
     disabled?: boolean;
-}
-
-export interface KPICardProps {
-    title: string;
-    value: string | number;
-    icon: ReactNode;
-    description?: string;
-    delay?: number;
 }
 
 export interface EmptyStateProps {
@@ -26,34 +19,45 @@ export interface EmptyStateProps {
 export interface AgentDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    agent: Agente | null;
-    agents: Agente[];
-    regole: Regola[];
-    scaglioni: Scaglione[];
-    onSave: (data: CreateAgentRequest, customValori?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<unknown>;
+    agent: Agent | null;
+    // The agent's parent was just linked, so the dialog opens on the parent values with a notice.
+    parentLinked: boolean;
+    agents: Agent[];
+    rules: Rule[];
+    tiers: Tier[];
+    onSave: (data: CreateAgentRequest, customValues?: Array<{ regola_id: number; scaglione_id: number; valore: number }>) => Promise<string | null>;
     saving: boolean;
     onDelete?: () => void;
     deleting?: boolean;
-    configurazione: ConfigurazioneRegola[];
+    configuration: RuleConfiguration[];
     configLoading: boolean;
 }
 
 export interface AgentsTableProps {
-    data: Agente[];
-    onEdit: (agent: Agente) => void;
-    onToggleStatistiche: (agent: Agente, value: boolean) => Promise<void>;
+    data: Agent[];
+    onEdit: (agent: Agent) => void;
+    onToggleStatistics: (agent: Agent, value: boolean) => Promise<void>;
 }
 
-export interface RegoleTableProps {
-    regole: Regola[];
-    scaglioni: Scaglione[];
-    onToggleUtilizzato: (regola: Regola, value: boolean) => Promise<void>;
-    onUpdateDefault: (regola: Regola, value: number) => Promise<void>;
-    onUpdateTipoUtenza: (regola: Regola, value: "residenziale" | "business" | null) => Promise<void>;
-    onUpdateTipoServizio: (regola: Regola, value: "gas" | "luce" | null) => Promise<void>;
+export interface RulesTableProps {
+    rules: Rule[];
+    tiers: Tier[];
+    onToggleEnabled: (rule: Rule, value: boolean) => Promise<void>;
+    onUpdateDefault: (rule: Rule, value: number) => Promise<void>;
+    onUpdateCustomerType: (rule: Rule, value: "residenziale" | "business" | null) => Promise<void>;
+    onUpdateServiceType: (rule: Rule, value: "gas" | "luce" | null) => Promise<void>;
 }
 
-export interface CalcoloResultsProps {
-    data: CalcoloResult;
-    compDal?: string;
+export interface CalculationResultsProps {
+    month: string;
+    draft: CalculationDraft;
+    summary: DraftSummary;
+    unmatched: UnmatchedSettlement[];
+    agents: Agent[];
+    rules: Rule[];
+    // Absent while a recalculation loads or a confirmation is saving, when the draft is shown read-only.
+    editDraft?: DraftActions;
+    // The save controls sit at the foot of the total card, and their outcome right under it, so saving needs no scrolling.
+    actions?: ReactNode;
+    outcome?: ReactNode;
 }

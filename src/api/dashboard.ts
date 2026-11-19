@@ -1,49 +1,86 @@
 import type {
-    DashboardContrattiTotali,
-    DashboardProvvigioniTotali,
-    DashboardContrattiMensili,
-    DashboardProvvigioniMensili,
-    DashboardContrattiPerProdotto,
+    DashboardSalesSummary,
+    DashboardMonthlySales,
+    DashboardAgentComparison,
+    DashboardPreviousSellers,
+    DashboardProductsByAgent,
+    DashboardRevenue,
 } from "@/types";
 import { authFetch, createApiUrl, handleResponse } from "./client";
 
-export async function getDashboardAnniDisponibili(): Promise<number[]> {
+export interface DashboardPeriodFilters {
+    year: number;
+    monthFrom: number;
+    /** null lets the backend pick the last complete month, which differs between sales and revenue. */
+    monthTo: number | null;
+    agent: string | null;
+}
+
+export async function getDashboardAvailableYears(): Promise<number[]> {
     const res = await authFetch(createApiUrl("/dashboard/anni-disponibili"));
+
     return handleResponse<number[]>(res);
 }
 
-export async function getDashboardAgentiFiltro(): Promise<string[]> {
+export async function getDashboardAgentFilter(): Promise<string[]> {
     const res = await authFetch(createApiUrl("/dashboard/agenti-filtro"));
+
     return handleResponse<string[]>(res);
 }
 
-async function getDashboardData<T>(endpoint: string, anno?: number, agente?: string): Promise<T> {
+async function getPeriodData<T>(
+    endpoint: string,
+    filters: DashboardPeriodFilters,
+    extra: Record<string, number> = {},
+): Promise<T> {
     const url = createApiUrl(`/dashboard/${endpoint}`);
-    if (anno) url.searchParams.set("anno", String(anno));
-    if (agente) url.searchParams.set("agente", agente);
+
+    url.searchParams.set("anno", String(filters.year));
+    url.searchParams.set("mese_da", String(filters.monthFrom));
+
+    if (filters.monthTo !== null) url.searchParams.set("mese_a", String(filters.monthTo));
+
+    if (filters.agent) url.searchParams.set("agente", filters.agent);
+
+    for (const [key, value] of Object.entries(extra)) {
+        url.searchParams.set(key, String(value));
+    }
+
     const res = await authFetch(url);
+
     return handleResponse<T>(res);
 }
 
-export function getDashboardContrattiTotali(anno?: number, agente?: string): Promise<DashboardContrattiTotali> {
-    return getDashboardData("contratti-totali", anno, agente);
+export function getDashboardSalesSummary(filters: DashboardPeriodFilters): Promise<DashboardSalesSummary> {
+    return getPeriodData("vendite/sintesi", filters);
 }
 
-export function getDashboardProvvigioniTotali(anno?: number, agente?: string): Promise<DashboardProvvigioniTotali> {
-    return getDashboardData("provvigioni-totali", anno, agente);
+export function getDashboardMonthlySales(filters: DashboardPeriodFilters): Promise<DashboardMonthlySales> {
+    return getPeriodData("vendite/andamento-mensile", filters);
 }
 
-export function getDashboardContrattiMensili(anno?: number, agente?: string): Promise<DashboardContrattiMensili> {
-    return getDashboardData("contratti-mensili", anno, agente);
+export function getDashboardAgentComparison(
+    filters: DashboardPeriodFilters,
+    minContracts: number,
+): Promise<DashboardAgentComparison> {
+    return getPeriodData("vendite/agenti", filters, { min_contratti: minContracts });
 }
 
-export function getDashboardProvvigioniMensili(anno?: number, agente?: string): Promise<DashboardProvvigioniMensili> {
-    return getDashboardData("provvigioni-mensili", anno, agente);
+export function getDashboardPreviousSellers(
+    filters: DashboardPeriodFilters,
+    topN: number,
+): Promise<DashboardPreviousSellers> {
+    return getPeriodData("vendite/venditori-precedenti", filters, { top_n: topN });
 }
 
-export function getDashboardContrattiPerProdotto(
-    anno?: number,
-    agente?: string,
-): Promise<DashboardContrattiPerProdotto> {
-    return getDashboardData("contratti-per-prodotto", anno, agente);
+export function getDashboardProductsByAgent(
+    filters: DashboardPeriodFilters,
+    topProducts: number,
+    topAgents: number,
+): Promise<DashboardProductsByAgent> {
+    return getPeriodData("vendite/prodotti-agenti", filters, { top_prodotti: topProducts, top_agenti: topAgents });
+}
+
+export function getDashboardRevenue(filters: DashboardPeriodFilters): Promise<DashboardRevenue> {
+    return getPeriodData("fatturato", filters);
 }

@@ -1,56 +1,55 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState, type ReactElement } from "react";
 import {
-    CheckCircle,
+    Calendar,
+    Download,
+    FileSpreadsheet,
     Loader2,
+    Package,
     RefreshCw,
     Search,
     X,
-    Package,
-    FileSpreadsheet,
-    Calendar,
-    ArrowUpDown,
-    ArrowUp,
-    ArrowDown,
-    Download,
 } from "lucide-react";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileDropzone } from "@/components";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/DatePicker";
+import { OrdersImportDialog } from "@/components/OrdersImportDialog";
+import { SettlementsDialog } from "@/components/SettlementsDialog";
+import { ROWS_PAGE_SIZE, ShowMoreRows } from "@/components/ShowMoreRows";
+import { SortableTableHead, type SortDirection } from "@/components/SortableTableHead";
+import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
+import type { UseSettlementsResult } from "@/hooks/useLiquidazioni";
 import { exportPendingOrdersExcel } from "@/lib/exportUtils";
-import { formatDate } from "@/lib/utils";
-import type { ImportExcelResponse, PendingOrder } from "@/types";
+import { formatDate, matchesSearch, sellerNameLookup } from "@/lib/utils";
+import type { Agent, ImportExcelResponse, ExcludedOrder, PendingOrder } from "@/types";
+import { z } from "zod";
 
-interface LiquidazioniResult {
-    success: boolean;
-    message: string;
-    count: number;
-}
-
-interface OrdiniTabProps {
+interface OrdersTabProps {
     ordersImporting: boolean;
     ordersProgress: number;
     ordersResult: ImportExcelResponse | null;
+    ordersError: string | null;
     onOrdersUpload: (files: File[]) => void;
-    liquidazioniImporting: boolean;
-    liquidazioniResult: LiquidazioniResult | null;
-    onLiquidazioniUpload: (files: File[], competenzaPeriod: string) => void;
+    settlements: UseSettlementsResult;
+    agents: Agent[];
     pendingOrders: PendingOrder[];
     pendingOrdersLoading: boolean;
-    onRefreshPendingOrders: (startDate?: string, endDate?: string) => void;
+    pendingOrdersError: string | null;
+    excludedOrders: ExcludedOrder[];
+    excludedOrdersCount: number;
+    excludedOrdersLoading: boolean;
+    excludedOrdersError: string | null;
+    mutatingRowId: string | null;
+    mutationError: string | null;
+    onRefreshOrders: () => Promise<void>;
+    onExcludeOrder: (orderLineId: string, reason: string) => Promise<boolean>;
+    onRestoreOrder: (orderLineId: string) => Promise<boolean>;
     startDate: string;
     endDate: string;
     onStartDateChange: (date: string) => void;
@@ -66,54 +65,31 @@ type SortField =
     | "stato"
     | "data_firma"
     | "metodo_pagam";
-type SortDirection = "asc" | "desc";
 
-// Generate period options for the last 24 months
-function generatePeriodOptions(): { value: string; label: string }[] {
-    const options: { value: string; label: string }[] = [];
-    const now = new Date();
-    const monthNames = [
-        "Gennaio",
-        "Febbraio",
-        "Marzo",
-        "Aprile",
-        "Maggio",
-        "Giugno",
-        "Luglio",
-        "Agosto",
-        "Settembre",
-        "Ottobre",
-        "Novembre",
-        "Dicembre",
-    ];
-
-    for (let i = 0; i < 24; i++) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const value = `${year}-${String(month + 1).padStart(2, "0")}`;
-        const label = `${monthNames[month]} ${year}`;
-        options.push({ value, label });
-    }
-
-    return options;
-}
-
-const PERIOD_OPTIONS = generatePeriodOptions();
-
+const ALL_STATUSES = "all";
 
 function filterOrders(orders: PendingOrder[], query: string): PendingOrder[] {
     if (!query.trim()) return orders;
-    const lowerQuery = query.toLowerCase();
-    return orders.filter(
-        (order) =>
-            order.cliente_nome?.toLowerCase().includes(lowerQuery) ||
-            order.pod_pdr.toLowerCase().includes(lowerQuery) ||
-            order.agente?.toLowerCase().includes(lowerQuery) ||
-            order.prodotto.toLowerCase().includes(lowerQuery) ||
-            order.cod_fisc.toLowerCase().includes(lowerQuery) ||
-            String(order.id_ordine).includes(lowerQuery),
+
+    return orders.filter((order) =>
+        matchesSearch(query, [
+            order.cliente_nome,
+            order.pod_pdr,
+            order.agente,
+            order.prodotto,
+            order.cod_fisc,
+            String(order.id_ordine),
+        ]),
     );
+}
+
+// Same rule as the backend's date filter: inclusive bounds, and an order without a signature date never matches. ISO dates compare as text.
+function isSignedWithin(order: PendingOrder, startDate: string, endDate: string): boolean {
+    if (!startDate && !endDate) return true;
+
+    const signed = order.data_firma;
+
+    return signed !== null && (!startDate || signed >= startDate) && (!endDate || signed <= endDate);
 }
 
 function sortOrders(orders: PendingOrder[], field: SortField, direction: SortDirection): PendingOrder[] {
@@ -159,117 +135,144 @@ function sortOrders(orders: PendingOrder[], field: SortField, direction: SortDir
         }
 
         if (aVal < bVal) return direction === "asc" ? -1 : 1;
+
         if (aVal > bVal) return direction === "asc" ? 1 : -1;
+
         return 0;
     });
 }
 
-function getStatusBadge(status: string | null) {
-    const configs: Record<string, { bg: string; text: string }> = {
-        Accettato: {
-            bg: "bg-emerald-100 dark:bg-emerald-900/40",
-            text: "text-emerald-700 dark:text-emerald-400",
-        },
-        Confermato: {
-            bg: "bg-emerald-100 dark:bg-emerald-900/40",
-            text: "text-emerald-700 dark:text-emerald-400",
-        },
-        Trasferito: {
-            bg: "bg-blue-100 dark:bg-blue-900/40",
-            text: "text-blue-700 dark:text-blue-400",
-        },
-        "In verifica": {
-            bg: "bg-amber-100 dark:bg-amber-900/40",
-            text: "text-amber-700 dark:text-amber-400",
-        },
-        Sospeso: {
-            bg: "bg-orange-100 dark:bg-orange-900/40",
-            text: "text-orange-700 dark:text-orange-400",
-        },
-        Ko: {
-            bg: "bg-red-100 dark:bg-red-900/40",
-            text: "text-red-700 dark:text-red-400",
-        },
-        KO: {
-            bg: "bg-red-100 dark:bg-red-900/40",
-            text: "text-red-700 dark:text-red-400",
-        },
-        Annullato: {
-            bg: "bg-red-100 dark:bg-red-900/40",
-            text: "text-red-700 dark:text-red-400",
-        },
-    };
-    const config = configs[status || ""] || {
-        bg: "bg-slate-100 dark:bg-slate-800",
-        text: "text-slate-600 dark:text-slate-400",
-    };
+function filterExcludedOrders(orders: ExcludedOrder[], query: string): ExcludedOrder[] {
+    if (!query.trim()) return orders;
+
+    return orders.filter(({ motivo, id_riga_ordine, ordine }) =>
+        matchesSearch(query, [
+            motivo,
+            id_riga_ordine,
+            String(ordine?.id_ordine ?? ""),
+            ordine?.cliente_nome,
+            ordine?.pod_pdr,
+            ordine?.cod_fisc,
+        ]),
+    );
+}
+
+function sortExcludedOrders(orders: ExcludedOrder[]): ExcludedOrder[] {
+    return [...orders].sort((a, b) => {
+        const aDate = a.data_esclusione ? new Date(a.data_esclusione).getTime() : 0;
+        const bDate = b.data_esclusione ? new Date(b.data_esclusione).getTime() : 0;
+
+        return bDate - aDate;
+    });
+}
+
+interface BadgeClasses {
+    bg: string;
+    text: string;
+}
+
+const DEFAULT_BADGE_CLASSES: BadgeClasses = {
+    bg: "bg-slate-100 dark:bg-slate-800",
+    text: "text-slate-600 dark:text-slate-400",
+};
+
+const ORDER_BADGE_CLASSES = new Map(Object.entries({
+    Accettato: { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-700 dark:text-emerald-400" },
+    Confermato: { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-700 dark:text-emerald-400" },
+    Trasferito: { bg: "bg-blue-100 dark:bg-blue-900/40", text: "text-blue-700 dark:text-blue-400" },
+    "In verifica": { bg: "bg-amber-100 dark:bg-amber-900/40", text: "text-amber-700 dark:text-amber-400" },
+    Sospeso: { bg: "bg-orange-100 dark:bg-orange-900/40", text: "text-orange-700 dark:text-orange-400" },
+    Ko: { bg: "bg-red-100 dark:bg-red-900/40", text: "text-red-700 dark:text-red-400" },
+    KO: { bg: "bg-red-100 dark:bg-red-900/40", text: "text-red-700 dark:text-red-400" },
+    Annullato: { bg: "bg-red-100 dark:bg-red-900/40", text: "text-red-700 dark:text-red-400" },
+}));
+
+const ordersViewSchema = z.enum(["pending", "excluded"]);
+
+const TAB_TRIGGER_CLASSES = "gap-2 px-3 py-2 data-[state=active]:bg-secondary data-[state=active]:shadow-none";
+
+const COUNT_PILL_CLASSES = "rounded bg-background/60 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground";
+
+const PANEL_CLASSES = "ledger-card";
+
+function getStatusBadge(status: string | null): ReactElement {
+    const config = ORDER_BADGE_CLASSES.get(status ?? "") ?? DEFAULT_BADGE_CLASSES;
+
     return (
-        <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
-        >
+        <Badge variant="status" className={`${config.bg} ${config.text}`}>
             {status || "—"}
-        </span>
+        </Badge>
     );
 }
 
-interface SortableHeaderProps {
-    label: string;
-    field: SortField;
-    currentField: SortField;
-    direction: SortDirection;
-    onSort: (field: SortField) => void;
-}
-
-function SortableHeader({ label, field, currentField, direction, onSort }: SortableHeaderProps) {
-    const isActive = currentField === field;
-    return (
-        <button
-            className="flex items-center gap-1 hover:text-foreground transition-colors"
-            onClick={() => onSort(field)}
-        >
-            {label}
-            {isActive ? (
-                direction === "asc" ? (
-                    <ArrowUp className="h-3 w-3" />
-                ) : (
-                    <ArrowDown className="h-3 w-3" />
-                )
-            ) : (
-                <ArrowUpDown className="h-3 w-3 opacity-40" />
-            )}
-        </button>
-    );
-}
-
-export function OrdiniTab({
+export function OrdersTab({
     ordersImporting,
     ordersProgress,
     ordersResult,
+    ordersError,
     onOrdersUpload,
-    liquidazioniImporting,
-    liquidazioniResult,
-    onLiquidazioniUpload,
+    settlements,
+    agents,
     pendingOrders,
     pendingOrdersLoading,
-    onRefreshPendingOrders,
+    pendingOrdersError,
+    excludedOrders,
+    excludedOrdersCount,
+    excludedOrdersLoading,
+    excludedOrdersError,
+    mutatingRowId,
+    mutationError,
+    onRefreshOrders,
+    onExcludeOrder,
+    onRestoreOrder,
     startDate,
     endDate,
     onStartDateChange,
     onEndDateChange,
-}: OrdiniTabProps) {
+}: OrdersTabProps): ReactElement {
     const { t } = useTranslation();
+    const { toast } = useToast();
     const [filterQuery, setFilterQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState(ALL_STATUSES);
     const [sortField, setSortField] = useState<SortField>("cliente_nome");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-    const [selectedPeriod, setSelectedPeriod] = useState<string>(PERIOD_OPTIONS[0]?.value || "");
-    const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+    const [ordersView, setOrdersView] = useState<"pending" | "excluded">("pending");
+    const [shown, setShown] = useState({ filters: "", rows: ROWS_PAGE_SIZE });
+    const [importOpen, setImportOpen] = useState(false);
+    const [settlementsOpen, setSettlementsOpen] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<PendingOrder | null>(null);
+    const [exclusionReason, setExclusionReason] = useState("");
+    const [exclusionReasonError, setExclusionReasonError] = useState<string | null>(null);
 
-    const handleRefreshWithDates = () => {
-        onRefreshPendingOrders(startDate || undefined, endDate || undefined);
+    const isPending = ordersView === "pending";
+    const loading = isPending ? pendingOrdersLoading : excludedOrdersLoading;
+
+    const statuses = useMemo(
+        () =>
+            [...new Set(pendingOrders.map((order) => order.stato).filter((status): status is string => Boolean(status)))]
+                .sort((a, b) => a.localeCompare(b, "it")),
+        [pendingOrders],
+    );
+
+    // A refresh can drop the filtered status from the data; fall back to all rather than showing an empty select.
+    const effectiveStatus = statuses.includes(statusFilter) ? statusFilter : ALL_STATUSES;
+    const hasFilters = Boolean(filterQuery || startDate || endDate || effectiveStatus !== ALL_STATUSES);
+    // ISO dates compare as text.
+    const invertedRange = Boolean(startDate && endDate && startDate > endDate);
+
+    // Any filter or view change starts the list again from the first page of rows.
+    const filters = JSON.stringify([ordersView, filterQuery, effectiveStatus, startDate, endDate]);
+    const shownRows = shown.filters === filters ? shown.rows : ROWS_PAGE_SIZE;
+    const setShownRows = (rows: number): void => setShown({ filters, rows });
+
+    const resetFilters = (): void => {
+        setFilterQuery("");
+        setStatusFilter(ALL_STATUSES);
+        onStartDateChange("");
+        onEndDateChange("");
     };
 
-    // Handle sort
-    const handleSort = (field: SortField) => {
+    const handleSort = (field: SortField): void => {
         if (field === sortField) {
             setSortDirection(sortDirection === "asc" ? "desc" : "asc");
         } else {
@@ -278,336 +281,335 @@ export function OrdiniTab({
         }
     };
 
-    // Process orders: filter then sort
+    // Swapped before filtering so the table, its sort and the export all use the name the operator typed.
+    const namedOrders = useMemo(() => {
+        const sellerName = sellerNameLookup(agents);
+
+        return pendingOrders.map((order) => (order.agente ? { ...order, agente: sellerName(order.agente) } : order));
+    }, [agents, pendingOrders]);
+
     const processedOrders = useMemo(() => {
-        const filtered = filterOrders(pendingOrders, filterQuery);
-        return sortOrders(filtered, sortField, sortDirection);
-    }, [pendingOrders, filterQuery, sortField, sortDirection]);
+        const byStatus = effectiveStatus === ALL_STATUSES ? namedOrders : namedOrders.filter((order) => order.stato === effectiveStatus);
+        const filtered = byStatus.filter((order) => isSignedWithin(order, startDate, endDate));
 
-    const handleLiquidazioniFiles = (files: File[]) => {
-        if (files.length > 0 && selectedPeriod) {
-            setPendingFiles(files);
+        return sortOrders(filterOrders(filtered, filterQuery), sortField, sortDirection);
+    }, [namedOrders, effectiveStatus, startDate, endDate, filterQuery, sortField, sortDirection]);
+
+    const processedExcludedOrders = useMemo(
+        () => sortExcludedOrders(filterExcludedOrders(excludedOrders, filterQuery)),
+        [excludedOrders, filterQuery],
+    );
+
+    const handleExclude = async (): Promise<void> => {
+        const reason = exclusionReason.trim();
+
+        if (!selectedOrder || !reason) {
+            setExclusionReasonError(t("exclusionReasonRequired"));
+
+            return;
+        }
+
+        const excluded = await onExcludeOrder(selectedOrder.id_riga_ordine, reason);
+
+        if (excluded) {
+            setSelectedOrder(null);
+            setExclusionReason("");
+            setExclusionReasonError(null);
         }
     };
 
-    const confirmUpload = () => {
-        if (pendingFiles && selectedPeriod) {
-            onLiquidazioniUpload(pendingFiles, selectedPeriod);
-            setPendingFiles(null);
+    const closeExclusionDialog = (open: boolean): void => {
+        if (!open && (!selectedOrder || mutatingRowId !== selectedOrder.id_riga_ordine)) {
+            setSelectedOrder(null);
+            setExclusionReason("");
+            setExclusionReasonError(null);
         }
     };
+
+    const sortableHead = (label: string, field: SortField, className?: string): ReactElement => (
+        <SortableTableHead label={label} field={field} sortField={sortField} direction={sortDirection} onSort={handleSort} className={className} />
+    );
+
+    const footer = isPending
+        ? t("pendingOrdersFooter").replace("{shown}", String(processedOrders.length)).replace("{total}", String(pendingOrders.length))
+        : t("excludedOrdersFooter").replace("{shown}", String(processedExcludedOrders.length)).replace("{total}", String(excludedOrdersCount));
+
+    const visibleCount = isPending ? processedOrders.length : processedExcludedOrders.length;
+    const isEmpty = isPending ? pendingOrders.length === 0 : excludedOrders.length === 0;
+    const emptyError = isPending ? pendingOrdersError : excludedOrdersError;
 
     return (
-        <div className="flex flex-col gap-6 lg:h-[calc(100dvh-11.5rem)]">
-            <section className="grid shrink-0 gap-3 md:grid-cols-2">
-                <div className="ledger-card p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                        <FileSpreadsheet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span className="text-sm font-medium">{t("importOrdersTitle")}</span>
+        <div className="flex flex-col gap-6 lg:h-[calc(100dvh-8.5rem)]">
+            <header className="flex shrink-0 flex-wrap items-center justify-between gap-4">
+                <h2 className="font-display text-2xl leading-tight">{t("ordini")}</h2>
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                        <FileSpreadsheet className="h-4 w-4" />
+                        {t("importOrders")}
+                    </Button>
+                    <SettlementsDialog
+                        open={settlementsOpen}
+                        onOpenChange={setSettlementsOpen}
+                        settlements={settlements}
+                        trigger={
+                            <Button variant="outline" size="sm">
+                                <Calendar className="h-4 w-4" />
+                                {t("settlementsAction")}
+                            </Button>
+                        }
+                    />
+                </div>
+            </header>
+
+            <section className="flex min-h-0 flex-1 flex-col gap-4">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+                    <Tabs value={ordersView} onValueChange={(value) => {
+                        const parsedView = ordersViewSchema.safeParse(value);
+
+                        if (parsedView.success) {
+                            setOrdersView(parsedView.data);
+                        }
+                    }}>
+                        <TabsList className="h-auto gap-1 bg-transparent p-0">
+                            <TabsTrigger value="pending" className={TAB_TRIGGER_CLASSES}>
+                                {t("pendingOrdersView")}
+                                <span className={COUNT_PILL_CLASSES}>{pendingOrders.length}</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="excluded" className={TAB_TRIGGER_CLASSES}>
+                                {t("excludedOrdersView")}
+                                <span className={COUNT_PILL_CLASSES}>{excludedOrdersCount}</span>
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                    <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => void onRefreshOrders()} disabled={loading} aria-label={t("refresh")}>
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        </Button>
+                        {isPending && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    exportPendingOrdersExcel(processedOrders)
+                                        .then(() => toast({ title: t("success"), description: t("ordersExported").replace("{count}", String(processedOrders.length)) }))
+                                        .catch(() => toast({ title: t("error"), description: t("ordersExportFailed"), variant: "destructive" }));
+                                }}
+                                disabled={pendingOrdersLoading || processedOrders.length === 0}
+                            >
+                                <Download className="h-4 w-4" />
+                                {t("exportOrders")}
+                            </Button>
+                        )}
                     </div>
-                    <div className="dropzone-compact">
-                        <FileDropzone
-                            accept=".xlsx,.xls"
-                            maxSizeMB={50}
-                            onFiles={onOrdersUpload}
-                            disabled={ordersImporting}
-                        />
-                    </div>
-                    {ordersImporting && (
-                        <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-blue-600 transition-all duration-300"
-                                    style={{ width: `${ordersProgress}%` }}
-                                />
-                            </div>
-                            <span className="text-xs font-mono text-muted-foreground">{ordersProgress}%</span>
-                        </div>
-                    )}
-                    {ordersResult && (
-                        <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle className="h-3 w-3" />
-                            <span>
-                                +{ordersResult.details.ordini.nuovi} {t("orders").toLowerCase()}
-                            </span>
-                        </div>
-                    )}
                 </div>
 
-                <div className="ledger-card p-3 space-y-2">
-                    <div className="flex items-center gap-2 w-full justify-between">
-                        <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                            <span className="text-sm font-medium">{t("importLiquidationsTitle")}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                {t("competenzaPeriodLabel")}
-                            </label>
-                            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                                <SelectTrigger className="h-8 text-sm">
-                                    <SelectValue placeholder={t("selectPeriod")} />
+                <div className="flex shrink-0 flex-wrap items-center gap-3">
+                    <div className="relative w-full sm:w-auto">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            className="h-9 w-full pl-9 pr-9 sm:w-80"
+                            placeholder={isPending ? t("searchPendingOrdersPlaceholder") : t("searchExcludedOrdersPlaceholder")}
+                            value={filterQuery}
+                            onChange={(event) => setFilterQuery(event.target.value)}
+                        />
+                        {filterQuery && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-3 top-1/2 h-auto w-auto -translate-y-1/2 p-0 text-muted-foreground hover:bg-transparent hover:text-foreground [&_svg]:!size-4"
+                                onClick={() => setFilterQuery("")}
+                                aria-label={t("clearFilter")}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
+                    {isPending && (
+                        <>
+                            <Select value={effectiveStatus} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="h-9 w-[150px]" aria-label={t("filterByStatus")}>
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {PERIOD_OPTIONS.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
+                                    <SelectItem value={ALL_STATUSES}>{t("allStatuses")}</SelectItem>
+                                    {statuses.map((status) => (
+                                        <SelectItem key={status} value={status}>{status}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                        </div>
-                    </div>
-
-                    <div className="dropzone-compact">
-                        <FileDropzone
-                            accept=".xlsx,.xls"
-                            maxSizeMB={50}
-                            onFiles={handleLiquidazioniFiles}
-                            disabled={liquidazioniImporting || !selectedPeriod}
-                        />
-                    </div>
-                    {liquidazioniImporting && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
-                            {t("processing")}...
-                        </div>
+                            <div className="flex flex-wrap items-center gap-2 sm:ml-2" role="group" aria-label={t("signaturePeriod")}>
+                                <span className="mr-1 text-xs text-muted-foreground">{t("signatureDate")}</span>
+                                <DatePicker value={startDate} onChange={onStartDateChange} placeholder={t("startDate")} className="h-9" />
+                                <DatePicker value={endDate} onChange={onEndDateChange} placeholder={t("endDate")} className="h-9" openOn={startDate} />
+                            </div>
+                        </>
                     )}
-                    {liquidazioniResult && (
-                        <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle className="h-3 w-3" />
-                            <span>
-                                {liquidazioniResult.count} {t("recordsProcessed").toLowerCase()}
-                            </span>
-                        </div>
+                    {hasFilters && (
+                        <Button variant="ghost" size="sm" onClick={resetFilters}>
+                            {t("resetFilters")}
+                            <X className="h-3 w-3" />
+                        </Button>
+                    )}
+                    {isPending && invertedRange && (
+                        <p role="alert" className="basis-full text-xs text-destructive">{t("signatureRangeInverted")}</p>
                     )}
                 </div>
-            </section>
 
-            <section className="flex min-h-0 flex-1 flex-col">
-                <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <Package className="h-5 w-5 text-energia-accent" />
-                        <h2 className="font-display text-xl">
-                            {t("pendingOrders")}
-                            {processedOrders.length > 0 && (
-                                <span className="ml-2 text-muted-foreground font-normal text-base">
-                                    ({processedOrders.length})
-                                </span>
-                            )}
-                        </h2>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap">{t("startDate")}</label>
-                            <DatePicker
-                                value={startDate}
-                                onChange={onStartDateChange}
-                                placeholder={t("startDate")}
-                                className="h-9"
-                            />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap">{t("endDate")}</label>
-                            <DatePicker
-                                value={endDate}
-                                onChange={onEndDateChange}
-                                placeholder={t("endDate")}
-                                className="h-9"
-                            />
-                        </div>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                            <Input
-                                placeholder={t("filterPlaceholder")}
-                                value={filterQuery}
-                                onChange={(e) => setFilterQuery(e.target.value)}
-                                className="pl-9 pr-9 h-9 w-64"
-                            />
-                            {filterQuery && (
-                                <button
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    onClick={() => setFilterQuery("")}
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleRefreshWithDates}
-                            disabled={pendingOrdersLoading}
-                        >
-                            {pendingOrdersLoading ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <RefreshCw className="h-4 w-4" />
-                            )}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => exportPendingOrdersExcel(processedOrders)}
-                            disabled={pendingOrdersLoading || processedOrders.length === 0}
-                        >
-                            <Download className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {pendingOrdersLoading ? (
-                    <div className="ledger-card flex flex-1 items-center justify-center py-16">
+                {loading ? (
+                    <div className={`${PANEL_CLASSES} flex flex-1 items-center justify-center py-16`}>
                         <Loader2 className="h-8 w-8 animate-spin text-energia-accent" />
                     </div>
-                ) : pendingOrders.length === 0 ? (
-                    <div className="ledger-card flex flex-1 flex-col items-center justify-center py-16 text-center">
-                        <Package className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                        <p className="font-display text-lg text-muted-foreground">{t("noPendingOrders")}</p>
-                        <p className="text-sm text-muted-foreground/70 mt-1">
-                            Tutti gli ordini hanno una liquidazione associata
+                ) : isEmpty ? (
+                    <div className={`${PANEL_CLASSES} flex flex-1 flex-col items-center justify-center py-16 text-center`}>
+                        <Package className="mb-4 h-12 w-12 text-muted-foreground/30" />
+                        <p className="font-display text-lg text-muted-foreground">
+                            {emptyError ? t("error") : isPending ? t("noPendingOrders") : t("noExcludedOrders")}
                         </p>
+                        {emptyError ? (
+                            <p className="mt-1 text-sm text-destructive">{emptyError}</p>
+                        ) : isPending && (
+                            <p className="mt-1 text-sm text-muted-foreground/70">{t("pendingOrdersEmptyDescription")}</p>
+                        )}
                     </div>
                 ) : (
-                    <div className="ledger-card flex min-h-0 flex-1 flex-col overflow-hidden">
-                        <div className="min-h-0 flex-1 overflow-auto">
-                            <Table>
-                                <TableHeader className="sticky top-0 bg-secondary/90 backdrop-blur-sm">
-                                    <TableRow>
-                                        <TableHead className="w-[70px]">
-                                            <SortableHeader
-                                                label={t("orderId")}
-                                                field="id_ordine"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="min-w-[180px]">
-                                            <SortableHeader
-                                                label={t("customerName")}
-                                                field="cliente_nome"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[160px]">
-                                            <SortableHeader
-                                                label={t("podPdr")}
-                                                field="pod_pdr"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[100px]">
-                                            <SortableHeader
-                                                label={t("product")}
-                                                field="prodotto"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[140px]">
-                                            <SortableHeader
-                                                label={t("agent")}
-                                                field="agente"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[130px]">
-                                            <SortableHeader
-                                                label={t("orderStatus")}
-                                                field="stato"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[100px]">
-                                            <SortableHeader
-                                                label={t("signatureDate")}
-                                                field="data_firma"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                        <TableHead className="w-[90px]">
-                                            <SortableHeader
-                                                label={t("paymentMethod")}
-                                                field="metodo_pagam"
-                                                currentField={sortField}
-                                                direction={sortDirection}
-                                                onSort={handleSort}
-                                            />
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {processedOrders.length > 0 ? (
-                                        processedOrders.map((order) => (
-                                            <TableRow key={order.id_ordine} className="hover:bg-secondary/30">
-                                                <TableCell className="font-mono text-xs">#{order.id_ordine}</TableCell>
-                                                <TableCell className="font-medium">
-                                                    {order.cliente_nome || "—"}
-                                                </TableCell>
-                                                <TableCell className="font-mono text-xs">{order.pod_pdr}</TableCell>
-                                                <TableCell>{order.prodotto}</TableCell>
-                                                <TableCell className="text-muted-foreground">
-                                                    {order.agente || "—"}
-                                                </TableCell>
-                                                <TableCell>{getStatusBadge(order.stato)}</TableCell>
-                                                <TableCell className="font-mono text-xs text-muted-foreground">
-                                                    {formatDate(order.data_firma)}
-                                                </TableCell>
-                                                <TableCell>{order.metodo_pagam || "—"}</TableCell>
-                                            </TableRow>
-                                        ))
+                    <>
+                        <div className={`${PANEL_CLASSES} flex min-h-0 flex-1 flex-col overflow-hidden`}>
+                            <Table containerClassName="min-h-0 flex-1">
+                                <TableHeader>
+                                    {isPending ? (
+                                        <TableRow>
+                                            {sortableHead(t("orderId"), "id_ordine", "w-[90px]")}
+                                            {sortableHead(t("customerName"), "cliente_nome", "min-w-[180px]")}
+                                            {sortableHead(t("podPdr"), "pod_pdr")}
+                                            {sortableHead(t("product"), "prodotto")}
+                                            {sortableHead(t("agent"), "agente")}
+                                            {sortableHead(t("orderStatus"), "stato")}
+                                            {sortableHead(t("signatureDate"), "data_firma")}
+                                            {sortableHead(t("paymentMethod"), "metodo_pagam")}
+                                            <TableHead className="w-[100px]">{t("actions")}</TableHead>
+                                        </TableRow>
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                                            <TableHead className="min-w-[240px]">{t("exclusionReason")}</TableHead>
+                                            <TableHead className="w-[120px]">{t("excludedOn")}</TableHead>
+                                            <TableHead className="min-w-[240px]">{t("orders")}</TableHead>
+                                            <TableHead className="w-[110px]">{t("actions")}</TableHead>
+                                        </TableRow>
+                                    )}
+                                </TableHeader>
+                                <TableBody>
+                                    {isPending && processedOrders.slice(0, shownRows).map((order) => (
+                                        <TableRow key={order.id_riga_ordine} className="hover:bg-secondary/30">
+                                            <TableCell className="font-mono text-xs">#{order.id_ordine}</TableCell>
+                                            <TableCell className="font-medium">{order.cliente_nome || "—"}</TableCell>
+                                            <TableCell className="font-mono text-xs">{order.pod_pdr}</TableCell>
+                                            <TableCell>{order.prodotto}</TableCell>
+                                            <TableCell className="text-muted-foreground">{order.agente || "—"}</TableCell>
+                                            <TableCell>{getStatusBadge(order.stato)}</TableCell>
+                                            <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">{formatDate(order.data_firma)}</TableCell>
+                                            <TableCell>{order.metodo_pagam || "—"}</TableCell>
+                                            <TableCell>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8"
+                                                    disabled={mutatingRowId !== null}
+                                                    onClick={() => {
+                                                        setSelectedOrder(order);
+                                                        setExclusionReason("");
+                                                        setExclusionReasonError(null);
+                                                    }}
+                                                >
+                                                    {mutatingRowId === order.id_riga_ordine ? <Loader2 className="h-4 w-4 animate-spin" /> : t("excludeOrder")}
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {!isPending && processedExcludedOrders.slice(0, shownRows).map((excludedOrder) => {
+                                        const order = excludedOrder.ordine;
+
+                                        return (
+                                            <TableRow key={excludedOrder.id} className="hover:bg-secondary/30">
+                                                <TableCell>{excludedOrder.motivo}</TableCell>
+                                                <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">{formatDate(excludedOrder.data_esclusione)}</TableCell>
+                                                <TableCell>
+                                                    {order ? (
+                                                        <>
+                                                            <span className="font-medium">#{order.id_ordine} {order.cliente_nome || "—"}</span>
+                                                            <p className="font-mono text-xs text-muted-foreground">{order.pod_pdr}</p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-muted-foreground">{t("unavailableOrder")}</span>
+                                                            <p className="font-mono text-xs text-muted-foreground">{excludedOrder.id_riga_ordine}</p>
+                                                        </>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8"
+                                                        disabled={mutatingRowId !== null}
+                                                        onClick={() => void onRestoreOrder(excludedOrder.id_riga_ordine)}
+                                                    >
+                                                        {mutatingRowId === excludedOrder.id_riga_ordine ? <Loader2 className="h-4 w-4 animate-spin" /> : t("restoreOrder")}
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                    {visibleCount === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={isPending ? 9 : 4} className="py-12 text-center text-muted-foreground">
                                                 {t("noDataFound")}
                                             </TableCell>
                                         </TableRow>
                                     )}
+                                    <ShowMoreRows shown={shownRows} total={visibleCount} onShowMore={setShownRows} colSpan={isPending ? 9 : 4} />
                                 </TableBody>
                             </Table>
                         </div>
-                    </div>
+                        <p className="shrink-0 text-xs text-muted-foreground">{footer}</p>
+                    </>
                 )}
             </section>
 
-            <AlertDialog open={pendingFiles !== null} onOpenChange={(open) => !open && setPendingFiles(null)}>
-                <AlertDialogContent className="w-auto min-w-[280px]">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-center">{t("confirmUploadTitle")}</AlertDialogTitle>
-                        <AlertDialogDescription className="text-center">{t("confirmUploadDescription")}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="py-2">
-                        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                            <SelectTrigger className="mx-auto w-48 h-11 text-base">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {PERIOD_OPTIONS.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+            <OrdersImportDialog
+                open={importOpen}
+                onOpenChange={setImportOpen}
+                importing={ordersImporting}
+                progress={ordersProgress}
+                result={ordersResult}
+                error={ordersError}
+                onUpload={onOrdersUpload}
+            />
+
+            <Dialog open={selectedOrder !== null} onOpenChange={closeExclusionDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{t("excludeOrderTitle")}</DialogTitle>
+                        <DialogDescription>{t("excludeOrderDescription")}</DialogDescription>
+                    </DialogHeader>
+                    {selectedOrder && (
+                        <div className="rounded-md border bg-secondary/30 p-3 text-sm">
+                            <p className="font-medium">#{selectedOrder.id_ordine} {selectedOrder.cliente_nome || "—"}</p>
+                            <p className="font-mono text-xs text-muted-foreground">{selectedOrder.pod_pdr}</p>
+                            <p className="text-xs text-muted-foreground">{selectedOrder.prodotto} · {selectedOrder.agente || "—"}</p>
+                        </div>
+                    )}
+                    <div className="space-y-2">
+                        <label htmlFor="exclusion-reason" className="text-sm font-medium">{t("exclusionReason")}</label>
+                        <Textarea id="exclusion-reason" value={exclusionReason} onChange={(event) => { setExclusionReason(event.target.value); setExclusionReasonError(null); }} placeholder={t("exclusionReasonPlaceholder")} disabled={mutatingRowId !== null} />
+                        {exclusionReasonError && <p className="text-sm text-destructive">{exclusionReasonError}</p>}
+                        {mutationError && <p className="text-sm text-destructive">{mutationError}</p>}
                     </div>
-                    <AlertDialogFooter className="grid grid-cols-2 gap-2">
-                        <AlertDialogCancel className="mt-0">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmUpload}>{t("confirm")}</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => closeExclusionDialog(false)} disabled={mutatingRowId !== null}>{t("cancel")}</Button>
+                        <Button onClick={() => void handleExclude()} disabled={mutatingRowId !== null}>{mutatingRowId === selectedOrder?.id_riga_ordine && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t("excludeOrder")}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

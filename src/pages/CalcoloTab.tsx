@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Calculator, AlertTriangle, Loader2, Upload, FileSpreadsheet, Users, ExternalLink } from "lucide-react";
+import { memo, useId, useMemo, useRef, useState, type ReactElement } from "react";
+import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, FileSpreadsheet, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     AlertDialog,
@@ -10,283 +10,351 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { FileDropzone, EmptyState, CalcoloResults } from "@/components";
+import { MonthPicker } from "@/components/DatePicker";
+import { EmptyState, CalculationResults } from "@/components";
+import { ConfirmationOutcome } from "@/components/ConfirmationOutcome";
+import { PreviewOutline } from "@/components/PreviewOutline";
+import { ZipDownloadButton } from "@/components/ZipDownloadButton";
+import { SkipConfirmCheckbox } from "@/components/SkipConfirmCheckbox";
+import { useConfirmSkip } from "@/hooks/useConfirmSkip";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Liquidazione, CalcoloResult } from "@/types";
-import type { UnmatchedAgent } from "@/hooks/useCalcolo";
+import type { ConfirmationState, LoadedPreview, PreviewState } from "@/hooks/useCalcolo";
+import { summarizeDraft, type DraftActions, type DraftSummary } from "@/lib/calculationDraft";
+import { buildPreviewZip } from "@/lib/calculationExport";
+import { formatMonthLabel } from "@/lib/competenceDates";
+import { cn, formatCurrency, sellerNameLookup } from "@/lib/utils";
+import type { Agent, Rule } from "@/types";
 
-interface CalcoloTabProps {
-    data: Liquidazione[];
-    result: CalcoloResult | null;
-    loading: boolean;
-    unmatchedAgents: UnmatchedAgent[];
-    onUpload: (files: File[]) => void;
-    onCalculate: () => void;
-    onNavigate?: (tab: string) => void;
+interface CalculationTabProps {
+    month: string;
+    preview: PreviewState;
+    agents: Agent[];
+    rules: Rule[];
+    editDraft: DraftActions;
+    confirmation: ConfirmationState;
+    onMonthChange: (month: string) => void;
+    onPreview: () => void;
+    onConfirm: () => void;
+    onNavigate: (tab: string) => void;
+    onOpenInvites: (month: string, inviteId?: number) => void;
 }
 
-export function CalcoloTab({
-    data,
-    result,
-    loading,
-    unmatchedAgents,
-    onUpload,
-    onCalculate,
+type DiscardTarget = { kind: "month"; month: string } | { kind: "recalculate" };
+
+// Memoized because App keeps this tab mounted while hidden, and every App render would otherwise redraw the whole preview.
+export const CalculationTab = memo(function CalculationTab({
+    month,
+    preview,
+    agents,
+    rules,
+    editDraft,
+    confirmation,
+    onMonthChange,
+    onPreview,
+    onConfirm,
     onNavigate,
-}: CalcoloTabProps) {
-    const { t } = useTranslation();
-    const [showDropzone, setShowDropzone] = useState(true);
-    const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+    onOpenInvites,
+}: CalculationTabProps): ReactElement {
+    const { t, language } = useTranslation();
+    const confirmReasonId = useId();
+    const [discardTarget, setDiscardTarget] = useState<DiscardTarget | null>(null);
+    const [confirmingSave, setConfirmingSave] = useState(false);
+    const skipSave = useConfirmSkip("commissions-save");
+    const skipDiscard = useConfirmSkip("preview-discard");
+    const monthButtonRef = useRef<HTMLButtonElement>(null);
+    const previewButtonRef = useRef<HTMLButtonElement>(null);
+    const discardOpenerRef = useRef<HTMLButtonElement | null>(null);
+    const loading = preview.status === "loading";
+    const submitting = confirmation.status === "submitting";
+    const dirty = preview.status === "ready" && preview.draft.dirty;
+    const stale = preview.status === "ready" && preview.stale;
 
-    const hasData = data.length > 0;
-    const hasUnmatched = unmatchedAgents.length > 0;
-    const totalAffectedRecords = unmatchedAgents.reduce((sum, a) => sum + a.count, 0);
-    const affectedPercentage = hasData ? Math.round((totalAffectedRecords / data.length) * 100) : 0;
+    const draft = preview.status === "ready" ? preview.draft : preview.status === "loading" ? (preview.previous?.draft ?? null) : null;
+    const summary = useMemo(() => (draft ? summarizeDraft(draft) : null), [draft]);
+    const sellerName = useMemo(() => sellerNameLookup(agents), [agents]);
 
-    // When data is loaded, collapse the dropzone
-    const shouldShowDropzone = showDropzone || !hasData;
+    const handleMonthChange = (nextMonth: string): void => {
+        if (nextMonth === month) return;
 
-    const handleCalculateClick = () => {
-        if (hasUnmatched) {
-            setConfirmDialogOpen(true);
-        } else {
-            onCalculate();
+        if (dirty && !skipDiscard.isSkipped()) {
+            discardOpenerRef.current = monthButtonRef.current;
+            setDiscardTarget({ kind: "month", month: nextMonth });
+        } else onMonthChange(nextMonth);
+    };
+
+    const handlePreview = (): void => {
+        if (dirty && !skipDiscard.isSkipped()) {
+            discardOpenerRef.current = previewButtonRef.current;
+            setDiscardTarget({ kind: "recalculate" });
+        } else onPreview();
+    };
+
+    const handleDiscard = (): void => {
+        skipDiscard.remember();
+
+        if (discardTarget?.kind === "month") onMonthChange(discardTarget.month);
+        else if (discardTarget?.kind === "recalculate") onPreview();
+        setDiscardTarget(null);
+    };
+
+    const goToOrdersButton = (
+        <Button variant="outline" size="sm" onClick={() => onNavigate("ordini")}>
+            {t("previewGoToOrders")}
+            <ArrowRight className="h-4 w-4" />
+        </Button>
+    );
+
+    const emptyPreview = preview.status === "ready" && preview.data.agenti.length === 0 && preview.data.non_associati.length === 0;
+    // The results show the outcome under the total card; without results it falls to the end of the page.
+    const resultsShown = summary !== null && !emptyPreview;
+
+    const outcome = confirmation.status !== "idle" && (
+        <ConfirmationOutcome
+            confirmation={confirmation}
+            sellerName={sellerName}
+            changedAfterSave={confirmation.status === "done" && dirty}
+            onOpenInvites={onOpenInvites}
+        />
+    );
+
+    // Once a confirmation went through or may have, saying nothing is saved would contradict the outcome under the bar.
+    const confirmNote =
+        confirmation.status === "done"
+            ? t("previewConfirmedNote")
+            : confirmation.status === "unknown"
+              ? t("previewOutcomeUnknownNote")
+              : t("previewNotSaved");
+
+    // While a recalculation loads, the bar keeps its place but stays locked, so the results under it don't move.
+    // The reason doubles as the confirm button's description, so it names what blocks confirming or what saving has done so far.
+    const renderConfirmBar = (shownMonth: string, shown: LoadedPreview, shownSummary: DraftSummary, confirmBlock: string | null): ReactElement => {
+        const NoteIcon = submitting ? Loader2 : confirmBlock ? AlertTriangle : Info;
+
+        return (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p
+                    id={confirmReasonId}
+                    className={cn(
+                        "mb-0 flex items-start gap-2 text-sm",
+                        confirmBlock && !submitting ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground",
+                    )}
+                >
+                    <NoteIcon className={cn("mt-0.5 h-4 w-4 shrink-0", submitting && "animate-spin")} />
+                    {confirmBlock ?? confirmNote}
+                </p>
+                <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+                    <ZipDownloadButton
+                        label={t("exportPreviewAction")}
+                        note={t("exportPreviewNote")}
+                        hideNote
+                        disabled={loading || stale || shownSummary.includedAgents === 0 || shownSummary.invalidIncludedRows > 0}
+                        disabledReasonId={confirmReasonId}
+                        build={() => buildPreviewZip(shownMonth, shown.draft, sellerName)}
+                        describeError={() => t("exportFailed")}
+                    />
+                    <AlertDialog
+                        open={confirmingSave}
+                        onOpenChange={(open) => {
+                            if (open && skipSave.isSkipped()) onConfirm();
+                            else setConfirmingSave(open);
+                        }}
+                    >
+                        <AlertDialogTrigger asChild>
+                            <Button size="sm" className="btn-primary shrink-0" disabled={loading || confirmBlock !== null} aria-describedby={confirmReasonId}>
+                                <CheckCircle2 className="h-4 w-4" />
+                                {t("previewConfirmAction")}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>{t("confirmReviewTitle").replace("{month}", formatMonthLabel(shownMonth, language))}</AlertDialogTitle>
+                                <AlertDialogDescription>{t("confirmReviewDescription")}</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm">
+                                <dt className="text-muted-foreground">{t("confirmReviewIncludedAgents")}</dt>
+                                <dd className="text-right font-mono">{shownSummary.includedAgents}</dd>
+                                <dt className="text-muted-foreground">{t("confirmReviewIncludedRows")}</dt>
+                                <dd className="text-right font-mono">{shownSummary.includedRows}</dd>
+                                <dt className="font-medium">{t("confirmReviewTotal")}</dt>
+                                <dd className="text-right font-mono font-medium">{formatCurrency(shownSummary.total)}</dd>
+                                <dt className="text-muted-foreground">{t("confirmReviewExcludedAgents")}</dt>
+                                <dd className="text-right font-mono">{shownSummary.excludedAgents}</dd>
+                                <dt className="text-muted-foreground">{t("confirmReviewUnmatchedRows")}</dt>
+                                <dd className="text-right font-mono">{shown.data.non_associati.length}</dd>
+                            </dl>
+                            <p className="text-sm text-muted-foreground">{t("confirmReviewReplaceNote")}</p>
+                            <SkipConfirmCheckbox skip={skipSave} />
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={() => {
+                                        skipSave.remember();
+                                        onConfirm();
+                                    }}
+                                >
+                                    {t("confirmReviewAction")}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+            </div>
+        );
+    };
+
+    const renderBody = (): ReactElement => {
+        switch (preview.status) {
+            case "idle":
+                return <PreviewOutline month={month} loading={false} onGoToOrders={() => onNavigate("ordini")} />;
+
+            case "loading":
+                return preview.previous && summary ? (
+                    <div aria-busy="true" className="pointer-events-none opacity-60 transition-opacity">
+                        <CalculationResults
+                            month={preview.month}
+                            draft={preview.previous.draft}
+                            summary={summary}
+                            unmatched={preview.previous.data.non_associati}
+                            agents={agents}
+                            rules={rules}
+                            actions={renderConfirmBar(preview.month, preview.previous, summary, null)}
+                            outcome={outcome}
+                        />
+                    </div>
+                ) : (
+                    <PreviewOutline month={preview.month} loading onGoToOrders={() => onNavigate("ordini")} />
+                );
+
+            case "error":
+                return preview.reason === "setup" ? (
+                    <div role="alert" className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
+                        <p className="font-medium">{t("previewSetupTitle")}</p>
+                        <p>{t("previewSetupDescription")}</p>
+                        {preview.message && <p className="text-muted-foreground">{preview.message}</p>}
+                        <Button variant="outline" size="sm" onClick={() => onNavigate("regole")}>
+                            {t("previewGoToRules")}
+                            <ArrowRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                ) : (
+                    <div role="alert" className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
+                        <p className="font-medium">{t("previewErrorTitle")}</p>
+                        <p>{preview.message ?? t("previewErrorFallback")}</p>
+                        <Button variant="outline" size="sm" onClick={handlePreview}>
+                            {t("retry")}
+                        </Button>
+                    </div>
+                );
+
+            case "ready": {
+                const { data } = preview;
+
+                const confirmBlock = submitting
+                    ? t("confirmSubmittingBlock")
+                    : preview.stale
+                      ? t("previewConfirmBlockedStale")
+                      : summary && summary.includedAgents === 0
+                        ? t("previewConfirmBlockedEmpty")
+                        : summary && summary.invalidIncludedRows > 0
+                          ? t("previewConfirmBlockedInvalid")
+                          : null;
+
+                return (
+                    <div className="space-y-6">
+                        {preview.stale && (
+                            <div
+                                role="alert"
+                                className="flex flex-col gap-3 rounded-md border border-amber-500/50 bg-amber-50 p-3 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between dark:bg-amber-950/30 dark:text-amber-300"
+                            >
+                                <span className="flex items-center gap-2">
+                                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                                    {emptyPreview ? t("previewStaleEmpty") : t("previewStale")}
+                                </span>
+                                <Button variant="outline" size="sm" className="shrink-0" disabled={submitting} onClick={handlePreview}>
+                                    {t("previewRecalculate")}
+                                </Button>
+                            </div>
+                        )}
+                        {emptyPreview ? (
+                            <div className="flex flex-col items-center pb-8">
+                                <EmptyState message={t("previewEmpty")} icon={<FileSpreadsheet className="h-16 w-16" />} />
+                                {goToOrdersButton}
+                            </div>
+                        ) : (
+                            summary && (
+                                <CalculationResults
+                                    month={preview.month}
+                                    draft={preview.draft}
+                                    summary={summary}
+                                    unmatched={data.non_associati}
+                                    agents={agents}
+                                    rules={rules}
+                                    editDraft={submitting ? undefined : editDraft}
+                                    actions={renderConfirmBar(preview.month, preview, summary, confirmBlock)}
+                                    outcome={outcome}
+                                />
+                            )
+                        )}
+                    </div>
+                );
+            }
         }
-    };
-
-    const handleConfirmCalculate = () => {
-        setConfirmDialogOpen(false);
-        onCalculate();
-    };
-
-    const handleNewFile = () => {
-        setShowDropzone(true);
-    };
-
-    const handleUpload = (files: File[]) => {
-        onUpload(files);
-        setShowDropzone(false);
     };
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div>
                 <h2 className="font-display text-2xl">{t("calculateCommissionsTitle")}</h2>
                 <p className="font-body text-muted-foreground mt-1">{t("calculateCommissionsDesc")}</p>
             </div>
 
-            {/* Upload Section - Collapsible */}
-            {shouldShowDropzone ? (
-                <div className="ledger-card p-6">
-                    <FileDropzone accept=".xlsx,.xls" maxSizeMB={50} onFiles={handleUpload} disabled={loading} />
-                </div>
-            ) : hasData ? (
-                /* Compact Upload Bar */
-                <div className="ledger-card px-4 py-2">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <FileSpreadsheet className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="text-sm text-muted-foreground">
-                                <span className="font-mono font-semibold">{data.length}</span>{" "}
-                                {t("records").toLowerCase()}
-                            </span>
+            <div role="group" aria-label={t("previewMonthLabel")} className="flex items-center gap-2">
+                <MonthPicker
+                    ref={monthButtonRef}
+                    value={month}
+                    onChange={handleMonthChange}
+                    placeholder={t("selectPeriod")}
+                    className="h-9 min-w-0 flex-1 sm:w-[200px] sm:flex-none"
+                    disabled={submitting}
+                />
+                <Button ref={previewButtonRef} size="sm" onClick={handlePreview} disabled={!month || loading || submitting} className="btn-primary h-9 shrink-0 py-0">
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
+                    {t("previewAction")}
+                </Button>
+            </div>
 
-                            {/* Warning Badge with Popover */}
-                            {hasUnmatched && (
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Badge
-                                            variant="outline"
-                                            className="cursor-pointer border-amber-500/50 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50"
-                                        >
-                                            <AlertTriangle className="h-3 w-3 mr-1" />
-                                            {unmatchedAgents.length} {t("unmatchedShort")}
-                                        </Badge>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-96" align="start">
-                                        <div className="space-y-4">
-                                            {/* Header */}
-                                            <div className="flex items-start gap-3">
-                                                <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
-                                                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-display font-semibold text-amber-800 dark:text-amber-300">
-                                                        {t("unmatchedAgentsWarning")}
-                                                    </h4>
-                                                    <p className="text-sm text-muted-foreground mt-0.5">
-                                                        {t("unmatchedAgentsDesc")}
-                                                    </p>
-                                                </div>
-                                            </div>
+            <p className="sr-only" aria-live="polite">
+                {loading ? t("previewLoading") : ""}
+            </p>
 
-                                            <Separator />
+            {renderBody()}
 
-                                            {/* Stats Summary */}
-                                            <div className="grid grid-cols-3 gap-3 text-center">
-                                                <div className="p-2 rounded-md bg-secondary/50">
-                                                    <div className="text-lg font-mono font-bold text-amber-600 dark:text-amber-400">
-                                                        {unmatchedAgents.length}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {t("unmatchedAgentsCount")}
-                                                    </div>
-                                                </div>
-                                                <div className="p-2 rounded-md bg-secondary/50">
-                                                    <div className="text-lg font-mono font-bold text-amber-600 dark:text-amber-400">
-                                                        {totalAffectedRecords}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {t("recordsAffected")}
-                                                    </div>
-                                                </div>
-                                                <div className="p-2 rounded-md bg-secondary/50">
-                                                    <div className="text-lg font-mono font-bold text-amber-600 dark:text-amber-400">
-                                                        {affectedPercentage}%
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {t("of")} {t("total").toLowerCase()}
-                                                    </div>
-                                                </div>
-                                            </div>
+            {!resultsShown && outcome}
 
-                                            {/* Agents List */}
-                                            <div className="max-h-40 overflow-y-auto border rounded-md bg-secondary/20">
-                                                <table className="w-full text-sm">
-                                                    <thead className="bg-secondary/50 sticky top-0">
-                                                        <tr>
-                                                            <th className="text-left py-2 px-3 font-medium text-xs uppercase tracking-wider">
-                                                                {t("seller")}
-                                                            </th>
-                                                            <th className="text-right py-2 px-3 font-medium text-xs uppercase tracking-wider">
-                                                                {t("records")}
-                                                            </th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="font-mono text-xs">
-                                                        {unmatchedAgents.map((agent, idx) => (
-                                                            <tr
-                                                                key={idx}
-                                                                className="border-t border-border/50 hover:bg-secondary/30"
-                                                            >
-                                                                <td
-                                                                    className="py-2 px-3 truncate max-w-[220px]"
-                                                                    title={agent.name}
-                                                                >
-                                                                    {agent.name}
-                                                                </td>
-                                                                <td className="text-right py-2 px-3 tabular-nums">
-                                                                    {agent.count}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-
-                                            <Separator />
-
-                                            {/* Action */}
-                                            {onNavigate && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="w-full"
-                                                    onClick={() => onNavigate("agenti")}
-                                                >
-                                                    <Users className="h-4 w-4 mr-2" />
-                                                    {t("goToAgentsTab")}
-                                                    <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
-                            )}
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                            <Button variant="ghost" size="sm" onClick={handleNewFile} disabled={loading}>
-                                <Upload className="h-4 w-4 mr-1.5" />
-                                {t("newFile")}
-                            </Button>
-                            <Button onClick={handleCalculateClick} disabled={loading} className="btn-primary">
-                                {loading ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Calculator className="mr-2 h-4 w-4" />
-                                )}
-                                {t("calculateCommissions")}
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
-
-            {/* Loading State */}
-            {loading && (
-                <div className="flex items-center justify-center py-16 gap-3">
-                    <Loader2 className="h-6 w-6 animate-spin text-energia-accent" />
-                    <span className="font-display">{t("calculating")}</span>
-                </div>
-            )}
-
-            {/* Results Section */}
-            {!loading && result && Object.keys(result).length > 0 ? (
-                <CalcoloResults data={result} compDal={data[0]?.comp_dal} />
-            ) : (
-                !loading &&
-                !hasData && <EmptyState message={t("noCalculationYet")} icon={<Calculator className="h-16 w-16" />} />
-            )}
-
-            {/* Confirmation Dialog for Unmatched Agents */}
-            <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-                <AlertDialogContent>
+            <AlertDialog open={discardTarget !== null} onOpenChange={(open) => !open && setDiscardTarget(null)}>
+                <AlertDialogContent
+                    className="max-w-[calc(100vw-2rem)] sm:max-w-lg"
+                    onCloseAutoFocus={(event) => {
+                        // Radix returns focus to what was focused on open, which for a month change is a button of the closed month popover.
+                        event.preventDefault();
+                        discardOpenerRef.current?.focus();
+                    }}
+                >
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5 text-amber-500" />
-                            {t("continueWithUnmatched")}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-3">
-                                <p>{t("unmatchedAgentsDesc")}</p>
-                                <div className="max-h-48 overflow-y-auto border rounded-md bg-secondary/30">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-secondary/50 sticky top-0">
-                                            <tr>
-                                                <th className="text-left py-2 px-3 font-medium">{t("seller")}</th>
-                                                <th className="text-right py-2 px-3 font-medium">
-                                                    {t("recordsAffected")}
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="font-mono text-xs">
-                                            {unmatchedAgents.map((agent, idx) => (
-                                                <tr key={idx} className="border-t">
-                                                    <td className="py-2 px-3">{agent.name}</td>
-                                                    <td className="text-right py-2 px-3">{agent.count}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <p className="text-amber-600 dark:text-amber-400 font-medium">
-                                    {totalAffectedRecords} {t("recordsWillBeSkipped")}
-                                </p>
-                            </div>
+                        <AlertDialogTitle>{t("previewDiscardTitle")}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {discardTarget?.kind === "month" ? t("previewDiscardMonth") : t("previewDiscardRecalculate")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    <SkipConfirmCheckbox skip={skipDiscard} />
                     <AlertDialogFooter>
                         <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmCalculate}>{t("continueAnyway")}</AlertDialogAction>
+                        <AlertDialogAction onClick={handleDiscard}>{t("previewDiscardConfirm")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
         </div>
     );
-}
+});
