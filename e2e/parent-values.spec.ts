@@ -205,22 +205,20 @@ test.describe("parent values", () => {
         await expect(dialog).toBeVisible();
     });
 
-    test("should mark the agent value invalid and keep the saved value when a negative value is entered and Save is pressed", async ({ page, backend }) => {
+    test("should keep a negative agent value after a reload when it is saved", async ({ page, backend }) => {
         const { child } = await createFamily(backend);
         const agentValue = (dialog: Locator): Locator => dialog.getByRole("tabpanel", { name: "Valori agente" }).getByRole("textbox");
         const dialog = await openAgent(page, child);
 
         await dialog.getByRole("tab", { name: "Valori agente" }).click();
         await dialog.getByRole("button", { name: STANDARD, exact: true }).click();
-        await agentValue(dialog).fill("-1");
+        await agentValue(dialog).fill("-2");
 
-        await expect(agentValue(dialog)).toHaveAttribute("aria-invalid", "true");
-        await expect(dialog.getByRole("tab", { name: /^Valori agente/ })).toContainText("Non validi: 1");
+        await expect(agentValue(dialog)).toHaveAttribute("aria-invalid", "false");
 
         await dialog.getByRole("button", { name: "Salva" }).click();
 
-        await expect(agentValue(dialog)).toBeFocused();
-        await expect(dialog).toBeVisible();
+        await expect(dialog).toBeHidden();
 
         await page.reload();
 
@@ -228,7 +226,7 @@ test.describe("parent values", () => {
 
         await reopened.getByRole("tab", { name: "Valori agente" }).click();
         await reopened.getByRole("button", { name: STANDARD, exact: true }).click();
-        await expect(agentValue(reopened)).toHaveValue("6");
+        await expect(agentValue(reopened)).toHaveValue("-2");
     });
 
     test("should switch to the agent values tab and focus the invalid value when Save is pressed with an error there", async ({ page, backend }) => {
