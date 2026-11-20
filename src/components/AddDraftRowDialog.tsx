@@ -92,8 +92,9 @@ function AddDraftRowForm({ seller, month, rules, onAdd, onCancel }: AddDraftRowF
         );
     };
 
+    // A grid item is as wide as its longest unbreakable text by default, so a long rule description would push the form past the dialog.
     return (
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="min-w-0 space-y-4">
             <div className="space-y-1.5">
                 <Label htmlFor={`${id}-rule`}>{t("rule")}</Label>
                 <SearchableSelect
