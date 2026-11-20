@@ -21,7 +21,7 @@ import { useConfirmSkip } from "@/hooks/useConfirmSkip";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ApiError } from "@/api/client";
 import { getParentRuleConfiguration } from "@/api/agents";
-import { parseEuroNumber } from "@/lib/numbers";
+import { parseEuroNumber, parseNonNegativeEuroNumber } from "@/lib/numbers";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { Agent, ParentRuleConfiguration } from "@/types";
 
@@ -45,12 +45,6 @@ const headClass = "sticky top-0 z-10 h-10 bg-secondary/90 px-3 backdrop-blur-sm 
 
 function rowKey(row: ParentRuleConfiguration): string {
     return `${row.regola_id}_${row.scaglione_id ?? "fisso"}`;
-}
-
-function parseParentValue(input: string): number | undefined {
-    const value = parseEuroNumber(input);
-
-    return value !== undefined && value >= 0 ? value : undefined;
 }
 
 // Postgres round(numeric, 2) rounds halves away from zero. toPrecision drops the binary float noise
@@ -99,7 +93,7 @@ export function ParentValuesPanel({ agent, agentEdits, edits, onEditsChange }: P
     const isPercentValid = percent !== undefined && percent >= 0 && percent <= 100;
 
     const editedAgentValue = (row: ParentRuleConfiguration): number =>
-        parseEuroNumber(agentEdits.get(`${row.regola_id}_${row.scaglione_id}`)) ?? row.valore;
+        parseNonNegativeEuroNumber(agentEdits.get(`${row.regola_id}_${row.scaglione_id}`)) ?? row.valore;
 
     const handlePrefill = (configuration: ParentRuleConfiguration[]): void => {
         if (percent === undefined) return;
@@ -219,13 +213,13 @@ export function ParentValuesPanel({ agent, agentEdits, edits, onEditsChange }: P
                                                         regola_id: row.regola_id,
                                                         scaglione_id: row.scaglione_id,
                                                         input: e.target.value,
-                                                        valore_padre: parseParentValue(e.target.value),
+                                                        valore_padre: parseNonNegativeEuroNumber(e.target.value),
                                                     };
 
                                                     onEditsChange((prev) => new Map(prev).set(key, edit));
                                                 }}
                                                 aria-label={`${t("parentValue")} ${row.regola_nome} ${row.scaglione_nome}`}
-                                                aria-invalid={parseParentValue(input) === undefined}
+                                                aria-invalid={parseNonNegativeEuroNumber(input) === undefined}
                                                 className="font-mono text-right h-8 w-28 ml-auto"
                                             />
                                         </TableCell>

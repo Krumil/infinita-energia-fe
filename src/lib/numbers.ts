@@ -78,3 +78,10 @@ export function parseEuroNumber(value: number | string | null | undefined): numb
 
     return Number.isFinite(parsed) ? parsed : undefined;
 }
+
+// A commission value an operator sets is never negative. Imported settlement amounts and preview amounts can be.
+export function parseNonNegativeEuroNumber(value: number | string | null | undefined): number | undefined {
+    const parsed = parseEuroNumber(value);
+
+    return parsed !== undefined && parsed >= 0 ? parsed : undefined;
+}
