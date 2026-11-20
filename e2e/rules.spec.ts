@@ -73,6 +73,16 @@ test.describe("rules", () => {
         await expect(tableRow(page, DEFAULT_RULE).getByTitle("Clicca per modificare")).toContainText("2,50 €");
     });
 
+    test("should save a negative default when Enter is pressed", async ({ page, catalog }) => {
+        const rule = catalog.rule(DEFAULT_RULE);
+
+        await openRules(page);
+        await (await startEditingDefault(tableRow(page, DEFAULT_RULE), "-2,5")).press("Enter");
+
+        await expect(tableRow(page, DEFAULT_RULE).getByTitle("Clicca per modificare")).toContainText("-2,50 €");
+        await expect.poll(async () => (await catalog.current("regole", rule.id)).valore_default).toBe(-2.5);
+    });
+
     test("should show an error and change nothing when the default value is not a number", async ({ page, catalog }) => {
         const rule = catalog.rule(DEFAULT_RULE);
         const writes = recordApiWrites(page);
