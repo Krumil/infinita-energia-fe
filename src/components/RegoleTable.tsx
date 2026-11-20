@@ -20,7 +20,7 @@ import { useConfirmSkip } from "@/hooks/useConfirmSkip";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCurrency, cn } from "@/lib/utils";
-import { parseEuroNumber } from "@/lib/numbers";
+import { parseNonNegativeEuroNumber } from "@/lib/numbers";
 import type { RulesTableProps } from "@/types/components";
 import type { Rule } from "@/types/domain";
 import { z } from "zod";
@@ -87,7 +87,7 @@ export function RulesTable({
 
     const commitEdit = useCallback(
         (rule: Rule) => {
-            const parsed = parseEuroNumber(editValue);
+            const parsed = parseNonNegativeEuroNumber(editValue);
 
             if (parsed === undefined) {
                 toast({ title: t("error"), description: t("invalidDefaultValue"), variant: "destructive" });

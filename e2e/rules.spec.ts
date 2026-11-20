@@ -73,22 +73,27 @@ test.describe("rules", () => {
         await expect(tableRow(page, DEFAULT_RULE).getByTitle("Clicca per modificare")).toContainText("2,50 €");
     });
 
-    test("should show an error and change nothing when the default value is not a number", async ({ page, catalog }) => {
-        const rule = catalog.rule(DEFAULT_RULE);
-        const writes = recordApiWrites(page);
+    for (const [value, condition] of [
+        ["abc", "not a number"],
+        ["-1", "negative"],
+    ]) {
+        test(`should show an error and change nothing when the default value is ${condition}`, async ({ page, catalog }) => {
+            const rule = catalog.rule(DEFAULT_RULE);
+            const writes = recordApiWrites(page);
 
-        await openRules(page);
+            await openRules(page);
 
-        const row = tableRow(page, DEFAULT_RULE);
+            const row = tableRow(page, DEFAULT_RULE);
 
-        await (await startEditingDefault(row, "abc")).press("Enter");
+            await (await startEditingDefault(row, value)).press("Enter");
 
-        await expect(page.getByText("Inserisci un numero valido, per esempio 2,50.", { exact: true })).toBeVisible();
-        await expect(page.getByRole("alertdialog")).toHaveCount(0);
-        await expect(row.getByTitle("Clicca per modificare")).toContainText("1,00 €");
-        expect(writes).toEqual([]);
-        expect((await catalog.current("regole", rule.id)).valore_default).toBe(1);
-    });
+            await expect(page.getByText("Inserisci un numero non negativo, per esempio 2,50.", { exact: true })).toBeVisible();
+            await expect(page.getByRole("alertdialog")).toHaveCount(0);
+            await expect(row.getByTitle("Clicca per modificare")).toContainText("1,00 €");
+            expect(writes).toEqual([]);
+            expect((await catalog.current("regole", rule.id)).valore_default).toBe(1);
+        });
+    }
 
     test("should save the type without asking when a rule's empty service type is set", async ({ page, catalog }) => {
         const rule = catalog.rule(UNTYPED_RULE);
