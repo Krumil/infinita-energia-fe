@@ -30,7 +30,7 @@ import { useConfirmSkip } from "@/hooks/useConfirmSkip";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ApiError } from "@/api/client";
 import { saveParentRuleConfiguration } from "@/api/agents";
-import { parseNonNegativeEuroNumber } from "@/lib/numbers";
+import { parseEuroNumber } from "@/lib/numbers";
 import { ParentValuesPanel, type ParentValueEdit } from "./ParentValuesPanel";
 import { RuleValuesEditor } from "./RuleValuesEditor";
 import { SearchableSelect } from "./SearchableSelect";
@@ -125,7 +125,7 @@ export function AgentDialog({
     }, []);
 
     const invalidEditedCount = useMemo(
-        () => Array.from(editedValues.values()).filter((value) => parseNonNegativeEuroNumber(value) === undefined).length,
+        () => Array.from(editedValues.values()).filter((value) => parseEuroNumber(value) === undefined).length,
         [editedValues],
     );
 
@@ -186,7 +186,7 @@ export function AgentDialog({
                 ? configuration.map((item) => {
                       const key = `${item.regola_id}_${item.scaglione_id}`;
                       const edited = editedValues.get(key);
-                      const value = edited !== undefined ? parseNonNegativeEuroNumber(edited) ?? item.valore : item.valore;
+                      const value = edited !== undefined ? parseEuroNumber(edited) ?? item.valore : item.valore;
 
                       return { regola_id: item.regola_id, scaglione_id: item.scaglione_id, valore: value };
                   })
