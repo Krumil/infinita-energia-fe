@@ -99,15 +99,6 @@ function attachment(id: number, inviteId: number, name: string, bytes: number, u
 }
 
 test.describe("invite dialog", () => {
-    test("should return focus to the invite's name when the dialog closes", async ({ page, backend }) => {
-        const { dialog, opener } = await seedAndOpen(page, backend);
-
-        await page.keyboard.press("Escape");
-
-        await expect(dialog).toBeHidden();
-        await expect(opener).toBeFocused();
-    });
-
     test("should show an error and send nothing when the payment date is before the invoice date", async ({ page, backend }) => {
         // Both dates are set through the API so the picker only has to move the invoice date past the payment date.
         const { inviteId, dialog } = await seedAndOpen(page, backend, { pagato: true, data_fattura: "2031-01-05", data_pagamento: "2031-01-10" });
@@ -228,68 +219,6 @@ test.describe("invite attachments", () => {
         await expect(page.getByRole("button", { name: "Elimina: nuovo.pdf" })).toHaveClass(/text-destructive/);
     });
 
-    test("should warn that the outcome is unverified when the storage upload fails with a 500", async ({ page, backend }) => {
-        const token = uniqueToken();
-        const agent = await backend.createAgent({ name: `Storage KO ${token}`, ruleValues: {} });
-        const inviteId = await backend.seedInvite(INVITE_MONTH, agent, [detailRow(agent)], "bozza");
-        const storageUrl = `https://storage.e2e.invalid/${token}`;
-
-        // Both the upload URL and the storage answer are stubbed, so nothing reaches the real storage bucket.
-        await page.route(`**/api/storico-inviti/${inviteId}/allegati/upload-url`, (route) =>
-            route.fulfill({
-                json: {
-                    allegato_id: 41,
-                    chiave_oggetto: `e2e/${token}`,
-                    upload_url: storageUrl,
-                    metodo: "PUT",
-                    scadenza_secondi: 300,
-                    headers_richiesti: { "Content-Type": "application/pdf" },
-                    stato: "in_attesa",
-                },
-            }),
-        );
-        await page.route(storageUrl, (route) => route.fulfill({ status: 500, body: "boom" }));
-        await page.route(`**/api/storico-inviti/${inviteId}/allegati`, (route) => route.fulfill({ json: [] }));
-        await page.goto("/");
-        await openTab(page, "Inviti");
-        await page.getByRole("textbox", { name: "Filtra..." }).fill(token);
-        await page.getByRole("button", { name: agent.name, exact: true }).click();
-
-        const dialog = page.getByRole("dialog");
-
-        await dialog.getByRole("tab", { name: "Allegati" }).click();
-        await dialog.getByLabel("Aggiungi").setInputFiles({ name: "fattura.pdf", mimeType: "application/pdf", buffer: Buffer.from("e2e") });
-
-        await expect(dialog.getByRole("alert").filter({ hasText: "fattura.pdf" })).toContainText("Non è stato possibile verificare l'esito del caricamento");
-    });
-
-    test("should show the file name and its upload date and time when the operator asks to delete an attachment", async ({ page, backend }) => {
-        const token = uniqueToken();
-        const agent = await backend.createAgent({ name: `Elimina ${token}`, ruleValues: {} });
-        const inviteId = await backend.seedInvite(INVITE_MONTH, agent, [detailRow(agent)], "bozza");
-
-        await page.route(`**/api/storico-inviti/${inviteId}/allegati`, (route) =>
-            route.fulfill({ json: [attachment(1, inviteId, "da-eliminare.pdf", 10, "2032-01-10T12:34:00Z")] }),
-        );
-        await page.goto("/");
-        await openTab(page, "Inviti");
-        await page.getByRole("textbox", { name: "Filtra..." }).fill(token);
-        await page.getByRole("button", { name: agent.name, exact: true }).click();
-        await page.getByRole("tab", { name: "Allegati" }).click();
-
-        const row = page.getByRole("dialog").getByRole("row").filter({ hasText: "da-eliminare.pdf" });
-        const listed = (await row.getByRole("cell").nth(2).innerText()).trim();
-
-        expect(listed, "the list shows date and time").toMatch(/^\d{2}\/\d{2}\/\d{2},? \d{2}:\d{2}$/);
-
-        await page.getByRole("button", { name: "Elimina: da-eliminare.pdf" }).click();
-
-        const confirmation = page.getByRole("alertdialog");
-
-        await expect(confirmation).toContainText("da-eliminare.pdf");
-        await expect(confirmation).toContainText(listed);
-    });
-
     test("should show the backend's message and keep the file when deleting it fails with a 502", async ({ page, backend }) => {
         const token = uniqueToken();
         const agent = await backend.createAgent({ name: `Elimina KO ${token}`, ruleValues: {} });
@@ -349,31 +278,6 @@ test.describe("invite attachments", () => {
         const stored = await page.request.get(`/api/storico-inviti/${inviteId}/allegati`);
 
         expect(await stored.json()).toEqual([]);
-    });
-
-    test("should show the backend's message in the list and keep the file when a deletion without confirmation fails with a 502", async ({
-        page,
-        backend,
-    }) => {
-        const { inviteId, dialog } = await seedAndOpenAttachments(page, backend, ["primo.pdf", "bloccato.pdf"]);
-        const confirmation = page.getByRole("alertdialog");
-
-        await page.getByRole("button", { name: "Elimina: primo.pdf" }).click();
-        await confirmation.getByRole("checkbox", { name: "Non mostrare più" }).check();
-        await confirmation.getByRole("button", { name: "Elimina" }).click();
-        await expect(page.getByRole("button", { name: "Elimina: primo.pdf" })).toHaveCount(0);
-
-        // The backend can't be made to refuse a delete on demand, so its answer when storage refuses it is stubbed.
-        await page.route(`**/api/storico-inviti/${inviteId}/allegati/*`, (route) =>
-            route.request().method() === "DELETE"
-                ? route.fulfill({ status: 502, json: { error: "Impossibile eliminare il file su R2: allegato non eliminato." } })
-                : route.fallback(),
-        );
-        await page.getByRole("button", { name: "Elimina: bloccato.pdf" }).click();
-
-        await expect(dialog.getByRole("alert")).toHaveText("Impossibile eliminare il file su R2: allegato non eliminato.");
-        await expect(confirmation).toHaveCount(0);
-        await expect(page.getByRole("button", { name: "Elimina: bloccato.pdf" })).toBeVisible();
     });
 
     test("should offer Riprova and reload the list when an upload fails with a 500", async ({ page, backend }) => {

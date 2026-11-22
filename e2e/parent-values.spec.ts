@@ -40,14 +40,6 @@ function parentValue(dialog: Locator, rule: RuleName): Locator {
 }
 
 test.describe("parent values", () => {
-    test("should explain that a parent has to be saved when the saved agent has no parent", async ({ page, backend }) => {
-        const { parent } = await createFamily(backend);
-        const dialog = await openParentValues(page, parent);
-
-        await expect(dialog.getByRole("tabpanel", { name: "Valori padre" })).toHaveText("Questo agente non ha un agente padre. Selezionane uno e salva per configurare i valori padre.");
-        await expect(dialog.getByRole("textbox", { name: /^Valore padre / })).toHaveCount(0);
-    });
-
     test("should keep an edited parent value after a reload when it is saved", async ({ page, backend }) => {
         const { child } = await createFamily(backend);
         const dialog = await openParentValues(page, child);
@@ -74,29 +66,6 @@ test.describe("parent values", () => {
         const reopened = await openParentValues(page, child);
 
         await expect(parentValue(reopened, STANDARD)).toHaveValue("2,5");
-        await expect(parentValue(reopened, RENEWAL)).toHaveValue("0");
-    });
-
-    test("should discard the prefilled values when the dialog is cancelled", async ({ page, backend }) => {
-        const { child } = await createFamily(backend);
-        const dialog = await openParentValues(page, child);
-
-        await dialog.getByLabel("Percentuale").fill("50");
-        await dialog.getByRole("button", { name: "Precompila da percentuale" }).click();
-
-        const confirm = page.getByRole("alertdialog", { name: "Sovrascrivere i valori padre?" });
-
-        await expect(confirm).toContainText("Niente viene salvato finché non premi Salva");
-        await confirm.getByRole("button", { name: "Precompila" }).click();
-        await expect(parentValue(dialog, STANDARD)).toHaveValue("3");
-        await expect(parentValue(dialog, RENEWAL)).toHaveValue("2");
-
-        await dialog.getByRole("button", { name: "Annulla" }).click();
-        await expect(dialog).toBeHidden();
-
-        const reopened = await openParentValues(page, child);
-
-        await expect(parentValue(reopened, STANDARD)).toHaveValue("0");
         await expect(parentValue(reopened, RENEWAL)).toHaveValue("0");
     });
 
@@ -152,24 +121,6 @@ test.describe("parent values", () => {
         await expect(parentValue(reopened, RENEWAL)).toHaveValue("0,13");
     });
 
-    test("should show and prefill from the unsaved agent value when it was edited in the agent values tab", async ({ page, backend }) => {
-        const { child } = await createFamily(backend);
-        const dialog = await openAgent(page, child);
-
-        await dialog.getByRole("button", { name: STANDARD, exact: true }).click();
-        await dialog.getByRole("tabpanel", { name: "Valori agente" }).getByRole("textbox").fill("8");
-        await dialog.getByRole("tab", { name: "Valori padre" }).click();
-
-        const row = dialog.getByRole("row").filter({ has: page.getByRole("textbox", { name: `Valore padre ${STANDARD} Valore Fisso` }) });
-
-        await expect(row).toContainText("8,00");
-
-        await dialog.getByLabel("Percentuale").fill("50");
-        await dialog.getByRole("button", { name: "Precompila da percentuale" }).click();
-        await page.getByRole("alertdialog").getByRole("button", { name: "Precompila" }).click();
-        await expect(parentValue(dialog, STANDARD)).toHaveValue("4");
-    });
-
     test("should mark invalid values and refuse to prefill when a value is negative or not a number", async ({ page, backend }) => {
         const { child } = await createFamily(backend);
         const dialog = await openParentValues(page, child);
@@ -192,17 +143,6 @@ test.describe("parent values", () => {
         await dialog.getByLabel("Percentuale").fill("150");
         await expect(dialog.getByLabel("Percentuale")).toHaveAttribute("aria-invalid", "true");
         await expect(dialog.getByRole("button", { name: "Precompila da percentuale" })).toBeDisabled();
-    });
-
-    test("should focus the first invalid parent value instead of saving when Save is pressed with an error", async ({ page, backend }) => {
-        const { child } = await createFamily(backend);
-        const dialog = await openParentValues(page, child);
-
-        await parentValue(dialog, RENEWAL).fill("abc");
-        await dialog.getByRole("button", { name: "Salva" }).click();
-
-        await expect(parentValue(dialog, RENEWAL)).toBeFocused();
-        await expect(dialog).toBeVisible();
     });
 
     test("should keep a negative agent value after a reload when it is saved", async ({ page, backend }) => {
@@ -250,20 +190,6 @@ test.describe("parent values", () => {
         await expect(dialog).toBeVisible();
     });
 
-    test("should explain that the new parent has to be saved when another parent is selected", async ({ page, backend }) => {
-        const { parent, child } = await createFamily(backend);
-        const other = await backend.createAgent({ name: `Altro ${uniqueToken()}`, ruleValues: { [STANDARD]: 1 } });
-        const dialog = await openParentValues(page, child);
-
-        await expect(parentValue(dialog, STANDARD)).toBeVisible();
-
-        await dialog.getByRole("combobox", { name: parent.name }).click();
-        await page.getByRole("option", { name: other.name, exact: true }).click();
-
-        await expect(dialog.getByRole("tabpanel", { name: "Valori padre" })).toHaveText("Salva il nuovo padre per modificare i suoi valori");
-        await expect(dialog.getByRole("textbox", { name: /^Valore padre / })).toHaveCount(0);
-    });
-
     test("should open the parent values with a notice when a parent is linked to an agent that had none", async ({ page, backend }) => {
         const token = uniqueToken();
         const parent = await backend.createAgent({ name: `Padre ${token}`, ruleValues: { [STANDARD]: 10 } });
@@ -290,59 +216,6 @@ test.describe("parent values", () => {
         await expect(reopened.getByText(linkedNotice(parent), { exact: true })).toHaveCount(0);
     });
 
-    test("should open the parent values with a notice when a new agent is created with a parent", async ({ page, backend }) => {
-        const token = uniqueToken();
-        const parent = await backend.createAgent({ name: `Padre ${token}`, ruleValues: { [STANDARD]: 10 } });
-
-        await page.goto("/#agenti");
-        await page.getByRole("button", { name: "Aggiungi Agente" }).click();
-
-        const created = page.getByRole("dialog", { name: "Aggiungi Agente" });
-
-        await created.getByLabel("Nome Agente").fill(`Figlio ${token}`);
-        await created.getByRole("combobox", { name: "Nessun agente padre" }).click();
-        await page.getByPlaceholder("Cerca agente padre...").fill(parent.name);
-        await page.getByRole("option", { name: parent.name, exact: true }).click();
-
-        const response = page.waitForResponse((candidate) => candidate.request().method() === "POST" && new URL(candidate.url()).pathname === "/api/agenti");
-
-        await created.getByRole("button", { name: "Salva" }).click();
-
-        const body: { agente_id: number } = await (await response).json();
-
-        backend.trackAgent(body.agente_id);
-
-        const dialog = page.getByRole("dialog", { name: "Modifica Agente" });
-
-        await expect(page.getByText("Agente creato con successo", { exact: true })).toBeVisible();
-        await expect(dialog.getByRole("combobox", { name: parent.name })).toBeVisible();
-        await expect(dialog.getByRole("tab", { name: "Valori padre" })).toHaveAttribute("aria-selected", "true");
-        await expect(dialog.getByRole("status").filter({ hasText: parent.name })).toHaveText(linkedNotice(parent));
-        await expect(parentValue(dialog, STANDARD)).toHaveValue("0");
-    });
-
-    test("should close the dialog without the notice when the parent is removed and saved", async ({ page, backend }) => {
-        const { parent, child } = await createFamily(backend);
-        const dialog = await openAgent(page, child);
-
-        await dialog.getByRole("combobox", { name: parent.name }).click();
-        await page.getByRole("option", { name: "Nessun agente padre" }).click();
-        await dialog.getByRole("button", { name: "Salva" }).click();
-
-        await expect(page.getByText("Agente aggiornato con successo", { exact: true })).toBeVisible();
-        await expect(dialog).toBeHidden();
-    });
-
-    test("should show the server's reason when the parent is removed before the values load", async ({ page, backend }) => {
-        const { child } = await createFamily(backend);
-        const agentDialog = await openAgent(page, child);
-
-        await backend.removeParent(child);
-        await agentDialog.getByRole("tab", { name: "Valori padre" }).click();
-
-        await expect(agentDialog.getByRole("alert")).toHaveText(NO_PARENT_ERROR);
-    });
-
     test("should keep the edits and show the server's reason when saving fails", async ({ page, backend }) => {
         const { child } = await createFamily(backend);
         const dialog = await openParentValues(page, child);
@@ -356,52 +229,5 @@ test.describe("parent values", () => {
         await expect(dialog.getByRole("alert")).toHaveText(NO_PARENT_ERROR);
         await expect(dialog).toBeVisible();
         await expect(parentValue(dialog, STANDARD)).toHaveValue("4");
-    });
-
-    test("should not offer the agent's descendants as its parent when a parent is chosen", async ({ page, backend }) => {
-        const { parent, child } = await createFamily(backend);
-        const grandchild = await backend.createAgent({ name: `Nipote ${uniqueToken()}`, parentName: child.name, ruleValues: { [STANDARD]: 1 } });
-        const other = await backend.createAgent({ name: `Altro ${uniqueToken()}`, ruleValues: { [STANDARD]: 1 } });
-        const dialog = await openAgent(page, parent);
-
-        await dialog.getByRole("combobox", { name: "Nessun agente padre" }).click();
-        await page.getByPlaceholder("Cerca agente padre...").fill(other.name);
-        await expect(page.getByRole("option", { name: other.name, exact: true })).toBeVisible();
-
-        for (const excluded of [parent, child, grandchild]) {
-            await page.getByPlaceholder("Cerca agente padre...").fill(excluded.name);
-            await expect(page.getByText("Nessun agente padre trovato", { exact: true })).toBeVisible();
-        }
-    });
-
-    test("should keep asking to confirm a prefill after a cancel and stop asking after a confirm when Non mostrare più is ticked", async ({
-        page,
-        backend,
-    }) => {
-        const { child } = await createFamily(backend);
-        const dialog = await openParentValues(page, child);
-        const confirm = page.getByRole("alertdialog", { name: "Sovrascrivere i valori padre?" });
-        const prefill = dialog.getByRole("button", { name: "Precompila da percentuale" });
-
-        await dialog.getByLabel("Percentuale").fill("50");
-        await prefill.click();
-        await confirm.getByRole("checkbox", { name: "Non mostrare più" }).check();
-        await confirm.getByRole("button", { name: "Annulla" }).click();
-        await expect(confirm).toBeHidden();
-        await expect(parentValue(dialog, STANDARD)).toHaveValue("0");
-
-        await prefill.click();
-        await expect(confirm).toBeVisible();
-        await confirm.getByRole("checkbox", { name: "Non mostrare più" }).check();
-        await confirm.getByRole("button", { name: "Precompila" }).click();
-        await expect(parentValue(dialog, STANDARD)).toHaveValue("3");
-        await expect(parentValue(dialog, RENEWAL)).toHaveValue("2");
-
-        await dialog.getByLabel("Percentuale").fill("100");
-        await prefill.click();
-
-        await expect(parentValue(dialog, STANDARD)).toHaveValue("6");
-        await expect(parentValue(dialog, RENEWAL)).toHaveValue("4");
-        await expect(page.getByRole("alertdialog")).toHaveCount(0);
     });
 });

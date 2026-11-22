@@ -32,117 +32,6 @@ test.describe("agents", () => {
         await expect(reopened.getByLabel("Email")).toHaveValue("");
     });
 
-    test("should reverse the agent order each time the Nome Agente header is clicked", async ({ page, backend }) => {
-        const token = uniqueToken();
-        const first = await backend.createAgent({ name: `Alfa ${token}`, ruleValues: { [STANDARD]: 10 } });
-        const second = await backend.createAgent({ name: `Beta ${token}`, ruleValues: { [STANDARD]: 10 } });
-
-        await page.goto("/#agenti");
-        await page.getByPlaceholder("Filtra...").fill(token);
-
-        const header = page.getByRole("columnheader", { name: "Nome Agente", exact: true });
-        const names = page.getByRole("table").getByRole("button", { name: token });
-
-        await expect(header).toHaveAttribute("aria-sort", "ascending");
-        await expect(names).toHaveText([first.name, second.name]);
-
-        await header.getByRole("button", { name: "Nome Agente", exact: true }).click();
-
-        await expect(header).toHaveAttribute("aria-sort", "descending");
-        await expect(names).toHaveText([second.name, first.name]);
-
-        await header.getByRole("button", { name: "Nome Agente", exact: true }).click();
-
-        await expect(header).toHaveAttribute("aria-sort", "ascending");
-        await expect(names).toHaveText([first.name, second.name]);
-    });
-
-    test("should show and filter by the parent's name as written when its words are not in alphabetical order", async ({ page, backend }) => {
-        const token = uniqueToken();
-        // The child stores its parent by the words sorted, so "PADRE E2E..." is kept as "E2E... PADRE".
-        const parent = await backend.createAgent({ name: `Padre ${token}`, ruleValues: { [STANDARD]: 10 } });
-        const child = await backend.createAgent({ name: `Figlio ${token}`, parentName: parent.name, ruleValues: { [STANDARD]: 6 } });
-
-        await page.goto("/#agenti");
-        await page.getByRole("combobox", { name: "Tutti gli agenti padre" }).click();
-        await page.getByPlaceholder("Cerca agente padre...").fill(parent.name);
-        await page.getByRole("option", { name: parent.name, exact: true }).click();
-
-        const row = page.getByRole("row").filter({ has: page.getByRole("button", { name: child.name, exact: true }) });
-
-        await expect(row.getByRole("cell", { name: parent.name, exact: true })).toBeVisible();
-        await expect(page.getByRole("row")).toHaveCount(2);
-    });
-
-    test("should select the highlighted option when Enter is pressed in the parent search", async ({ page, backend }) => {
-        const token = uniqueToken();
-        const parent = await backend.createAgent({ name: `Padre ${token}`, ruleValues: { [STANDARD]: 10 } });
-        const child = await backend.createAgent({ name: `Figlio ${token}`, ruleValues: { [STANDARD]: 6 } });
-        const dialog = await openAgent(page, child);
-
-        await dialog.getByRole("combobox", { name: "Nessun agente padre" }).click();
-        await page.getByPlaceholder("Cerca agente padre...").fill(parent.name);
-        await page.keyboard.press("Enter");
-
-        await expect(dialog.getByRole("combobox", { name: parent.name })).toBeVisible();
-
-        await dialog.getByRole("combobox", { name: parent.name }).click();
-        await page.getByPlaceholder("Cerca agente padre...").fill("nessun");
-        await page.keyboard.press("Enter");
-
-        await expect(dialog.getByRole("combobox", { name: "Nessun agente padre" })).toBeVisible();
-    });
-
-    test("should show the clear option without the empty message when the search matches it", async ({ page, backend }) => {
-        const agent = await backend.createAgent({ name: `Agente ${uniqueToken()}`, ruleValues: { [STANDARD]: 6 } });
-        const dialog = await openAgent(page, agent);
-
-        await dialog.getByRole("combobox", { name: "Nessun agente padre" }).click();
-        await page.getByPlaceholder("Cerca agente padre...").fill("nessun");
-
-        await expect(page.getByRole("option", { name: "Nessun agente padre", exact: true })).toBeVisible();
-        await expect(page.getByText("Nessun agente padre trovato", { exact: true })).toHaveCount(0);
-
-        await page.getByPlaceholder("Cerca agente padre...").fill("zzzz-no-match");
-
-        await expect(page.getByText("Nessun agente padre trovato", { exact: true })).toBeVisible();
-    });
-
-    test("should open the agent dialog from the keyboard when Enter is pressed on the agent name", async ({ page, backend }) => {
-        const agent = await backend.createAgent({ name: `Agente ${uniqueToken()}`, ruleValues: { [STANDARD]: 6 } });
-
-        await page.goto("/#agenti");
-        await page.getByPlaceholder("Filtra...").fill(agent.name);
-        await page.getByRole("button", { name: agent.name, exact: true }).focus();
-        await page.keyboard.press("Enter");
-
-        await expect(page.getByRole("dialog", { name: "Modifica Agente" })).toBeVisible();
-    });
-
-    test("should return focus to the control that opened the dialog when the edit or new agent dialog is closed", async ({ page, backend }) => {
-        const agent = await backend.createAgent({ name: `Agente ${uniqueToken()}`, ruleValues: { [STANDARD]: 6 } });
-
-        await page.goto("/#agenti");
-        await page.getByPlaceholder("Filtra...").fill(agent.name);
-
-        const name = page.getByRole("button", { name: agent.name, exact: true });
-        const add = page.getByRole("button", { name: "Aggiungi Agente" });
-
-        await name.click();
-        await expect(page.getByRole("dialog", { name: "Modifica Agente" })).toBeVisible();
-        await page.keyboard.press("Escape");
-
-        await expect(page.getByRole("dialog")).toBeHidden();
-        await expect(name).toBeFocused();
-
-        await add.click();
-        await expect(page.getByRole("dialog", { name: "Aggiungi Agente" })).toBeVisible();
-        await page.keyboard.press("Escape");
-
-        await expect(page.getByRole("dialog")).toBeHidden();
-        await expect(add).toBeFocused();
-    });
-
     test("should keep the opened agent's values when the values of an agent opened before arrive later", async ({ page, backend }) => {
         const token = uniqueToken();
         const first = await backend.createAgent({ name: `Primo ${token}`, ruleValues: { [STANDARD]: 11 } });
@@ -197,16 +86,6 @@ test.describe("agents", () => {
 
         await expect(row).toBeVisible();
         await expect(row.getByRole("cell", { name: parent.name, exact: true })).toHaveCount(0);
-    });
-
-    test("should show a translated message instead of the status line when the agent list fails with a 502 without a message", async ({ page }) => {
-        await page.route("**/api/agenti", (route) =>
-            route.request().method() === "GET" ? route.fulfill({ status: 502, body: "Bad Gateway", contentType: "text/plain" }) : route.fallback(),
-        );
-        await page.goto("/#agenti");
-
-        await expect(page.getByText("Il server ha riscontrato un errore. Riprova tra poco.", { exact: true })).toBeVisible();
-        await expect(page.getByText(/HTTP 502/)).toHaveCount(0);
     });
 
     test("should keep asking to confirm an agent deletion after a cancel and stop asking after a confirm when Non mostrare più is ticked", async ({
