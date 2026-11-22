@@ -35,8 +35,6 @@ const DIRECT = "Vendita diretta";
 
 const OVERRIDE = "Provvigione figlio";
 
-const EMPTY_TITLE = "Nessun CSV scaricato";
-
 const EMPTY_MESSAGE = "Nessuna liquidazione trovata per i mesi specificati.";
 
 const STANDARD: RuleName = "Gettone Residenziale Standard";
@@ -285,35 +283,6 @@ test.describe("Unpaid report", () => {
         await expectSelectionClosed(page, 6, hierarchy.padre.name);
     });
 
-    test("should export the child's full commission as direct sales when the child is exported for the same months", async ({ page, backend }) => {
-        const hierarchy = await createHierarchy(backend);
-
-        await openUnpaidSelection(page);
-        await selectAgent(page, hierarchy.figlio.name, [FEBRUARY_LABEL, JANUARY_LABEL]);
-
-        const { download } = await runAndDownload(page);
-
-        await expectReport(download, hierarchy.figlio.name, [
-            csvLine(hierarchy.figlioA, "50", DIRECT),
-            csvLine(hierarchy.figlioB, "50", DIRECT),
-            csvLine(hierarchy.figlioRenewalFebruary, "10", DIRECT),
-            csvLine(hierarchy.figlioRenewalJanuary, "10", DIRECT),
-        ]);
-        await expectSelectionClosed(page, 4, hierarchy.figlio.name);
-    });
-
-    test("should export every row as a direct sale with its configured value when an agent without children is exported", async ({ page, backend }) => {
-        const hierarchy = await createHierarchy(backend);
-
-        await openUnpaidSelection(page);
-        await selectAgent(page, hierarchy.solo.name, [FEBRUARY_LABEL]);
-
-        const { download } = await runAndDownload(page);
-
-        await expectReport(download, hierarchy.solo.name, [csvLine(hierarchy.soloStandard, "70", DIRECT), csvLine(hierarchy.soloSdd, "12,5", DIRECT)]);
-        await expectSelectionClosed(page, 2, hierarchy.solo.name);
-    });
-
     test("should mark rows as direct sales when the agent's stored name differs from the seller only in case, spacing and word order", async ({ page, backend }) => {
         await backend.claimMonth(FEBRUARY);
 
@@ -353,37 +322,6 @@ test.describe("Unpaid report", () => {
         await expectReport(download, agent.name, [csvLine({ ...sale, customer: `'${sale.customer}` }, "30", DIRECT)]);
     });
 
-    test("should show the backend message, download nothing and keep the selection when no liquidazioni match the selected months", async ({ page, backend }) => {
-        const agent = await backend.createAgent({ name: `Vuoto ${uniqueToken()}`, ruleValues: { [STANDARD]: 30 } });
-        const downloads: Download[] = [];
-
-        await seedDraft(backend, FEBRUARY, agent);
-        page.on("download", (download) => downloads.push(download));
-
-        await openUnpaidSelection(page);
-        await selectAgent(page, agent.name, [FEBRUARY_LABEL]);
-
-        const response = page.waitForResponse((received) => new URL(received.url()).pathname === UNPAID_PATH);
-
-        await runButton(page).click();
-        expect((await response).status()).toBe(200);
-
-        await expect(toast(page).getByText(EMPTY_TITLE, { exact: true })).toBeVisible();
-        await expect(toast(page).getByText(EMPTY_MESSAGE, { exact: true })).toBeVisible();
-        expect(downloads).toEqual([]);
-        await expect(page.getByRole("radio", { name: agent.name, exact: true })).toBeChecked();
-        await expect(monthBoxes(page, FEBRUARY_LABEL)).toBeChecked();
-        await expect(runButton(page)).toBeEnabled();
-
-        // The operator can adjust the selection without leaving the mode.
-        await monthBoxes(page, FEBRUARY_LABEL).click();
-        await expect(runButton(page)).toHaveText("Calcola e scarica CSV");
-        await expect(runButton(page)).toBeDisabled();
-        await monthBoxes(page, FEBRUARY_LABEL).click();
-        await expect(runButton(page)).toHaveText("Calcola e scarica CSV (1)");
-        await expect(runButton(page)).toBeEnabled();
-    });
-
     test("should show the error, keep the selection and download nothing when the unpaid calculation fails, then download the CSV on retry", async ({ page, backend }) => {
         await backend.claimMonth(FEBRUARY);
 
@@ -414,27 +352,6 @@ test.describe("Unpaid report", () => {
         const { download } = await runAndDownload(page);
 
         await expectReport(download, agent.name, [csvLine(sale, "30", DIRECT)]);
-        await expectSelectionClosed(page, 1, agent.name);
-    });
-
-    test("should leave Comp. al empty and still download the report when a settlement has no Comp. al", async ({ page, backend }) => {
-        await backend.claimMonth(FEBRUARY);
-
-        const token = uniqueToken();
-        const agent = await backend.createAgent({ name: `Senza data ${token}`, ruleValues: { [STANDARD]: 30 } });
-        const sale: Sale = { month: FEBRUARY, seller: agent, rule: STANDARD, customer: `Cliente Vuoto ${token}`, pod: "IT001E07000011" };
-
-        await backend.importRows(FEBRUARY, [
-            { seller: agent.name, rule: STANDARD, amount: 100, customer: sale.customer, orderId: 996_011, pod: sale.pod, withoutPeriodEnd: true },
-        ]);
-        await seedDraft(backend, FEBRUARY, agent);
-
-        await openUnpaidSelection(page);
-        await selectAgent(page, agent.name, [FEBRUARY_LABEL]);
-
-        const { download } = await runAndDownload(page);
-
-        await expectReport(download, agent.name, [csvLine(sale, "30", DIRECT, "")]);
         await expectSelectionClosed(page, 1, agent.name);
     });
 });

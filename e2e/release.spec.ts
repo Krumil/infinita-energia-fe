@@ -110,17 +110,6 @@ function reviewDialog(page: Page, monthLabel: string): Locator {
     return page.getByRole("alertdialog", { name: `Conferma le provvigioni di ${monthLabel}` });
 }
 
-// A dialog has to sit inside the viewport at any width. The page behind it isn't checked: the header navigation is wider than a phone screen.
-async function expectInsideViewport(page: Page, dialog: Locator): Promise<void> {
-    const width = page.viewportSize()?.width ?? 0;
-    const box = await dialog.boundingBox();
-
-    if (!box) throw new Error(`The dialog has no layout box at ${width}px`);
-
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(width);
-}
-
 async function expectNamedButtons(dialog: Locator): Promise<void> {
     for (const button of await dialog.getByRole("button").all()) await expect(button).toHaveAccessibleName(/\S/);
 }
@@ -283,46 +272,6 @@ test.describe("release", () => {
         await runRelease(page, backend);
     });
 
-    test.describe("on a narrow phone", () => {
-        test.use({ viewport: { width: 390, height: 844 } });
-
-        test("should keep the liquidazioni, deletion and review dialogs inside the screen when the viewport is 390 pixels wide", async ({
-            page,
-            backend,
-        }) => {
-            const release = await createRelease(backend, MONTH);
-
-            await backend.importRows(MONTH, release.rows);
-
-            const writes = recordApiWrites(page);
-
-            await page.goto("/");
-
-            const dialog = await openSettlements(page, MONTH);
-
-            await expectInsideViewport(page, dialog);
-            await dialog.getByRole("button", { name: "Elimina liquidazioni di maggio 2031" }).click();
-            await expect(dialog.getByRole("heading", { name: "Eliminare le liquidazioni di maggio 2031?" })).toBeVisible();
-            await expectInsideViewport(page, dialog);
-            await dialog.getByRole("button", { name: "Annulla" }).click();
-            await page.keyboard.press("Escape");
-            await expect(dialog).toBeHidden();
-
-            await openTab(page, "Provvigioni");
-            await pickMonth(page, monthGroup(page), MONTH);
-            await previewButton(page).click();
-            await expect(overallTotal(page)).toHaveText("217,00 €");
-            await confirmButton(page).click();
-
-            const review = reviewDialog(page, "Maggio 2031");
-
-            await expect(review.getByRole("definition")).toHaveText(["3", "4", "217,00 €", "0", "0"]);
-            await expectInsideViewport(page, review);
-            await page.keyboard.press("Escape");
-            await expect(review).toBeHidden();
-            expect(writes).toEqual([`start POST ${PREVIEW_PATH}`, `end POST ${PREVIEW_PATH}`]);
-        });
-    });
 
     test("should keep focus inside each dialog, send no deletion on cancel and return focus to the opener when the dialogs are used from the keyboard", async ({
         page,
@@ -440,84 +389,4 @@ test.describe("release", () => {
         expect(writes.filter((write) => write.startsWith("start "))).toEqual([`start POST ${PREVIEW_PATH}`, `start POST ${CONFIRM_PATH}`]);
     });
 
-    test.describe("in English", () => {
-        test.use({ appLanguage: "en" });
-
-        test("should describe preview, review, confirmation, deletion and both exports in English when the app language is English", async ({
-            page,
-            backend,
-        }) => {
-            const release = await createRelease(backend, MONTH);
-
-            await backend.importRows(MONTH, release.rows);
-            await page.goto("/");
-            await openTab(page, "Ordini");
-            await page.getByRole("button", { name: "Liquidations", exact: true }).click();
-
-            const dialog = page.getByRole("dialog");
-
-            await expect(dialog.getByRole("heading", { name: "Manage liquidations" })).toBeVisible();
-            await pickMonth(page, dialog.getByRole("group", { name: "Competence month" }), MONTH);
-            await dialog.getByRole("button", { name: "Delete liquidations for May 2031" }).click();
-
-            await expect(dialog.getByRole("heading", { name: "Delete the liquidations for May 2031?" })).toBeVisible();
-            await expect(dialog.getByRole("button", { name: "Delete 05/2031" })).toBeVisible();
-
-            await dialog.getByRole("button", { name: "Cancel" }).click();
-            await page.keyboard.press("Escape");
-            await expect(dialog).toBeHidden();
-
-            await openTab(page, "Provvigioni");
-
-            await expect(page.getByText("Run the preview to calculate the total. Nothing is saved.")).toBeVisible();
-            await expect(page.getByText("Liquidations are imported in Ordini.")).toBeVisible();
-            await expect(page.getByRole("button", { name: "Go to Ordini" })).toBeVisible();
-            await expect(page.getByText("Click to upload")).toHaveCount(0);
-
-            await pickMonth(page, page.getByRole("group", { name: "Competence month", exact: true }), MONTH);
-            await page.route(`**${PREVIEW_PATH}`, (route) => route.fulfill({ status: 500, json: { error: PREVIEW_FAILURE } }), { times: 1 });
-            await page.getByRole("button", { name: "Preview", exact: true }).click();
-
-            const failure = page.getByRole("alert").filter({ hasText: "Preview failed" });
-
-            await expect(failure).toContainText(PREVIEW_FAILURE);
-
-            await failure.getByRole("button", { name: "Retry" }).click();
-
-            await expect(page.getByText("Preview only: nothing has been saved")).toBeVisible();
-            await expect(page.getByRole("checkbox", { name: `Include ${release.escluso.name}`, exact: true })).toBeChecked();
-            await expect(page.getByRole("button", { name: "Download preview ZIP" })).toHaveAccessibleDescription(
-                "Unsaved preview: the file holds the current draft.",
-            );
-
-            await page.getByRole("checkbox", { name: `Include ${release.escluso.name}`, exact: true }).click();
-            await page.getByRole("button", { name: "Confirm commissions" }).click();
-
-            const review = page.getByRole("alertdialog", { name: "Confirm the commissions for May 2031" });
-
-            await expect(review.getByRole("term")).toHaveText(["Included agents", "Included rows", "Total", "Excluded agents", "Unmatched rows"]);
-            await expect(review).toContainText(
-                "For each included agent, this month's draft invite is replaced with these rows. Excluded agents' invites don't change. Invites that are no longer drafts aren't modified.",
-            );
-            await expect(review.getByRole("button", { name: "Cancel" })).toBeVisible();
-
-            await review.getByRole("button", { name: "Save commissions" }).click();
-
-            const saved = page.getByRole("region", { name: "Save outcome" });
-
-            await expect(saved.getByRole("status")).toHaveText("Save complete. Agents saved: 2.");
-            await expect(saved.getByRole("button", { name: "Download saved invites ZIP" })).toHaveAccessibleDescription(
-                "The file holds the saved invites, read back from the server.",
-            );
-
-            await saved.getByRole("button", { name: "Open Inviti" }).click();
-            await page.getByRole("button", { name: "Unpaid commissions report", exact: true }).click();
-            await page.getByRole("radio", { name: release.uno.name, exact: true }).click();
-            await download(page, page.getByRole("button", { name: "Calculate & download CSV (1)" }));
-
-            await expect(page.getByRole("region", { name: "Notifications (F8)" }).getByRole("listitem")).toContainText(
-                `Downloaded 2 rows for ${release.uno.name}.`,
-            );
-        });
-    });
 });

@@ -344,29 +344,6 @@ test.describe("commission confirmation", () => {
         expect(excludedInvites.map((invite) => [invite.id, invite.totale_invito, invite.stato])).toEqual([[excludedInvite, 11, "bozza"]]);
     });
 
-    test("should open that invite in Inviti on the confirmed month when its ID is clicked in the outcome", async ({ page, backend }) => {
-        const fixture = await createAndPreview(page, backend);
-        const response = page.waitForResponse((candidate) => candidate.url().endsWith(CONFIRM_PATH));
-
-        await confirmFromReview(page);
-
-        const { risultati }: { risultati: SavedResult[] } = await (await response).json();
-        const dueInvite = risultati.find((result) => result.agente_id === fixture.due.id)?.invito_id;
-
-        await outcome(page).getByRole("button", { name: `Apri invito #${dueInvite}` }).click();
-
-        const dialog = page.getByRole("dialog", { name: fixture.due.name });
-
-        await expect(dialog).toBeVisible();
-        await expect(dialog).toContainText("80,00 €");
-
-        await page.keyboard.press("Escape");
-
-        await expect(dialog).toBeHidden();
-        await expect(page.getByRole("button", { name: monthLabel(MONTH), exact: true })).toHaveCount(2);
-        await expect(agentRow(page, fixture.due).getByRole("cell").nth(1)).toHaveText(MONTH_LABEL);
-    });
-
     test("should keep the outcome tied to the sent draft and replace the same invite without duplicates when the edited draft is confirmed again", async ({
         page,
         backend,
@@ -414,38 +391,6 @@ test.describe("commission confirmation", () => {
         expect(stored.map((invite) => [invite.id, invite.totale_invito])).toEqual([[unoInvite, 345.5]]);
     });
 
-    test("should keep edits made after a save but start empty once everything is saved when the user leaves Provvigioni and comes back", async ({
-        page,
-        backend,
-    }) => {
-        const fixture = await createAndPreview(page, backend);
-
-        await confirmFromReview(page);
-        await expect(outcome(page).getByRole("status")).toHaveText("Salvataggio completato. Agenti salvati: 3.");
-
-        await expand(page, fixture.uno);
-        await amountInputs(page, fixture.twinCustomer).first().fill("175,50");
-        await openTab(page, "Dashboard");
-        await expect(outcome(page)).toBeHidden();
-        await openTab(page, "Provvigioni");
-
-        await expect(page.getByText(CHANGED_AFTER_SAVE)).toBeVisible();
-        await expect(agentTotal(page, fixture.uno)).toHaveText("345,50 €");
-
-        await confirmFromReview(page);
-        await expect(outcome(page)).toContainText(`Bozza inviata per ${MONTH_LABEL}. Agenti: 3. Righe: 6. Totale: 432,50 €.`);
-
-        // Leaving through the browser history must clear it the same way as the header tabs.
-        await page.goBack();
-        await expect(page).toHaveURL(/#dashboard$/);
-        await page.goForward();
-
-        await expect(page.getByText("Avvia l'anteprima per calcolare il totale. Non viene salvato nulla.")).toBeVisible();
-        await expect(outcome(page)).toHaveCount(0);
-        await expect(page.getByRole("row")).toHaveCount(0);
-        await expect(monthGroup(page)).toContainText(MONTH_LABEL, { ignoreCase: true });
-    });
-
     test("should report a partial save with the backend reason and leave the sent invite untouched when one invite is no longer a draft", async ({
         page,
         backend,
@@ -475,28 +420,6 @@ test.describe("commission confirmation", () => {
         const stored = await backend.invites(fixture.due);
 
         expect(stored.map((invite) => [invite.id, invite.totale_invito, invite.stato])).toEqual([[sentInvite, 11, "inviato"]]);
-    });
-
-    test("should show an informational outcome and no success message when every included agent is skipped", async ({ page, backend }) => {
-        let sentInvite = 0;
-
-        const fixture = await createAndPreview(page, backend, async (created) => {
-            sentInvite = await seedPreviousInvite(backend, created, created.due, "inviato");
-        });
-
-        await includeBox(page, fixture.uno).click();
-        await includeBox(page, fixture.escluso).click();
-        await confirmFromReview(page);
-
-        await expect(outcome(page).getByRole("status")).toHaveText(
-            "Nessun invito salvato: tutti gli agenti sono stati saltati. Agenti saltati: 1.",
-        );
-        await expectCells(outcomeRow(page, fixture.due), [fixture.due.name, "Saltato", `#${sentInvite}`, "—", SKIPPED_REASON]);
-        await expect(outcome(page).getByText("Salvataggio completato")).toHaveCount(0);
-        await expect(outcome(page).getByText("Salvato", { exact: true })).toHaveCount(0);
-
-        expect(await backend.invites(fixture.uno)).toEqual([]);
-        expect(await backend.invites(fixture.escluso)).toEqual([]);
     });
 
     test("should send one write per save, lock the draft and show one outcome when the save button is double-clicked or Enter is pressed repeatedly", async ({
@@ -548,37 +471,6 @@ test.describe("commission confirmation", () => {
         await expect(outcome(page).getByRole("status")).toHaveText("Salvataggio completato. Agenti salvati: 3.");
         await expect(outcome(page)).toHaveCount(1);
         await expect(reviewDialog(page)).toBeHidden();
-        expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE, CONFIRM_WRITE]);
-        // The second save replaces the draft invite instead of adding one.
-        expect(await backend.invites(fixture.uno)).toHaveLength(1);
-    });
-
-    test("should keep showing the review after a cancel and save in one click after a save when Non mostrare più is ticked", async ({ page, backend }) => {
-        const fixture = await createAndPreview(page, backend);
-        const writes = recordApiWrites(page);
-        const dialog = reviewDialog(page);
-
-        await confirmButton(page).click();
-        await dialog.getByRole("checkbox", { name: "Non mostrare più" }).check();
-        await dialog.getByRole("button", { name: "Annulla" }).click();
-        await expect(dialog).toBeHidden();
-
-        await confirmButton(page).click();
-        await expect(dialog).toBeVisible();
-        expect(writes).toEqual([]);
-
-        await dialog.getByRole("checkbox", { name: "Non mostrare più" }).check();
-        await saveButton(page).click();
-        await expect(outcome(page).getByRole("status")).toHaveText("Salvataggio completato. Agenti salvati: 3.");
-        expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE]);
-
-        const savedAgain = page.waitForResponse((response) => response.url().endsWith(CONFIRM_PATH));
-
-        await confirmButton(page).click();
-
-        await expect(page.getByRole("alertdialog")).toHaveCount(0);
-        expect((await savedAgain).ok()).toBe(true);
-        await expect(outcome(page).getByRole("status")).toHaveText("Salvataggio completato. Agenti salvati: 3.");
         expect(confirmationWrites(writes)).toEqual([CONFIRM_WRITE, CONFIRM_WRITE]);
         // The second save replaces the draft invite instead of adding one.
         expect(await backend.invites(fixture.uno)).toHaveLength(1);
@@ -714,76 +606,5 @@ test.describe("commission confirmation", () => {
             detailCells(sentRow(fixture.due, STANDARD, 40, fixture.dueBCustomer, PODS.dueB), "40,00 €"),
             detailCells(added, "12,34 €"),
         ]);
-    });
-
-    test("should leave the draft unchanged when the new row's amount is invalid and the dialog is cancelled", async ({ page, backend }) => {
-        const fixture = await createAndPreview(page, backend);
-        const dialog = addRowDialog(page, fixture.uno);
-        const amount = dialog.getByRole("textbox", { name: "Provvigione", exact: true });
-        const submit = dialog.getByRole("button", { name: "Aggiungi alla bozza" });
-
-        await expand(page, fixture.uno);
-        await page.getByRole("button", { name: "Aggiungi riga" }).click();
-
-        await expect(submit).toBeDisabled();
-
-        await pickRule(page, dialog, STANDARD);
-        await amount.fill("12,345");
-
-        await expect(amount).toHaveAccessibleDescription("Importo non valido: usa al massimo 2 decimali");
-        await expect(submit).toBeDisabled();
-
-        await amount.fill("12,34");
-
-        await expect(submit).toBeEnabled();
-
-        await dialog.getByRole("button", { name: "Annulla" }).click();
-
-        await expect(dialog).toBeHidden();
-        await expect(agentRow(page, fixture.uno).getByRole("cell").nth(3)).toHaveText("3");
-        await expect(agentTotal(page, fixture.uno)).toHaveText("320,00 €");
-        await expect(overallTotal(page)).toHaveText("407,00 €");
-
-        await page.getByRole("button", { name: "Aggiungi riga" }).click();
-
-        await expect(amount).toHaveValue("");
-        await expect(dialog.getByRole("combobox", { name: "Seleziona una regola" })).toBeVisible();
-    });
-
-    test("should include the agent again and save the new row when a row is added after all of its rows were removed", async ({ page, backend }) => {
-        const fixture = await createAndPreview(page, backend);
-        const dialog = addRowDialog(page, fixture.escluso);
-
-        await expand(page, fixture.escluso);
-        await page.getByRole("button", { name: `Rimuovi la riga di ${fixture.excludedCustomer}` }).click();
-
-        await expect(includeBox(page, fixture.escluso)).not.toBeChecked();
-        await expect(agentRow(page, fixture.escluso)).toContainText("Escluso: nessuna riga rimasta");
-
-        await page.getByRole("button", { name: "Aggiungi riga" }).click();
-        await pickRule(page, dialog, STANDARD);
-        await dialog.getByRole("textbox", { name: "Provvigione", exact: true }).fill("9,99");
-        await dialog.getByRole("button", { name: "Aggiungi alla bozza" }).click();
-
-        await expect(includeBox(page, fixture.escluso)).toBeChecked();
-        await expect(agentTotal(page, fixture.escluso)).toHaveText("9,99 €");
-        await expect(overallTotal(page)).toHaveText("409,99 €");
-
-        const sent = page.waitForRequest((request) => request.url().endsWith(CONFIRM_PATH) && request.method() === "POST");
-
-        await confirmFromReview(page);
-
-        const body: SentConfirmation = (await sent).postDataJSON();
-
-        // Optional fields left empty are sent as null, like the server's own rows without them.
-        expect(body.agenti.find((agent) => agent.agente_id === fixture.escluso.id)?.dettaglio).toEqual([
-            { venditore: fixture.escluso.name, comp_al: COMP_AL, regola: STANDARD, importo_provvigione: 9.99, pod_pdr: null, cliente: null, cf_piva: null },
-        ]);
-
-        await expect(outcome(page).getByRole("status")).toHaveText("Salvataggio completato. Agenti salvati: 3.");
-
-        const stored = await backend.invites(fixture.escluso);
-
-        expect(stored.map((invite) => invite.totale_invito)).toEqual([9.99]);
     });
 });

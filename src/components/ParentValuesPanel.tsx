@@ -47,12 +47,6 @@ function rowKey(row: ParentRuleConfiguration): string {
     return `${row.regola_id}_${row.scaglione_id ?? "fisso"}`;
 }
 
-function parseParentValue(input: string): number | undefined {
-    const value = parseEuroNumber(input);
-
-    return value !== undefined && value >= 0 ? value : undefined;
-}
-
 // Postgres round(numeric, 2) rounds halves away from zero. toPrecision drops the binary float noise
 // that would turn 0.575 into 57.49999999999999 cents.
 function roundToCents(value: number): number {
@@ -219,13 +213,13 @@ export function ParentValuesPanel({ agent, agentEdits, edits, onEditsChange }: P
                                                         regola_id: row.regola_id,
                                                         scaglione_id: row.scaglione_id,
                                                         input: e.target.value,
-                                                        valore_padre: parseParentValue(e.target.value),
+                                                        valore_padre: parseEuroNumber(e.target.value),
                                                     };
 
                                                     onEditsChange((prev) => new Map(prev).set(key, edit));
                                                 }}
                                                 aria-label={`${t("parentValue")} ${row.regola_nome} ${row.scaglione_nome}`}
-                                                aria-invalid={parseParentValue(input) === undefined}
+                                                aria-invalid={parseEuroNumber(input) === undefined}
                                                 className="font-mono text-right h-8 w-28 ml-auto"
                                             />
                                         </TableCell>

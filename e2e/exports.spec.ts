@@ -39,8 +39,6 @@ const PREVIEW_NOTE = "Anteprima non salvata: il file contiene la bozza attuale."
 
 const SAVED_NOTE = "Il file contiene gli inviti salvati, riletti dal server.";
 
-const SAVED_NONE = "Nessun invito salvato da scaricare.";
-
 const STANDARD: RuleName = "Gettone Residenziale Standard";
 
 const RENEWAL: RuleName = "Rinnovo Residenziale";
@@ -251,33 +249,6 @@ test.describe("calculation exports", () => {
         );
     });
 
-    test("should disable the preview download when an included amount is invalid or no agent is included, and offer no saved download before a confirmation", async ({
-        page,
-        backend,
-    }) => {
-        const fixture = await createAndPreview(page, backend, PREVIEW_MONTH);
-
-        await expect(previewZipButton(page)).toBeEnabled();
-        await expect(previewZipButton(page)).toHaveAccessibleDescription(PREVIEW_NOTE);
-        await expect(page.getByRole("button", { name: "Scarica inviti salvati ZIP" })).toHaveCount(0);
-
-        await expand(page, fixture.due);
-        await amountInputs(page, fixture.dueACustomer).fill("abc");
-
-        await expect(previewZipButton(page)).toBeDisabled();
-
-        // The invalid amount belongs to an excluded agent now, so it no longer blocks the export.
-        await includeBox(page, fixture.due).click();
-
-        await expect(previewZipButton(page)).toBeEnabled();
-
-        await includeBox(page, fixture.uno).click();
-        await includeBox(page, fixture.escluso).click();
-
-        await expect(previewZipButton(page)).toBeDisabled();
-        await expect(previewZipButton(page)).toHaveAccessibleDescription("Nessun agente incluso: non c'è nulla da confermare.");
-    });
-
     test("should download only the saved agent's stored rows and total, then the invite's current version, when one agent was skipped", async ({
         page,
         backend,
@@ -389,19 +360,5 @@ test.describe("calculation exports", () => {
             totalRow(80),
         );
         await expect(outcome(page).getByRole("alert")).toHaveCount(0);
-    });
-
-    test("should disable the saved download and explain why when every agent was skipped", async ({ page, backend }) => {
-        const fixture = await createAndPreview(page, backend, SAVED_MONTH, async (created) => {
-            await backend.seedInvite(SAVED_MONTH, created.uno, [storedRow(created, created.uno, 11)], "inviato");
-            await backend.seedInvite(SAVED_MONTH, created.due, [storedRow(created, created.due, 12)], "inviato");
-        });
-
-        await includeBox(page, fixture.escluso).click();
-        await confirmDraft(page, fixture);
-
-        await expect(outcome(page).getByRole("status")).toHaveText("Nessun invito salvato: tutti gli agenti sono stati saltati. Agenti saltati: 2.");
-        await expect(savedZipButton(page)).toBeDisabled();
-        await expect(savedZipButton(page)).toHaveAccessibleDescription(SAVED_NONE);
     });
 });

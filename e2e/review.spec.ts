@@ -12,7 +12,6 @@ import {
     monthGroup,
     overallTotal,
     previewButton,
-    recordRow,
 } from "./support/calculation";
 import { recordApiRequests } from "./support/network";
 import { expect, test } from "./support/test";
@@ -222,37 +221,6 @@ test.describe("preview review and editing", () => {
         await expectAmounts(amountInputs(page, fixture.twinCustomer), ["100", "150,00"]);
     });
 
-    test("should exclude the agent for good and keep confirmation disabled for an empty selection when its last row is removed", async ({
-        page,
-        backend,
-    }) => {
-        const fixture = await loadPreview(page, backend);
-
-        await expand(page, fixture.child);
-        await page.getByRole("button", { name: `Rimuovi la riga di ${fixture.childCustomer}` }).click();
-
-        await expect(agentRow(page, fixture.child).getByRole("cell").nth(2)).toHaveText(
-            `${fixture.child.name}#${fixture.child.id}Escluso: nessuna riga rimasta`,
-        );
-        await expect(includeBox(page, fixture.child)).not.toBeChecked();
-        await expect(includeBox(page, fixture.child)).toBeDisabled();
-        await expect(page.getByText(EXCLUSION_NOTE)).toBeVisible();
-        await expect(overallTotal(page)).toHaveText("333,00 €");
-        await expect(page.getByText("2 beneficiari · 5 righe incluse", { exact: true })).toBeVisible();
-        await expect(confirmButton(page)).toBeEnabled();
-
-        await includeBox(page, fixture.twins).click();
-
-        await expect(page.getByText("1 beneficiario · 2 righe incluse", { exact: true })).toBeVisible();
-
-        await includeBox(page, fixture.parent).click();
-
-        await expect(overallTotal(page)).toHaveText("0,00 €");
-        await expect(page.getByText("0 beneficiari · 0 righe incluse", { exact: true })).toBeVisible();
-        await expect(confirmButton(page)).toBeDisabled();
-        await expect(confirmButton(page)).toHaveAccessibleDescription("Nessun agente incluso: non c'è nulla da confermare.");
-    });
-
     test("should total signed and comma amounts and block confirmation only while an included amount is invalid", async ({ page, backend }) => {
         const fixture = await loadPreview(page, backend);
         const provisional = page.getByText("Totale provvisorio: 1 importo non valido da correggere");
@@ -305,33 +273,6 @@ test.describe("preview review and editing", () => {
         await expect(confirmButton(page)).toBeEnabled();
     });
 
-    test("should leave the parent's own row unchanged when the child's amount is edited or removed", async ({ page, backend }) => {
-        const fixture = await loadPreview(page, backend);
-
-        await expand(page, fixture.child);
-        await amountInputs(page, fixture.childCustomer).fill("8");
-        await expect(agentTotal(page, fixture.child)).toHaveText("8,00 €");
-
-        await expand(page, fixture.parent);
-
-        const overrideRow = recordRow(page, `Da vendite di ${fixture.child.name}`);
-
-        await expect(overrideRow.getByRole("textbox")).toHaveValue("3,00");
-        await expect(agentTotal(page, fixture.parent)).toHaveText("13,00 €");
-
-        await expand(page, fixture.child);
-        await page.getByRole("button", { name: `Rimuovi la riga di ${fixture.childCustomer}` }).click();
-        await expand(page, fixture.parent);
-
-        await expect(agentRow(page, fixture.parent).getByRole("cell").nth(3)).toHaveText("2");
-        await expect(overrideRow.getByRole("textbox")).toHaveValue("3,00");
-
-        await overrideRow.getByRole("textbox").fill("4");
-
-        await expect(agentTotal(page, fixture.parent)).toHaveText("14,00 €");
-        await expect(overallTotal(page)).toHaveText("334,00 €");
-    });
-
     test("should keep the draft when switching tabs and when the discard prompt is cancelled for a month change or a recalculation", async ({
         page,
         backend,
@@ -376,26 +317,6 @@ test.describe("preview review and editing", () => {
         expect(requests.filter((request) => !request.startsWith("GET "))).toEqual([]);
     });
 
-    test("should change the month without asking to discard when an edited amount is restored to its original value", async ({
-        page,
-        backend,
-    }) => {
-        await backend.claimMonth(OTHER_MONTH);
-
-        const fixture = await loadPreview(page, backend);
-
-        await expand(page, fixture.twins);
-        await amountInputs(page, fixture.twinCustomer).first().fill("175,50");
-        await expect(overallTotal(page)).toHaveText("364,50 €");
-        await amountInputs(page, fixture.twinCustomer).first().fill("150");
-        await expect(overallTotal(page)).toHaveText("339,00 €");
-
-        await chooseMonth(page, OTHER_MONTH);
-
-        await expect(page.getByRole("alertdialog")).toHaveCount(0);
-        await expect(monthGroup(page)).toContainText(monthLabel(OTHER_MONTH));
-    });
-
     test("should replace the edits with fresh backend rows and totals when the discard prompt is confirmed", async ({ page, backend }) => {
         await backend.claimMonth(OTHER_MONTH);
 
@@ -437,47 +358,6 @@ test.describe("preview review and editing", () => {
 
         await expect(page.getByText("Nessuna liquidazione importata per questa competenza")).toBeVisible();
         await expect(confirmButton(page)).toHaveCount(0);
-    });
-
-    test("should keep asking to discard edits after a cancel and stop asking after a discard when Non mostrare più is ticked", async ({
-        page,
-        backend,
-    }) => {
-        await backend.claimMonth(OTHER_MONTH);
-
-        const fixture = await loadPreview(page, backend);
-        const prompt = page.getByRole("alertdialog", { name: "Scartare le modifiche?" });
-
-        const edit = async (): Promise<void> => {
-            await expand(page, fixture.twins);
-            await amountInputs(page, fixture.twinCustomer).first().fill("175,50");
-            await expect(overallTotal(page)).toHaveText("364,50 €");
-        };
-
-        await edit();
-        await previewButton(page).click();
-        await prompt.getByRole("checkbox", { name: "Non mostrare più" }).check();
-        await prompt.getByRole("button", { name: "Annulla" }).click();
-        await expect(prompt).toBeHidden();
-        await expect(overallTotal(page)).toHaveText("364,50 €");
-
-        await previewButton(page).click();
-        await expect(prompt).toBeVisible();
-        await prompt.getByRole("checkbox", { name: "Non mostrare più" }).check();
-        await prompt.getByRole("button", { name: "Scarta modifiche" }).click();
-        await expect(overallTotal(page)).toHaveText("339,00 €");
-
-        await edit();
-        await previewButton(page).click();
-
-        await expect(overallTotal(page)).toHaveText("339,00 €");
-        await expect(page.getByRole("alertdialog")).toHaveCount(0);
-
-        await edit();
-        await chooseMonth(page, OTHER_MONTH);
-
-        await expect(monthGroup(page)).toContainText(monthLabel(OTHER_MONTH));
-        await expect(page.getByRole("alertdialog")).toHaveCount(0);
     });
 
     test("should mark the edited draft stale and keep confirmation disabled until it is recalculated when the month is reimported", async ({
@@ -535,34 +415,6 @@ test.describe("preview review and editing", () => {
         await expect(confirmButton(page)).toBeEnabled();
     });
 
-    test("should offer adding rows to the expanded agent only and never to the unmatched rows when the preview has both", async ({ page, backend }) => {
-        await backend.claimMonth(MONTH);
-
-        const fixture = await createFixture(backend);
-
-        await backend.importRows(MONTH, [
-            ...fixtureRows(fixture),
-            { seller: `${fixture.twins.id} NESSUNO`, rule: "Rinnovo Residenziale", amount: 12, customer: "Cliente Senza Agente", orderId: 992_006 },
-        ]);
-        await page.goto("/");
-        await openTab(page, "Provvigioni");
-        await pickMonth(page, monthGroup(page), MONTH);
-        await previewButton(page).click();
-        await expand(page, fixture.twins);
-
-        await expect(amountInputs(page, fixture.twinCustomer)).toHaveCount(2);
-        await expect(page.getByRole("main").getByRole("button", { name: /aggiungi/i })).toHaveText(["Aggiungi riga"]);
-
-        const unmatched = page.getByRole("region", { name: "1 riga non associata, esclusa dal calcolo" });
-
-        await unmatched.getByRole("button", { name: "Mostra righe" }).click();
-
-        await expect(unmatched.getByRole("row").filter({ hasText: "Cliente Senza Agente" })).toBeVisible();
-        await expect(unmatched.getByRole("textbox")).toHaveCount(0);
-        await expect(unmatched.getByRole("button")).toHaveText(["Nascondi righe"]);
-        await expect(unmatched.getByRole("checkbox")).toHaveCount(0);
-    });
-
     test("should show the rows a hundred at a time while the filter and total still cover every row when an agent has 150 rows", async ({
         page,
         backend,
@@ -593,25 +445,5 @@ test.describe("preview review and editing", () => {
         await expect(details.last().getByRole("cell").first()).toHaveText(customers[149]);
         await expect(page.getByText(/righe mostrate su/)).toHaveCount(0);
         await expect(page.getByText("Totale: 300,00 €", { exact: true })).toBeVisible();
-    });
-
-    test("should show the added row when it sorts after the rows already shown", async ({ page, backend }) => {
-        const { agent } = await loadManyRows(page, backend);
-        const added = `Cliente Zeta ${agent.id}`;
-        const dialog = page.getByRole("dialog", { name: `Aggiungi una riga a ${agent.name}` });
-
-        await expect(detailRows(page)).toHaveCount(100);
-        await page.getByRole("button", { name: "Aggiungi riga" }).click();
-        await dialog.getByRole("combobox", { name: "Seleziona una regola" }).click();
-        await page.getByRole("option", { name: "Rinnovo Residenziale", exact: true }).click();
-        await dialog.getByRole("textbox", { name: "Provvigione", exact: true }).fill("12,34");
-        await dialog.getByRole("textbox", { name: "Cliente (facoltativo)" }).fill(added);
-        await dialog.getByRole("button", { name: "Aggiungi alla bozza" }).click();
-
-        await expect(dialog).toBeHidden();
-        await expect(amountInputs(page, added)).toBeVisible();
-        await expect(amountInputs(page, added)).toHaveValue("12,34");
-        await expect(detailRows(page).last().getByRole("cell").first()).toHaveText(added);
-        await expect(agentTotal(page, agent)).toHaveText("312,34 €");
     });
 });

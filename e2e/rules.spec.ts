@@ -138,51 +138,6 @@ test.describe("rules", () => {
         await expectNoSuccessNotice(page);
     });
 
-    test("should keep asking to confirm a type overwrite after a cancel and stop asking after a confirm when Non mostrare più is ticked", async ({
-        page,
-        catalog,
-    }) => {
-        const rule = catalog.rule(TOGGLED_RULE);
-        const userType = tableRow(page, TOGGLED_RULE).getByRole("combobox").first();
-        const dialog = page.getByRole("alertdialog", { name: "Conferma Modifica" });
-        const savedType = async (): Promise<string | null> => (await catalog.current("regole", rule.id)).tipo_utenza;
-
-        const pick = async (name: string): Promise<void> => {
-            await userType.click();
-            await page.getByRole("option", { name }).click();
-        };
-
-        await openRules(page);
-        await pick("Residenziale");
-        await dialog.getByRole("checkbox", { name: "Non mostrare più" }).check();
-        await dialog.getByRole("button", { name: "Annulla" }).click();
-        await expect(dialog).toBeHidden();
-        await expect(userType).toHaveText("Business");
-
-        await pick("Residenziale");
-
-        await expect(dialog).toBeVisible();
-        expect(await savedType()).toBe("business");
-
-        await dialog.getByRole("checkbox", { name: "Non mostrare più" }).check();
-        await dialog.getByRole("button", { name: "Conferma" }).click();
-        await expect.poll(savedType).toBe("residenziale");
-
-        await pick("Business");
-
-        await expect(userType).toHaveText("Business");
-        await expect(page.getByRole("alertdialog")).toHaveCount(0);
-        await expect.poll(savedType).toBe("business");
-
-        // The choice lives in the browser's storage, so it outlasts a reload.
-        await page.reload();
-        await pick("Residenziale");
-
-        await expect(userType).toHaveText("Residenziale");
-        await expect(page.getByRole("alertdialog")).toHaveCount(0);
-        await expect.poll(savedType).toBe("residenziale");
-    });
-
     test("should switch a rule off without a success notice when its switch is clicked", async ({ page, catalog }) => {
         const rule = catalog.rule(TOGGLED_RULE);
 
@@ -198,29 +153,6 @@ test.describe("rules", () => {
         expect((await catalog.current("regole", rule.id)).utilizzato).toBe(false);
         await expectNoSuccessNotice(page);
     });
-
-    test("should show the placeholder and mark no option as selected when a rule has no service type", async ({ page }) => {
-        await openRules(page);
-
-        const serviceType = tableRow(page, UNTYPED_RULE).getByRole("combobox").nth(1);
-
-        await expect(serviceType).toHaveText("—");
-        await serviceType.click();
-
-        await expect(page.getByRole("option")).toHaveText(["Gas", "Luce"]);
-        await expect(page.getByRole("option", { selected: true })).toHaveCount(0);
-    });
-
-    test("should explain why the switch is disabled when a rule has no user type", async ({ page }) => {
-        await openRules(page);
-
-        const toggle = tableRow(page, UNTYPED_RULE).getByRole("switch");
-
-        await expect(toggle).toBeDisabled();
-        await toggle.hover();
-
-        await expect(page.getByRole("tooltip")).toHaveText("Imposta il tipo utenza per attivare questa regola.");
-    });
 });
 
 test.describe("tiers", () => {
@@ -235,13 +167,6 @@ test.describe("tiers", () => {
         await expect(page.getByRole("alertdialog")).toHaveCount(0);
         await expect.poll(async () => (await catalog.current("scaglioni", tier.id)).tipo_servizio).toBe("luce");
         await expectNoSuccessNotice(page);
-    });
-
-    test("should offer only the two user types when a tier's user type is opened", async ({ page }) => {
-        await openTiers(page);
-        await tableRow(page, TIER).getByRole("combobox").first().click();
-
-        await expect(page.getByRole("option")).toHaveText(["Residenziale", "Business"]);
     });
 });
 

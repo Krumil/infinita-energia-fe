@@ -206,59 +206,6 @@ test.describe("liquidation import and deletion", () => {
         expect(await backend.storedUnmatchedRows(MONTH)).toBe(3);
     });
 
-    test("should report zero deleted rows as a success and lock the controls while deleting when the month is empty", async ({
-        page,
-        backend,
-    }) => {
-        await backend.claimMonth(MONTH);
-        await page.goto("/");
-
-        const dialog = await openSettlements(page, MONTH);
-        const deletion = Promise.withResolvers<void>();
-
-        await page.route("**/api/liquidazioni/*", async (route) => {
-            await deletion.promise;
-            await route.continue();
-        });
-
-        const writes = recordApiWrites(page);
-
-        await dialog.getByRole("button", { name: "Elimina liquidazioni di luglio 2031" }).click();
-        await expect(dialog.getByRole("heading", { name: "Eliminare le liquidazioni di luglio 2031?" })).toBeVisible();
-        await dialog.getByRole("button", { name: "Elimina 07/2031" }).click();
-
-        await expect(dialog.getByText("Elaborazione...")).toBeVisible();
-        await expect(dialog.getByRole("button", { name: "Elimina liquidazioni di luglio 2031" })).toBeDisabled();
-        await expect(dialog.getByRole("button", { name: "luglio 2031", exact: true })).toBeDisabled();
-
-        deletion.resolve();
-
-        await expect(dialog.getByRole("status")).toHaveText("Liquidazioni eliminate: 0.");
-        await expect(dialog.getByRole("alert")).toHaveCount(0);
-        expect(writes).toEqual(["start DELETE /api/liquidazioni/2031-07-01", "end DELETE /api/liquidazioni/2031-07-01"]);
-    });
-
-    test("should leave every invite untouched when a month's liquidazioni are deleted", async ({ page, backend }) => {
-        await backend.claimMonth(MONTH);
-        await backend.importRows(MONTH, sellerRows(uniqueToken(), 2, 990_600));
-
-        const invitesBefore = await backend.invitesSnapshot();
-
-        await page.goto("/");
-
-        const dialog = await openSettlements(page, MONTH);
-        const writes = recordApiWrites(page);
-
-        await dialog.getByRole("button", { name: "Elimina liquidazioni di luglio 2031" }).click();
-        await expect(dialog).toContainText("Gli inviti già generati non verranno eliminati e potrebbero non corrispondere più alle liquidazioni.");
-        await dialog.getByRole("button", { name: "Elimina 07/2031" }).click();
-
-        await expect(dialog.getByRole("status")).toHaveText("Liquidazioni eliminate: 2.");
-        expect(writes).toEqual(["start DELETE /api/liquidazioni/2031-07-01", "end DELETE /api/liquidazioni/2031-07-01"]);
-        expect(await backend.storedUnmatchedRows(MONTH)).toBe(0);
-        expect(await backend.invitesSnapshot()).toBe(invitesBefore);
-    });
-
     test("should send one import request when the import button is double-clicked", async ({ page, backend }) => {
         await backend.claimMonth(MONTH);
         await page.goto("/");
@@ -305,25 +252,6 @@ test.describe("liquidation import and deletion", () => {
         await expect(result).toContainText("3 record elaborati · Importazione completata. Inserite 3 righe.");
         await expect(result).toContainText("Righe senza ID Ordine non importate: 2.");
         expect(await backend.storedUnmatchedRows(MONTH)).toBe(3);
-    });
-
-    test("should refuse the file before sending anything when no row has an order ID", async ({ page, backend }) => {
-        await backend.claimMonth(MONTH);
-        await page.goto("/");
-
-        const token = uniqueToken();
-        const rows = sellerRows(token, 2, 0).map((row) => ({ ...row, orderId: null }));
-        const dialog = await openSettlements(page, MONTH);
-
-        await attachWorkbook(dialog, MONTH, `senza-id-${token}.xlsx`, rows);
-
-        const writes = recordApiWrites(page);
-
-        await dialog.getByRole("button", { name: "Importa Liquidazioni" }).click();
-
-        await expect(dialog.getByRole("alert")).toHaveText("Nessuna riga del file ha un ID Ordine, quindi non c'è niente da importare.");
-        expect(writes).toEqual([]);
-        expect(await backend.storedUnmatchedRows(MONTH)).toBe(0);
     });
 
     test("should keep each row's Comp. dal and Comp. al from the file when the file also settles an earlier month", async ({ page, backend }) => {

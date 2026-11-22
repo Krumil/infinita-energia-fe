@@ -238,11 +238,6 @@ export class Backend {
         return { id, name: config.nome_agente };
     }
 
-    // An agent the test creates through the UI, so cleanup deletes it too.
-    trackAgent(id: number): void {
-        this.agentIds.push(id);
-    }
-
     // An agent the test deleted through the UI, so cleanup doesn't ask the API to delete it again.
     untrackAgent(id: number): void {
         this.agentIds = this.agentIds.filter((tracked) => tracked !== id);
