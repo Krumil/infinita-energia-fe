@@ -40,7 +40,7 @@ function parentValue(dialog: Locator, rule: RuleName): Locator {
 }
 
 test.describe("parent values", () => {
-    test("should keep an edited parent value after a reload when it is saved", async ({ page, backend }) => {
+    test("should keep edited parent values, negative ones included, after a reload when they are saved", async ({ page, backend }) => {
         const { child } = await createFamily(backend);
         const dialog = await openParentValues(page, child);
 
@@ -50,6 +50,9 @@ test.describe("parent values", () => {
         await expect(parentValue(dialog, STANDARD)).toHaveValue("0");
 
         await parentValue(dialog, STANDARD).fill("2,5");
+        // A negative parent value is a reversal charged to the parent.
+        await parentValue(dialog, RENEWAL).fill("-1,5");
+        await expect(parentValue(dialog, RENEWAL)).toHaveAttribute("aria-invalid", "false");
 
         // The edit lives outside the tab, so switching tabs before saving must not drop it.
         await dialog.getByRole("tab", { name: "Valori agente" }).click();
@@ -66,7 +69,7 @@ test.describe("parent values", () => {
         const reopened = await openParentValues(page, child);
 
         await expect(parentValue(reopened, STANDARD)).toHaveValue("2,5");
-        await expect(parentValue(reopened, RENEWAL)).toHaveValue("0");
+        await expect(parentValue(reopened, RENEWAL)).toHaveValue("-1,5");
     });
 
     test("should overwrite unsaved parent values and keep them after a reload when a prefill is confirmed and saved", async ({ page, backend }) => {
@@ -121,19 +124,16 @@ test.describe("parent values", () => {
         await expect(parentValue(reopened, RENEWAL)).toHaveValue("0,13");
     });
 
-    test("should mark invalid values and refuse to prefill when a value is negative or not a number", async ({ page, backend }) => {
+    test("should mark invalid values and refuse to prefill when a value is not a number", async ({ page, backend }) => {
         const { child } = await createFamily(backend);
         const dialog = await openParentValues(page, child);
         const save = dialog.getByRole("button", { name: "Salva" });
         const border = (locator: Locator): Promise<string> => locator.evaluate((element) => getComputedStyle(element).borderTopColor);
         const validBorder = await border(parentValue(dialog, RENEWAL));
 
-        await parentValue(dialog, STANDARD).fill("-1");
+        await parentValue(dialog, STANDARD).fill("abc");
         await expect(parentValue(dialog, STANDARD)).toHaveAttribute("aria-invalid", "true");
         await expect(parentValue(dialog, STANDARD)).not.toHaveCSS("border-top-color", validBorder);
-        await expect(dialog.getByRole("tab", { name: /^Valori padre/ })).toContainText("Non validi: 1");
-
-        await parentValue(dialog, STANDARD).fill("abc");
         await expect(dialog.getByRole("tab", { name: /^Valori padre/ })).toContainText("Non validi: 1");
 
         await parentValue(dialog, STANDARD).fill("1,5");
